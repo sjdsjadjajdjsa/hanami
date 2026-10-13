@@ -25,8 +25,11 @@ use it in GUIDE.md.
 1. **Add games from the panel:** a **+** that opens the system file picker,
    saves the game to the settings without disturbing anything else in the
    file, and a right-click to rename or remove.
-2. **Windows check:** blur (Acrylic), centring on the mouse's screen, and
-   the Epic and GOG sources tested on real installs.
+2. **Windows check on a real PC:** the see-through panel, focus from the
+   hotkey, centring across monitors, and the Epic and GOG sources on real
+   installs. Already checked: Windows builds and tests pass on GitHub, and in
+   Wine one copy at a time, `--toggle` and both renderers work (0.1.2).
+   Acrylic blur comes after that.
 3. **Packages:** an AUR package and an AppImage for Linux, an installer for
    Windows, built automatically for each release.
 4. ~~**Site**~~ at <https://hanami.lilygrove.dev> (source in `site/`).
@@ -38,4 +41,9 @@ use it in GUIDE.md.
 - **Desktop widget mode:** the panel pinned to the desktop, below other
   windows, on every workspace, movable and resizable, near 0 % CPU while
   always visible. X11 desktops and Windows first; Wayland through XWayland.
+- **Ports and rewrites:** find recomps, decomp ports and Rust rewrites by
+  themselves: a list of known ports kept on GitHub that anyone can add to, a
+  small "works with Hanami" file port makers can ship, and an opt-in scan of
+  a projects folder for Rust games you built. New finds are offered, not
+  added silently.
 - **Themes.**
