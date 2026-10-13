@@ -77,7 +77,14 @@ mod shell {
         let dir = dir.map(|dir| wide(dir.as_os_str()));
         // SAFETY: every string is NUL-terminated and outlives the call.
         let result = unsafe {
-            ShellExecuteW(null_mut(), null(), program.as_ptr(), params.as_ptr(), dir.as_ref().map_or(null(), |dir| dir.as_ptr()), SW_SHOWNORMAL)
+            ShellExecuteW(
+                null_mut(),
+                null(),
+                program.as_ptr(),
+                params.as_ptr(),
+                dir.as_ref().map_or(null(), |dir| dir.as_ptr()),
+                SW_SHOWNORMAL,
+            )
         };
         // Anything above 32 means it started.
         if result as isize > 32 { Ok(()) } else { Err("Windows couldn't start it".into()) }

@@ -21,6 +21,8 @@ games. Picking a game starts it and hides the panel.
 - Type to search. Arrow keys move, Enter or a click starts the game.
 - Each game has a small label saying where it came from: steam, epic, gog,
   amazon, lutris, heroic, app, or your own label.
+- Most games show their icon (see below). A game without one shows no
+  picture.
 - Problems (a typo in the settings, a game that won't start) show as one
   line at the bottom for a few seconds.
 - The **?** button copies a prompt with this guide, for an AI assistant.
@@ -40,6 +42,26 @@ Hanami finds installed games by itself, every time the panel opens:
 
 The same game found twice (for example in Steam and in the app menu) is
 listed once. Games added in the settings file win over found ones.
+
+### Icons
+
+Icons come from files already on the computer; Hanami never downloads them.
+They are read in the background, so the panel opens before they are all in.
+
+| Source | Where the icon comes from |
+|---|---|
+| `steam` | Steam's own small icon for the game (`appcache/librarycache/<id>/`); a bigger copy is used when a desktop shortcut was made for the game (`steam/games/*.ico`, or on Linux `~/.local/share/icons/hicolor/*/apps/steam_icon_<id>.png`) |
+| `apps` | the entry's `Icon=`: a file path as it is, or a name looked up as an application icon in the current icon theme (KDE's `kdeglobals` setting, else GTK's, else hicolor), then its parent themes, then hicolor and pixmaps |
+| `heroic` | Heroic's downloaded art in its `images-cache` folder, GOG's `goggame-<id>.ico` in the game folder, or on Windows the game's exe |
+| `lutris` | Lutris's icon (`lutris_<slug>.png` in the hicolor theme) or its cover in `lutris/coverart`; the wide banners are not used |
+| `epic` | the game's exe named in the Epic manifest (Windows) |
+| `gog` | `goggame-<id>.ico` in the game folder, else the game's exe (Windows) |
+| your `[[game]]` | the `icon` setting; without one, on Windows, the icon inside the `command` program when it is an exe |
+
+Picture files can be png, jpeg, ico, svg, webp or bmp; on Windows an exe
+works too. Wide pictures are shrunk to fit the square, not cropped.
+`hanami --list --verbose` prints the icon file picked for each game, or
+`(no icon)`.
 
 ## Settings
 
@@ -72,6 +94,7 @@ command = "~/Games/my-game/my-game"   # the program to run
 args = ["--fullscreen"]               # optional
 dir = "~/Games/my-game"               # optional: folder it runs in
 label = "my label"                    # optional: the label shown in the list
+icon = "~/Games/my-game/icon.png"     # optional: picture for the row
 ```
 
 Games started by Hanami keep running when Hanami closes.
@@ -83,7 +106,7 @@ Games started by Hanami keep running when Hanami closes.
 | `hanami` | open the panel (starts Hanami if needed) |
 | `hanami --hidden` | start in the tray only; use this to start with the computer |
 | `hanami --toggle` | open or close the panel |
-| `hanami --list` | print every game the panel would show, with its label |
+| `hanami --list` | print every game the panel would show, with its label (with `--verbose`, also its icon file) |
 | `hanami --guide` | print the AI prompt the **?** button copies |
 | `hanami --verbose` | print what happens (opening, focus, where games were found) for bug reports |
 | `hanami --snapshot picture.png` | draw the panel with sample games into a picture, without opening it |

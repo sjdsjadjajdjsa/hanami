@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use super::icon_theme::Lookup as IconTheme;
 use crate::games::{Game, Launch};
 
 /// Launchers that list games themselves; their games are found directly.
@@ -19,6 +20,7 @@ const LAUNCHERS: [&str; 7] = [
 pub fn find() -> Vec<Game> {
     let mut seen = HashSet::new();
     let mut games = Vec::new();
+    let icons = IconTheme::new(&icon_theme(), 48);
     for dir in dirs() {
         let mut files = Vec::new();
         collect_files(&dir, &mut files);
@@ -29,7 +31,8 @@ pub fn find() -> Vec<Game> {
                 continue;
             }
             let Ok(text) = std::fs::read_to_string(&file) else { continue };
-            if let Some(game) = parse(&text).and_then(|entry| entry.into_game(&id, &file)) {
+            if let Some(mut game) = parse(&text).and_then(|entry| entry.into_game(&id, &file)) {
+                game.icon = game.icon.take().and_then(|icon| icon_path(&icon, &icons));
                 games.push(game);
             }
         }
@@ -81,6 +84,7 @@ struct Entry {
     name: String,
     exec: String,
     path: Option<String>,
+    icon: Option<String>,
     is_application: bool,
     is_game: bool,
     hidden: bool,
@@ -104,6 +108,7 @@ fn parse(text: &str) -> Option<Entry> {
             "Name" => entry.name = value.to_string(),
             "Exec" => entry.exec = value.to_string(),
             "Path" if !value.is_empty() => entry.path = Some(value.to_string()),
+            "Icon" if !value.is_empty() => entry.icon = Some(value.to_string()),
             "Type" => entry.is_application = value == "Application",
             // Game tools (Proton managers and the like) are also "Utility".
             "Categories" => {
@@ -123,9 +128,11 @@ impl Entry {
             return None;
         }
         let args = exec_args(&self.exec, &self.name, file)?;
+        // The icon is still the `Icon=` value here; `find` resolves names to files.
+        let icon = self.icon.map(PathBuf::from);
         // Steam's own shortcuts launch through Steam, like the Steam source does.
         if let Some(url) = args.iter().find(|arg| arg.starts_with("steam://rungameid/")) {
-            return Some(Game { name: self.name, label: "steam".into(), launch: Launch::Open(url.clone()), icon: None });
+            return Some(Game { name: self.name, label: "steam".into(), launch: Launch::Open(url.clone()), icon });
         }
         let (program, args) = args.split_first()?;
         Some(Game {
@@ -136,9 +143,53 @@ impl Entry {
                 args: args.to_vec(),
                 dir: self.path.map(PathBuf::from),
             },
-            icon: None,
+            icon,
         })
     }
+}
+
+/// An `Icon=` value as a file: absolute paths as they are, names looked up
+/// in the icon theme (and hicolor behind it).
+fn icon_path(icon: &Path, theme: &IconTheme) -> Option<PathBuf> {
+    if icon.is_absolute() {
+        return icon.is_file().then(|| icon.to_path_buf());
+    }
+    // Some entries name the file rather than the icon.
+    let name = icon.to_str()?;
+    let name = match name.rsplit_once('.') {
+        Some((stem, "png" | "svg" | "xpm")) => stem,
+        _ => name,
+    };
+    theme.find(name)
+}
+
+/// The user's icon theme: KDE's setting, then GTK's, then plain hicolor.
+fn icon_theme() -> String {
+    let config = dirs::config_dir().unwrap_or_default();
+    [
+        (config.join("kdeglobals"), "[Icons]", "Theme="),
+        (config.join("kdedefaults/kdeglobals"), "[Icons]", "Theme="),
+        (PathBuf::from("/etc/xdg/kdeglobals"), "[Icons]", "Theme="),
+        (config.join("gtk-4.0/settings.ini"), "[Settings]", "gtk-icon-theme-name="),
+        (config.join("gtk-3.0/settings.ini"), "[Settings]", "gtk-icon-theme-name="),
+    ]
+    .iter()
+    .filter_map(|(path, group, key)| std::fs::read_to_string(path).ok().map(|text| (text, *group, *key)))
+    .find_map(|(text, group, key)| ini_value(&text, group, key))
+    .unwrap_or_else(|| "hicolor".into())
+}
+
+/// `key` in `group` of an ini-style settings file, like kdeglobals.
+fn ini_value(text: &str, group: &str, key: &str) -> Option<String> {
+    let mut inside = false;
+    for line in text.lines().map(str::trim) {
+        if line.starts_with('[') {
+            inside = line == group;
+        } else if inside && let Some(value) = line.strip_prefix(key) {
+            return Some(value.trim().to_string()).filter(|v| !v.is_empty());
+        }
+    }
+    None
 }
 
 /// Splits an `Exec` value into arguments: undoes the string escapes and the
@@ -252,6 +303,7 @@ mod tests {
         let found = entry.into_game("rhythia.desktop", Path::new("x")).unwrap();
         assert_eq!(found.name, "Rhythia");
         assert_eq!(found.label, "app");
+        assert_eq!(found.icon, None);
         assert_eq!(found.launch, Launch::Command { program: "rhythia".into(), args: vec![], dir: None });
 
         let not_game = "[Desktop Entry]\nType=Application\nName=Editor\nExec=ed\nCategories=Utility;\n";
@@ -292,5 +344,34 @@ mod tests {
         collect_files(&root, &mut files);
         assert_eq!(files.len(), 2);
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn icons_absolute_or_looked_up_in_the_theme() {
+        let text = "[Desktop Entry]\nType=Application\nName=Game\nExec=game\nIcon=my-game.png\nCategories=Game;\n";
+        let game = parse(text).unwrap().into_game("g.desktop", Path::new("x")).unwrap();
+        assert_eq!(game.icon, Some(PathBuf::from("my-game.png")));
+
+        let root = std::env::temp_dir().join(format!("hanami-icons-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let file = root.join("icon.png");
+        std::fs::write(&file, "").unwrap();
+        let theme = IconTheme::new("hicolor", 48);
+        assert_eq!(icon_path(&file, &theme), Some(file));
+        assert_eq!(icon_path(&root.join("missing.png"), &theme), None);
+        assert_eq!(icon_path(Path::new("hanami-no-such-icon-anywhere"), &theme), None);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn kde_theme_is_read_from_the_icons_group() {
+        let kde = |text| ini_value(text, "[Icons]", "Theme=");
+        assert_eq!(kde("[General]\nTheme=x\n\n[Icons]\nTheme=breeze-dark\n"), Some("breeze-dark".into()));
+        assert_eq!(kde("[Icons]\nTheme=\n"), None);
+        assert_eq!(kde("[General]\nTheme=x\n"), None);
+        assert_eq!(
+            ini_value("[Settings]\ngtk-icon-theme-name=Papirus\n", "[Settings]", "gtk-icon-theme-name="),
+            Some("Papirus".into())
+        );
     }
 }

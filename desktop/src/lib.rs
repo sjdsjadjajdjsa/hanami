@@ -60,12 +60,19 @@ pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height:
     imp::blur_behind(window, width, height, radius)
 }
 
+/// The icon inside a Windows program (or `.ico`, `.dll`) at about `px`
+/// pixels, as straight (not premultiplied) RGBA rows with its width and
+/// height. None elsewhere, or when the file has no icon.
+pub fn exe_icon(path: &std::path::Path, px: u32) -> Option<(u32, u32, Vec<u8>)> {
+    imp::exe_icon(path, px)
+}
+
 #[cfg(target_os = "linux")]
 mod imp {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use x11rb::CURRENT_TIME;
     use x11rb::connection::Connection;
     use x11rb::protocol::randr::ConnectionExt as _;
-    use x11rb::CURRENT_TIME;
     use x11rb::protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt as _, EventMask, PropMode};
     use x11rb::wrapper::ConnectionExt as _;
 
@@ -122,11 +129,12 @@ mod imp {
             .ok()
             .is_some_and(|cookie| cookie.check().is_ok());
         let mask = EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY;
-        let asked = [[ADD, skip_taskbar, skip_pager, FROM_APP, 0], [ADD, above, 0, FROM_APP, 0]].into_iter().all(|data| {
-            conn.send_event(false, root, mask, ClientMessageEvent::new(32, id, state, data))
-                .ok()
-                .is_some_and(|cookie| cookie.check().is_ok())
-        });
+        let asked =
+            [[ADD, skip_taskbar, skip_pager, FROM_APP, 0], [ADD, above, 0, FROM_APP, 0]].into_iter().all(|data| {
+                conn.send_event(false, root, mask, ClientMessageEvent::new(32, id, state, data))
+                    .ok()
+                    .is_some_and(|cookie| cookie.check().is_ok())
+            });
         stored && asked
     }
 
@@ -151,13 +159,15 @@ mod imp {
         false
     }
 
+    pub fn exe_icon(_path: &std::path::Path, _px: u32) -> Option<(u32, u32, Vec<u8>)> {
+        None
+    }
+
     pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
         let Some(id) = x11_id(window) else { return false };
         let Ok((conn, _)) = x11rb::connect(None) else { return false };
-        let Some(atom) = conn
-            .intern_atom(false, b"_KDE_NET_WM_BLUR_BEHIND_REGION")
-            .ok()
-            .and_then(|cookie| cookie.reply().ok())
+        let Some(atom) =
+            conn.intern_atom(false, b"_KDE_NET_WM_BLUR_BEHIND_REGION").ok().and_then(|cookie| cookie.reply().ok())
         else {
             return false;
         };
@@ -172,20 +182,116 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
+    use std::ffi::c_void;
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::Path;
     use std::ptr::{null, null_mut};
 
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::Foundation::{HWND, POINT};
     use windows_sys::Win32::Graphics::Gdi::{
-        CreateRoundRectRgn, GetDC, GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint, ReleaseDC,
-        SetWindowRgn,
+        BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateRoundRectRgn, DIB_RGB_COLORS, DeleteDC,
+        DeleteObject, GetDC, GetDIBits, GetMonitorInfoW, GetObjectW, HBITMAP, MONITOR_DEFAULTTONEAREST, MONITORINFO,
+        MonitorFromPoint, ReleaseDC, SetWindowRgn,
     };
     use windows_sys::Win32::Graphics::OpenGL::{
         ChoosePixelFormat, GL_VERSION, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA,
         PIXELFORMATDESCRIPTOR, SetPixelFormat, glGetString, wglCreateContext, wglDeleteContext, wglMakeCurrent,
     };
     use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
-    use windows_sys::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DestroyWindow, GetCursorPos, WS_POPUP};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DestroyIcon, DestroyWindow, GetCursorPos, GetIconInfo, HICON, ICONINFO, LR_DEFAULTCOLOR,
+        PrivateExtractIconsW, WS_POPUP,
+    };
+
+    pub fn exe_icon(path: &Path, px: u32) -> Option<(u32, u32, Vec<u8>)> {
+        let file: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
+        let mut icon: HICON = null_mut();
+        let mut id = 0u32;
+        // SAFETY: the file name is NUL-terminated and the icon handle is
+        // released after its pixels are copied out.
+        unsafe {
+            let got =
+                PrivateExtractIconsW(file.as_ptr(), 0, px as i32, px as i32, &mut icon, &mut id, 1, LR_DEFAULTCOLOR);
+            if got == 0 || got == u32::MAX || icon.is_null() {
+                return None;
+            }
+            let pixels = icon_pixels(icon);
+            DestroyIcon(icon);
+            pixels
+        }
+    }
+
+    unsafe fn icon_pixels(icon: HICON) -> Option<(u32, u32, Vec<u8>)> {
+        // SAFETY: every GDI object made here is deleted before returning.
+        unsafe {
+            let mut info: ICONINFO = std::mem::zeroed();
+            if GetIconInfo(icon, &mut info) == 0 {
+                return None;
+            }
+            let pixels = (!info.hbmColor.is_null()).then(|| rgba(info.hbmColor, info.hbmMask)).flatten();
+            for bitmap in [info.hbmColor, info.hbmMask] {
+                if !bitmap.is_null() {
+                    DeleteObject(bitmap);
+                }
+            }
+            pixels
+        }
+    }
+
+    /// The colour bitmap as RGBA. Icons without an alpha channel (older
+    /// 24-bit ones) read as fully transparent, so the mask fills in alpha then.
+    unsafe fn rgba(color: HBITMAP, mask: HBITMAP) -> Option<(u32, u32, Vec<u8>)> {
+        // SAFETY: the buffers are sized from the bitmap's own width and height.
+        unsafe {
+            let mut bitmap: BITMAP = std::mem::zeroed();
+            if GetObjectW(color, size_of::<BITMAP>() as i32, &mut bitmap as *mut BITMAP as *mut c_void) == 0 {
+                return None;
+            }
+            let (width, height) = (bitmap.bmWidth, bitmap.bmHeight);
+            if width <= 0 || height <= 0 {
+                return None;
+            }
+            let dc = CreateCompatibleDC(null_mut());
+            let read = |bitmap: HBITMAP| {
+                let mut info: BITMAPINFO = std::mem::zeroed();
+                info.bmiHeader.biSize = size_of::<BITMAPINFOHEADER>() as u32;
+                info.bmiHeader.biWidth = width;
+                info.bmiHeader.biHeight = -height;
+                info.bmiHeader.biPlanes = 1;
+                info.bmiHeader.biBitCount = 32;
+                info.bmiHeader.biCompression = BI_RGB;
+                let mut bgra = vec![0u8; (width * height * 4) as usize];
+                let rows = GetDIBits(
+                    dc,
+                    bitmap,
+                    0,
+                    height as u32,
+                    bgra.as_mut_ptr() as *mut c_void,
+                    &mut info,
+                    DIB_RGB_COLORS,
+                );
+                (rows == height).then_some(bgra)
+            };
+            let colour = read(color);
+            let mask = if mask.is_null() { None } else { read(mask) };
+            DeleteDC(dc);
+            let mut bgra = colour?;
+            if bgra.as_chunks::<4>().0.iter().all(|p| p[3] == 0) {
+                for (index, pixel) in bgra.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+                    // A white mask pixel means see-through.
+                    pixel[3] = match &mask {
+                        Some(mask) if mask[index * 4] != 0 => 0,
+                        _ => 255,
+                    };
+                }
+            }
+            for pixel in bgra.as_chunks_mut::<4>().0 {
+                pixel.swap(0, 2);
+            }
+            Some((width as u32, height as u32, bgra))
+        }
+    }
 
     fn hwnd(window: &(impl HasWindowHandle + ?Sized)) -> Option<HWND> {
         match window.window_handle().ok()?.as_raw() {
@@ -201,7 +307,20 @@ mod imp {
         // SAFETY: the window, device context and GL context are made, used
         // and released in order on this thread; pointers outlive the calls.
         unsafe {
-            let window = CreateWindowExW(0, class.as_ptr(), null(), WS_POPUP, 0, 0, 1, 1, null_mut(), null_mut(), null_mut(), null());
+            let window = CreateWindowExW(
+                0,
+                class.as_ptr(),
+                null(),
+                WS_POPUP,
+                0,
+                0,
+                1,
+                1,
+                null_mut(),
+                null_mut(),
+                null_mut(),
+                null(),
+            );
             if window.is_null() {
                 return false;
             }
@@ -295,6 +414,10 @@ mod imp {
         true
     }
 
+    pub fn exe_icon(_path: &std::path::Path, _px: u32) -> Option<(u32, u32, Vec<u8>)> {
+        None
+    }
+
     pub fn cut_corners(_window: &(impl HasWindowHandle + ?Sized), _width: u32, _height: u32, _radius: u32) -> bool {
         false
     }
@@ -331,5 +454,19 @@ mod tests {
     fn radius_is_clamped_to_the_window() {
         let region = rounded_region(20, 10, 16);
         assert!(region.chunks(4).all(|r| r[0] + r[2] <= 20 && r[1] + r[3] <= 10));
+    }
+
+    #[test]
+    fn exe_icons_come_out_as_rgba_on_windows_only() {
+        let missing = std::path::Path::new("/nonexistent/program.exe");
+        assert_eq!(super::exe_icon(missing, 48), None);
+        if cfg!(windows) {
+            let root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\windows".into());
+            let notepad = std::path::PathBuf::from(root).join(r"system32\notepad.exe");
+            let (width, height, rgba) = super::exe_icon(&notepad, 48).expect("notepad has an icon");
+            assert_eq!((width, height), (48, 48));
+            assert_eq!(rgba.len(), 48 * 48 * 4);
+            assert!(rgba.as_chunks::<4>().0.iter().any(|p| p[3] == 255), "some pixel is opaque");
+        }
     }
 }
