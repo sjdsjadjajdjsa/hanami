@@ -30,6 +30,7 @@ pub fn find() -> Vec<Game> {
                 name,
                 label: "gog".into(),
                 launch: Launch::Command { program: PathBuf::from(exe), args, dir: value("workingDir").map(PathBuf::from) },
+                icon: None,
             });
         }
     }

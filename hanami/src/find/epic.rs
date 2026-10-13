@@ -42,7 +42,7 @@ fn from_manifest(text: &str) -> Option<Game> {
         ),
         _ => format!("com.epicgames.launcher://apps/{}?action=launch&silent=true", super::encode(app)),
     };
-    Some(Game { name: name.into(), label: "epic".into(), launch: Launch::Open(url) })
+    Some(Game { name: name.into(), label: "epic".into(), launch: Launch::Open(url), icon: None })
 }
 
 #[cfg(test)]

@@ -125,7 +125,7 @@ impl Entry {
         let args = exec_args(&self.exec, &self.name, file)?;
         // Steam's own shortcuts launch through Steam, like the Steam source does.
         if let Some(url) = args.iter().find(|arg| arg.starts_with("steam://rungameid/")) {
-            return Some(Game { name: self.name, label: "steam".into(), launch: Launch::Open(url.clone()) });
+            return Some(Game { name: self.name, label: "steam".into(), launch: Launch::Open(url.clone()), icon: None });
         }
         let (program, args) = args.split_first()?;
         Some(Game {
@@ -136,6 +136,7 @@ impl Entry {
                 args: args.to_vec(),
                 dir: self.path.map(PathBuf::from),
             },
+            icon: None,
         })
     }
 }

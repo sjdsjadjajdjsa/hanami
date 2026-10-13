@@ -18,6 +18,8 @@ pub struct Game {
     pub name: String,
     pub label: String,
     pub launch: Launch,
+    /// A picture file for the row: png, jpeg, ico or svg.
+    pub icon: Option<PathBuf>,
 }
 
 /// Games from settings first, then the found ones; a name seen twice (in
@@ -32,6 +34,7 @@ pub fn collect(config: &Config, found: Vec<Game>) -> Vec<Game> {
             args: entry.args.clone(),
             dir: entry.dir.as_deref().map(expand_home),
         },
+        icon: entry.icon.as_deref().map(expand_home),
     });
     let mut seen: HashSet<String> = config.hide.iter().map(|name| key(name)).collect();
     let mut games: Vec<Game> = own.chain(found).filter(|game| seen.insert(key(&game.name))).collect();
@@ -85,12 +88,12 @@ mod tests {
     fn sample() -> Vec<Game> {
         let config = Config {
             games: ["Skate 3", "Pixel Gun 3D", "Rhythia"]
-                .map(|name| GameEntry { name: name.into(), command: "x".into(), args: vec![], dir: None, label: None })
+                .map(|name| GameEntry { name: name.into(), command: "x".into(), args: vec![], dir: None, label: None, icon: None })
                 .to_vec(),
             ..parse("").unwrap()
         };
         let found = [("Counter-Strike 2", 730), ("Outer Wilds", 1)]
-            .map(|(name, id)| Game { name: name.into(), label: "steam".into(), launch: crate::find::steam_launch(id) })
+            .map(|(name, id)| Game { name: name.into(), label: "steam".into(), launch: crate::find::steam_launch(id), icon: None })
             .to_vec();
         collect(&config, found)
     }
@@ -114,7 +117,8 @@ mod tests {
 
     #[test]
     fn the_same_game_is_listed_once_and_hidden_games_not_at_all() {
-        let found = |name: &str, label: &str| Game { name: name.into(), label: label.into(), launch: Launch::Open("x".into()) };
+        let found =
+            |name: &str, label: &str| Game { name: name.into(), label: label.into(), launch: Launch::Open("x".into()), icon: None };
         let mut config = parse("[[game]]\nname = \"Rhythia\"\ncommand = \"rhythia\"\nlabel = \"rust port\"\n").unwrap();
         config.hide = vec!["stardew valley".into()];
         let games = collect(

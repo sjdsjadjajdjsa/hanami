@@ -10,6 +10,7 @@ mod games;
 mod guide;
 mod ipc;
 mod launch;
+mod net;
 mod snapshot;
 
 use std::cell::{Cell, RefCell};

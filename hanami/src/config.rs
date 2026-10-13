@@ -1,6 +1,7 @@
 //! The settings file: where it lives, what it holds, and turning it into
 //! values Hanami can use.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -20,11 +21,34 @@ on_launch = "hide"
 
 # Where Hanami looks for installed games. Remove one to stop looking there.
 # Linux: steam, heroic (its Epic, GOG and Amazon games), lutris, and apps
-# (games in your app menu). Windows: steam, epic, gog and heroic.
-find = ["steam", "heroic", "lutris", "apps", "epic", "gog"]
+# (games in your app menu). Windows: steam, epic, gog and heroic. Both:
+# ports (game ports and rewrites, see folders and projects below).
+find = ["steam", "heroic", "lutris", "apps", "epic", "gog", "ports"]
+
+# Games shown at the top of the list, by name.
+favourites = []
+
+# Your own names for games, like { "Counter-Strike 2" = "CS2" }.
+rename = {}
 
 # Found games you don't want in the list, by name.
 hide = []
+
+# Extra folders to look in for game ports and rewrites (like Ship of
+# Harkinian or Zelda 64: Recompiled) and for games that come with a
+# hanami-game.toml file.
+folders = []
+
+# Folders with your own Rust game projects, like ["~/Projects"]. Games
+# built there are offered in the panel.
+projects = []
+
+# Use a game controller in the panel.
+controller = true
+
+# Hanami goes online at most once a day, only to GitHub: for the newest list
+# of known ports and to check for a new version. false = never.
+online = true
 
 # Add your own games like this (remove the # signs):
 #
@@ -34,6 +58,7 @@ hide = []
 # args = []
 # dir = "~/Games/my-game"
 # label = "my label"
+# icon = "~/Games/my-game/icon.png"
 #
 # On Windows, put paths in single quotes so the backslashes stay as they are:
 # command = 'C:\Games\My Game\game.exe'
@@ -45,7 +70,13 @@ pub struct Config {
     pub hotkey: String,
     pub on_launch: OnLaunch,
     pub find: Vec<Source>,
+    pub favourites: Vec<String>,
+    pub rename: BTreeMap<String, String>,
     pub hide: Vec<String>,
+    pub folders: Vec<String>,
+    pub projects: Vec<String>,
+    pub controller: bool,
+    pub online: bool,
     #[serde(rename = "game")]
     pub games: Vec<GameEntry>,
 }
@@ -56,7 +87,13 @@ impl Default for Config {
             hotkey: "Ctrl+Alt+H".into(),
             on_launch: OnLaunch::Hide,
             find: Source::ALL.to_vec(),
+            favourites: Vec::new(),
+            rename: BTreeMap::new(),
             hide: Vec::new(),
+            folders: Vec::new(),
+            projects: Vec::new(),
+            controller: true,
+            online: true,
             games: Vec::new(),
         }
     }
@@ -80,6 +117,7 @@ pub struct GameEntry {
     pub args: Vec<String>,
     pub dir: Option<String>,
     pub label: Option<String>,
+    pub icon: Option<String>,
 }
 
 pub fn path() -> Option<PathBuf> {

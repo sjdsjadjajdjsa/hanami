@@ -25,10 +25,14 @@ pub enum Source {
     Apps,
     Epic,
     Gog,
+    /// Game ports and rewrites, games with a hanami-game.toml, and games
+    /// built in the `projects` folders.
+    Ports,
 }
 
 impl Source {
-    pub const ALL: [Source; 6] = [Source::Steam, Source::Heroic, Source::Lutris, Source::Apps, Source::Epic, Source::Gog];
+    pub const ALL: [Source; 7] =
+        [Source::Steam, Source::Heroic, Source::Lutris, Source::Apps, Source::Epic, Source::Gog, Source::Ports];
 }
 
 #[cfg(test)]

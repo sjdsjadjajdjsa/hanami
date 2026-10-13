@@ -11,7 +11,7 @@ pub fn find() -> Vec<Game> {
         .filter(|app| app.state_flags.is_none_or(|flags| flags.0 & FULLY_INSTALLED != 0))
         .map(|app| (app.app_id, app.name.unwrap_or(app.install_dir)))
         .filter(|(_, name)| !is_tool(name))
-        .map(|(id, name)| Game { name, label: "steam".into(), launch: launch(id) })
+        .map(|(id, name)| Game { name, label: "steam".into(), launch: launch(id), icon: None })
         .collect()
 }
 
