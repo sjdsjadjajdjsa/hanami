@@ -21,10 +21,11 @@ pub fn rounded_region(width: u32, height: u32, radius: u32) -> Vec<u32> {
     region
 }
 
-/// Top-left corner that centres a `width` x `height` window on the monitor
-/// under the mouse pointer.
-pub fn centre_on_pointer(width: u32, height: u32) -> Option<(i32, i32)> {
-    imp::centre_on_pointer(width, height)
+/// Top-left corner, in physical pixels, that centres a window of `width` x
+/// `height` logical pixels on the monitor under the mouse pointer. Windows
+/// knows each monitor's scale; elsewhere `scale` is used.
+pub fn centre_on_pointer(width: u32, height: u32, scale: f32) -> Option<(i32, i32)> {
+    imp::centre_on_pointer(width, height, scale)
 }
 
 /// Keeps `window` out of the taskbar and pager and above other windows.
@@ -39,6 +40,18 @@ pub fn prepare(window: &(impl HasWindowHandle + ?Sized)) -> bool {
 /// sent the way pagers and taskbars send it, which KWin honours.
 pub fn activate(window: &(impl HasWindowHandle + ?Sized)) -> bool {
     imp::activate(window)
+}
+
+/// Whether OpenGL 2 or newer works. Windows without a graphics driver
+/// (virtual machines, remote desktop) only has Microsoft's OpenGL 1.1.
+pub fn opengl_works() -> bool {
+    imp::opengl_works()
+}
+
+/// Cuts `window` to a rounded rectangle, for renderers that can't draw
+/// see-through corners. Returns whether it worked.
+pub fn cut_corners(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
+    imp::cut_corners(window, width, height, radius)
 }
 
 /// Asks the compositor to blur what is behind `window`, inside a rounded
@@ -56,7 +69,8 @@ mod imp {
     use x11rb::protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt as _, EventMask, PropMode};
     use x11rb::wrapper::ConnectionExt as _;
 
-    pub fn centre_on_pointer(width: u32, height: u32) -> Option<(i32, i32)> {
+    pub fn centre_on_pointer(width: u32, height: u32, scale: f32) -> Option<(i32, i32)> {
+        let (width, height) = ((width as f32 * scale) as u32, (height as f32 * scale) as u32);
         let (conn, screen) = x11rb::connect(None).ok()?;
         let root = conn.setup().roots.get(screen)?.root;
         let pointer = conn.query_pointer(root).ok()?.reply().ok()?;
@@ -129,6 +143,14 @@ mod imp {
         conn.send_event(false, root, mask, message).ok().is_some_and(|cookie| cookie.check().is_ok())
     }
 
+    pub fn opengl_works() -> bool {
+        true
+    }
+
+    pub fn cut_corners(_window: &(impl HasWindowHandle + ?Sized), _width: u32, _height: u32, _radius: u32) -> bool {
+        false
+    }
+
     pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
         let Some(id) = x11_id(window) else { return false };
         let Ok((conn, _)) = x11rb::connect(None) else { return false };
@@ -150,12 +172,76 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use raw_window_handle::HasWindowHandle;
-    use windows_sys::Win32::Foundation::POINT;
-    use windows_sys::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint};
-    use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    use std::ptr::{null, null_mut};
 
-    pub fn centre_on_pointer(width: u32, height: u32) -> Option<(i32, i32)> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::Foundation::{HWND, POINT};
+    use windows_sys::Win32::Graphics::Gdi::{
+        CreateRoundRectRgn, GetDC, GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint, ReleaseDC,
+        SetWindowRgn,
+    };
+    use windows_sys::Win32::Graphics::OpenGL::{
+        ChoosePixelFormat, GL_VERSION, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA,
+        PIXELFORMATDESCRIPTOR, SetPixelFormat, glGetString, wglCreateContext, wglDeleteContext, wglMakeCurrent,
+    };
+    use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DestroyWindow, GetCursorPos, WS_POPUP};
+
+    fn hwnd(window: &(impl HasWindowHandle + ?Sized)) -> Option<HWND> {
+        match window.window_handle().ok()?.as_raw() {
+            RawWindowHandle::Win32(handle) => Some(handle.hwnd.get() as HWND),
+            _ => None,
+        }
+    }
+
+    /// Makes a context on a throwaway window and reads the version, which
+    /// starts with the major number ("4.6.0 NVIDIA ...", "1.1.0").
+    pub fn opengl_works() -> bool {
+        let class: Vec<u16> = "STATIC\0".encode_utf16().collect();
+        // SAFETY: the window, device context and GL context are made, used
+        // and released in order on this thread; pointers outlive the calls.
+        unsafe {
+            let window = CreateWindowExW(0, class.as_ptr(), null(), WS_POPUP, 0, 0, 1, 1, null_mut(), null_mut(), null_mut(), null());
+            if window.is_null() {
+                return false;
+            }
+            let dc = GetDC(window);
+            let mut format: PIXELFORMATDESCRIPTOR = std::mem::zeroed();
+            format.nSize = size_of::<PIXELFORMATDESCRIPTOR>() as u16;
+            format.nVersion = 1;
+            format.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+            format.iPixelType = PFD_TYPE_RGBA;
+            format.cColorBits = 32;
+            let index = ChoosePixelFormat(dc, &format);
+            let mut works = false;
+            if index != 0 && SetPixelFormat(dc, index, &format) != 0 {
+                let context = wglCreateContext(dc);
+                if !context.is_null() {
+                    if wglMakeCurrent(dc, context) != 0 {
+                        let version = glGetString(GL_VERSION);
+                        works = !version.is_null() && (b'2'..=b'9').contains(&*version);
+                        wglMakeCurrent(null_mut(), null_mut());
+                    }
+                    wglDeleteContext(context);
+                }
+            }
+            ReleaseDC(window, dc);
+            DestroyWindow(window);
+            works
+        }
+    }
+
+    pub fn cut_corners(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
+        let Some(hwnd) = hwnd(window) else { return false };
+        let (width, height, round) = (width as i32, height as i32, 2 * radius as i32);
+        // SAFETY: the window takes ownership of the region.
+        unsafe {
+            let region = CreateRoundRectRgn(0, 0, width + 1, height + 1, round, round);
+            !region.is_null() && SetWindowRgn(hwnd, region, 1) != 0
+        }
+    }
+
+    pub fn centre_on_pointer(width: u32, height: u32, _scale: f32) -> Option<(i32, i32)> {
         // SAFETY: plain Win32 queries writing into locals that live for the call.
         unsafe {
             let mut pointer = POINT { x: 0, y: 0 };
@@ -168,6 +254,12 @@ mod imp {
             if GetMonitorInfoW(monitor, &mut info) == 0 {
                 return None;
             }
+            let (mut dpi_x, mut dpi_y) = (96u32, 96u32);
+            if GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y) != 0 {
+                dpi_x = 96;
+            }
+            let scale = dpi_x as f32 / 96.0;
+            let (width, height) = ((width as f32 * scale) as u32, (height as f32 * scale) as u32);
             let work = info.rcWork;
             Some((
                 work.left + (work.right - work.left - width as i32) / 2,
@@ -195,8 +287,16 @@ mod imp {
 mod imp {
     use raw_window_handle::HasWindowHandle;
 
-    pub fn centre_on_pointer(_width: u32, _height: u32) -> Option<(i32, i32)> {
+    pub fn centre_on_pointer(_width: u32, _height: u32, _scale: f32) -> Option<(i32, i32)> {
         None
+    }
+
+    pub fn opengl_works() -> bool {
+        true
+    }
+
+    pub fn cut_corners(_window: &(impl HasWindowHandle + ?Sized), _width: u32, _height: u32, _radius: u32) -> bool {
+        false
     }
 
     pub fn prepare(_window: &(impl HasWindowHandle + ?Sized)) -> bool {

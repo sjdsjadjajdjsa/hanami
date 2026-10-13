@@ -113,8 +113,11 @@ Then rebuild with `cargo build --release` (needs Rust).
 ## Known limits
 
 - The frosted blur needs KDE Plasma's Blur effect (System Settings, Desktop
-  Effects, Blur) on Linux, or Windows 11. Elsewhere the panel is plain
+  Effects, Blur) on Linux. Elsewhere, Windows included, the panel is plain
   see-through.
+- Windows without a graphics driver (virtual machines, Remote Desktop) gets
+  a solid panel drawn on the CPU. If the panel never shows on Windows, set
+  the environment variable `HANAMI_RENDERER=software` to force that.
 - GNOME shows tray icons only with the AppIndicator extension; the hotkey
   and `hanami --toggle` work without it.
 - Minecraft through Prism Launcher instances is planned, not in yet.

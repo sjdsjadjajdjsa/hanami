@@ -15,7 +15,12 @@ pub fn start(launch: &Launch) -> Result<(), String> {
                 command.current_dir(dir);
             }
             detach(&mut command);
-            let mut child = command.spawn().map_err(describe)?;
+            let mut child = match command.spawn() {
+                Ok(child) => child,
+                #[cfg(windows)]
+                Err(error) if shell::needed(&error) => return shell::start(program, args, dir.as_deref()),
+                Err(error) => return Err(describe(error)),
+            };
             // Reap the game when it exits so it never lingers as a zombie.
             std::thread::spawn(move || child.wait());
             Ok(())
@@ -46,10 +51,58 @@ fn detach(command: &mut Command) {
     command.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
 }
 
+/// Starting a program the way Explorer does, for what a plain start refuses.
+#[cfg(windows)]
+mod shell {
+    use std::ffi::OsStr;
+    use std::io;
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::Path;
+    use std::ptr::{null, null_mut};
+
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    /// The game asks for admin rights, or the command is a shortcut (.lnk, .url).
+    pub fn needed(error: &io::Error) -> bool {
+        const ELEVATION_REQUIRED: i32 = 740;
+        const BAD_EXE_FORMAT: i32 = 193;
+        matches!(error.raw_os_error(), Some(ELEVATION_REQUIRED | BAD_EXE_FORMAT))
+    }
+
+    pub fn start(program: &Path, args: &[String], dir: Option<&Path>) -> Result<(), String> {
+        let wide = |text: &OsStr| text.encode_wide().chain([0]).collect::<Vec<u16>>();
+        let params = args.iter().map(|arg| quote(arg)).collect::<Vec<_>>().join(" ");
+        let (program, params) = (wide(program.as_os_str()), wide(params.as_ref()));
+        let dir = dir.map(|dir| wide(dir.as_os_str()));
+        // SAFETY: every string is NUL-terminated and outlives the call.
+        let result = unsafe {
+            ShellExecuteW(null_mut(), null(), program.as_ptr(), params.as_ptr(), dir.as_ref().map_or(null(), |dir| dir.as_ptr()), SW_SHOWNORMAL)
+        };
+        // Anything above 32 means it started.
+        if result as isize > 32 { Ok(()) } else { Err("Windows couldn't start it".into()) }
+    }
+
+    pub fn quote(arg: &str) -> String {
+        if !arg.is_empty() && !arg.contains([' ', '\t', '"']) {
+            return arg.into();
+        }
+        format!("\"{}\"", arg.replace('"', "\\\""))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::path::PathBuf;
+
+    #[cfg(windows)]
+    #[test]
+    fn arguments_with_spaces_are_quoted() {
+        assert_eq!(shell::quote("-fullscreen"), "-fullscreen");
+        assert_eq!(shell::quote("C:\\My Games\\a.cfg"), "\"C:\\My Games\\a.cfg\"");
+        assert_eq!(shell::quote(""), "\"\"");
+    }
 
     #[test]
     fn missing_program_says_so() {

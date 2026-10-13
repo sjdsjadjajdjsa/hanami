@@ -156,7 +156,8 @@ export component Panel inherits Window {
                 root.erased();
                 return accept;
             }
-            if (event.modifiers.control || event.modifiers.alt || event.modifiers.meta) {
+            // AltGr arrives as Ctrl+Alt on Windows and types letters like @ or ł.
+            if (event.modifiers.meta || event.modifiers.control != event.modifiers.alt) {
                 return reject;
             }
             root.typed(event.text);

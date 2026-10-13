@@ -1,5 +1,9 @@
 //! Hanami: a small game launcher that lives in the tray.
 
+// No console window behind the panel on Windows; `attach_console` gives
+// command-line use its output back.
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod config;
 mod find;
 mod games;
@@ -92,6 +96,9 @@ struct App {
     opened_at: Cell<Instant>,
     focus_hidden_at: Cell<Option<Instant>>,
     last_toggle: Cell<Option<Instant>>,
+    /// The CPU renderer can't draw see-through on Windows, so the window
+    /// itself is cut to the panel's rounded shape.
+    cut_corners: bool,
     clock: Timer,
     fade: Timer,
     notice_clock: Timer,
@@ -125,8 +132,8 @@ impl App {
         self.query.borrow_mut().clear();
         self.refilter();
 
-        let (width, height) = self.physical_size();
-        if let Some((x, y)) = desktop::centre_on_pointer(width, height) {
+        let scale = self.panel.window().scale_factor();
+        if let Some((x, y)) = desktop::centre_on_pointer(WIDTH, HEIGHT, scale) {
             self.panel.window().set_position(PhysicalPosition::new(x, y));
         }
         self.panel.window().with_winit_window(desktop::prepare);
@@ -159,10 +166,16 @@ impl App {
     fn focus(&self) {
         let (width, height) = self.physical_size();
         let radius = (RADIUS as f32 * self.panel.window().scale_factor()) as u32;
+        let cut_corners = self.cut_corners;
         let panel = self.panel.as_weak();
         let _ = slint::spawn_local(async move {
             let Some(panel) = panel.upgrade() else { return };
             if let Ok(window) = panel.window().winit_window().await {
+                #[cfg(windows)]
+                off_taskbar(&window);
+                if cut_corners {
+                    desktop::cut_corners(&*window, width, height, radius);
+                }
                 desktop::prepare(&*window);
                 desktop::blur_behind(&*window, width, height, radius);
                 if !desktop::activate(&*window) {
@@ -365,13 +378,18 @@ fn window_attributes(attributes: WindowAttributes) -> WindowAttributes {
     };
     #[cfg(windows)]
     let attributes = {
-        use slint::winit_030::winit::platform::windows::{BackdropType, CornerPreference, WindowAttributesExtWindows};
-        attributes
-            .with_skip_taskbar(true)
-            .with_system_backdrop(BackdropType::TransientWindow)
-            .with_corner_preference(CornerPreference::Round)
+        use slint::winit_030::winit::platform::windows::{CornerPreference, WindowAttributesExtWindows};
+        // Windows 11 would round and outline the whole window, not the panel.
+        attributes.with_skip_taskbar(true).with_corner_preference(CornerPreference::DoNotRound).with_border_color(None)
     };
     attributes
+}
+
+/// Windows puts the panel back on the taskbar every time it is shown.
+#[cfg(windows)]
+fn off_taskbar(window: &slint::winit_030::winit::window::Window) {
+    use slint::winit_030::winit::platform::windows::WindowExtWindows;
+    window.set_skip_taskbar(true);
 }
 
 fn connect_panel(panel: &Panel) {
@@ -394,6 +412,11 @@ fn connect_panel(panel: &Panel) {
             }
         })
     });
+    // Alt+F4 hides the panel the same way Esc does.
+    panel.window().on_close_requested(|| {
+        with_app(|app| app.hide());
+        slint::CloseRequestResponse::KeepWindowShown
+    });
     panel.window().on_winit_window_event(|_, event| {
         if let WindowEvent::Focused(focused) = *event {
             Timer::single_shot(Duration::ZERO, move || with_app(|app| app.focus_changed(focused)));
@@ -408,7 +431,7 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
     tray.on_show_panel(|| with_app(|app| app.show()));
     tray.on_edit_settings(move || {
         if let Some(path) = &settings
-            && let Err(error) = open::that_detached(path)
+            && let Err(error) = edit(path)
         {
             eprintln!("hanami: couldn't open {}: {error}", path.display());
         }
@@ -416,6 +439,16 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
     tray.on_quit_app(|| {
         let _ = slint::quit_event_loop();
     });
+}
+
+/// Opens the settings in the user's editor. Windows has none for .toml
+/// files until one is picked, so Notepad stands in.
+fn edit(path: &Path) -> std::io::Result<()> {
+    match open::that_detached(path) {
+        #[cfg(windows)]
+        Err(_) => std::process::Command::new("notepad.exe").arg(path).spawn().map(drop),
+        result => result,
+    }
 }
 
 /// The manager must stay alive for the hotkey to keep working.
@@ -440,7 +473,31 @@ fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
     Ok(manager)
 }
 
+/// Windows apps built without a console print nowhere; when started from a
+/// terminal, write into that terminal instead.
+#[cfg(windows)]
+fn attach_console() {
+    use windows_sys::Win32::System::Console::{ATTACH_PARENT_PROCESS, AttachConsole};
+    // SAFETY: no arguments to get wrong; failure just means no terminal.
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+}
+
+/// The copy that keeps running lets go of the terminal, so closing the
+/// terminal doesn't close Hanami.
+#[cfg(windows)]
+fn detach_console() {
+    use windows_sys::Win32::System::Console::FreeConsole;
+    // SAFETY: no arguments; output afterwards goes nowhere, which is fine.
+    unsafe {
+        FreeConsole();
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(windows)]
+    attach_console();
     started();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let flag = |name: &str| args.iter().any(|arg| arg == name);
@@ -491,12 +548,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if ipc::claim(first, handle)?.is_none() {
         return Ok(());
     }
-
-    let backend = slint::BackendSelector::new().with_winit_window_attributes_hook(window_attributes);
-    // Software rendering is the lightest, but Windows only gets a see-through
-    // window from a GPU renderer.
     #[cfg(windows)]
-    let backend = backend.renderer_name("femtovg".into());
+    if !VERBOSE.load(Ordering::Relaxed) {
+        detach_console();
+    }
+
+    // Software rendering is the lightest, but Windows only gets a see-through
+    // window from a GPU renderer, and that needs a real OpenGL driver.
+    // HANAMI_RENDERER=software forces the CPU there.
+    let gpu = cfg!(windows)
+        && std::env::var("HANAMI_RENDERER").map_or_else(|_| desktop::opengl_works(), |name| name != "software");
+    log(if gpu { "drawing with OpenGL" } else { "drawing with the CPU" });
+    let mut backend = slint::BackendSelector::new().with_winit_window_attributes_hook(window_attributes);
+    if cfg!(windows) {
+        backend = backend.renderer_name(if gpu { "femtovg" } else { "software" }.into());
+    }
     backend.select()?;
 
     let panel = Panel::new()?;
@@ -522,6 +588,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: RefCell::new(config),
         config_path,
         hotkey_problem,
+        cut_corners: cfg!(windows) && !gpu,
         open: Cell::new(false),
         mapped: Cell::new(false),
         had_focus: Cell::new(false),

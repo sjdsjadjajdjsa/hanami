@@ -36,6 +36,12 @@ fn name() -> io::Result<Name<'static>> {
 /// Becomes the running copy, or hands `request` to the one already running.
 /// Returns `None` when another copy took the request.
 pub fn claim(request: Request, handle: impl Fn(Request) + Send + 'static) -> io::Result<Option<()>> {
+    // Asking first works even where a second listener under the same name
+    // isn't refused (Wine's named pipes).
+    if let Ok(stream) = Stream::connect(name()?) {
+        send(stream, request)?;
+        return Ok(None);
+    }
     match ListenerOptions::new().name(name()?).create_sync() {
         Ok(listener) => {
             std::thread::spawn(move || {
@@ -50,14 +56,38 @@ pub fn claim(request: Request, handle: impl Fn(Request) + Send + 'static) -> io:
             });
             Ok(Some(()))
         }
-        Err(error) if error.kind() == io::ErrorKind::AddrInUse => {
-            let mut stream = Stream::connect(name()?)?;
-            stream.write_all(format!("{}\n", request.word()).as_bytes())?;
+        // Another copy started at the same moment.
+        Err(error) if taken(&error) => {
+            send(Stream::connect(name()?)?, request)?;
             Ok(None)
         }
         Err(error) => Err(error),
     }
 }
+
+fn send(mut stream: Stream, request: Request) -> io::Result<()> {
+    allow_focus();
+    stream.write_all(format!("{}\n", request.word()).as_bytes())
+}
+
+/// Another copy holds the name. Windows reports that as "access denied".
+fn taken(error: &io::Error) -> bool {
+    error.kind() == io::ErrorKind::AddrInUse || (cfg!(windows) && error.kind() == io::ErrorKind::PermissionDenied)
+}
+
+/// Windows lets only the app the user just started bring a window to the
+/// front. That is this copy, so it hands the right to the running one.
+#[cfg(windows)]
+fn allow_focus() {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{ASFW_ANY, AllowSetForegroundWindow};
+    // SAFETY: takes a process id, nothing else.
+    unsafe {
+        AllowSetForegroundWindow(ASFW_ANY);
+    }
+}
+
+#[cfg(not(windows))]
+fn allow_focus() {}
 
 #[cfg(test)]
 mod tests {

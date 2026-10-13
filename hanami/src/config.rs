@@ -34,6 +34,9 @@ hide = []
 # args = []
 # dir = "~/Games/my-game"
 # label = "my label"
+#
+# On Windows, put paths in single quotes so the backslashes stay as they are:
+# command = 'C:\Games\My Game\game.exe'
 "#;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -107,7 +110,7 @@ pub fn parse(text: &str) -> Result<Config, String> {
 
 /// `~/games/x` becomes the home folder plus `games/x`; anything else is kept.
 pub fn expand_home(path: &str) -> PathBuf {
-    match (path.strip_prefix("~/"), dirs::home_dir()) {
+    match (path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")), dirs::home_dir()) {
         (Some(rest), Some(home)) => home.join(rest),
         _ => PathBuf::from(path),
     }
@@ -148,5 +151,6 @@ mod tests {
         assert_eq!(expand_home("~/a/b"), home.join("a/b"));
         assert_eq!(expand_home("/usr/bin/x"), PathBuf::from("/usr/bin/x"));
         assert_eq!(expand_home("a~/b"), PathBuf::from("a~/b"));
+        assert_eq!(expand_home("~\\a"), home.join("a"));
     }
 }
