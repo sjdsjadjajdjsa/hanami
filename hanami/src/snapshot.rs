@@ -11,15 +11,16 @@ use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgb
 use slint::platform::{Platform, WindowAdapter, WindowEvent};
 use slint::{ComponentHandle, ModelRc, PhysicalSize, VecModel};
 
-use crate::{GameRow, HEIGHT, Panel, WIDTH, petals};
+use crate::{GameRow, HEIGHT, Panel, WIDTH, icons, petals};
 
-const SAMPLE: [(&str, &str); 6] = [
-    ("Celeste", "steam"),
-    ("Hades", "epic"),
-    ("Hollow Knight", "gog"),
-    ("Outer Wilds", "steam"),
-    ("Sober", "app"),
-    ("Stardew Valley", "steam"),
+/// The site's demo games, with their icons. Hades is pinned, so it comes first.
+const SAMPLE: [(&str, &str, &[u8]); 6] = [
+    ("Hades", "pinned · epic", include_bytes!("../../site/assets/games/hades.png")),
+    ("Celeste", "steam", include_bytes!("../../site/assets/games/celeste.png")),
+    ("Dead Cells", "steam", include_bytes!("../../site/assets/games/dead-cells.png")),
+    ("Hollow Knight", "gog", include_bytes!("../../site/assets/games/hollow-knight.png")),
+    ("OpenTTD", "port", include_bytes!("../../site/assets/games/openttd.png")),
+    ("Stardew Valley", "steam", include_bytes!("../../site/assets/games/stardew-valley.png")),
 ];
 
 struct Offscreen(Rc<MinimalSoftwareWindow>);
@@ -41,12 +42,12 @@ pub fn render(path: &Path, scale: f32) -> Result<(), Box<dyn Error>> {
     let panel = Panel::new()?;
     let rows: Vec<GameRow> = SAMPLE
         .iter()
-        .map(|&(name, label)| GameRow {
+        .map(|&(name, label, icon)| GameRow {
             name: name.into(),
             label: label.into(),
-            icon: slint::Image::default(),
+            icon: icons::from_bytes(icon, (24.0 * scale) as u32).map(slint::Image::from_rgba8).unwrap_or_default(),
             initial: name[..1].into(),
-            pinned: false,
+            pinned: label.starts_with("pinned"),
             new: false,
         })
         .collect();

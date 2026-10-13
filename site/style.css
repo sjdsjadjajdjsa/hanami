@@ -152,13 +152,14 @@ h1 {
 }
 .demo-help:hover, .demo-help:focus-visible { background: var(--fill); color: var(--text); outline: none; }
 .demo-list { display: flex; flex: 1; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; overflow: hidden; list-style: none; }
+.demo-buttons { display: flex; gap: var(--space-1); }
 .demo-row {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
   height: 44px;
-  padding: 0 14px;
+  padding: 0 14px 0 10px;
   border-radius: var(--radius);
   cursor: pointer;
   user-select: none;
@@ -166,7 +167,38 @@ h1 {
 }
 .demo-name { flex: 1; overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; transition: color 120ms ease-out; }
 .demo-label { font-size: 11px; color: var(--dim); }
-.demo-row.selected { background: rgb(244 182 200 / 14%); }
+.demo-row.selected, .demo-row.renaming { background: rgb(244 182 200 / 14%); }
+.demo-row.acting { gap: var(--space-1); padding: 0 6px; cursor: default; }
+.demo-icon { flex: none; width: 24px; height: 24px; border-radius: 6px; object-fit: contain; }
+.demo-chip {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 32px;
+  cursor: pointer;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.demo-chip:hover { background: var(--fill); }
+.demo-chip.lit { background: rgb(244 182 200 / 14%); color: var(--accent); }
+.demo-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+}
+.demo-rename::selection { background: rgb(244 182 200 / 35%); color: var(--text); }
 .demo-row.selected .demo-name { color: var(--accent); }
 .demo-empty { margin: auto; font-size: 11px; color: var(--dim); }
 .demo-foot { margin: 0; overflow: hidden; font-size: 11px; color: var(--dim); text-align: center; white-space: nowrap; text-overflow: ellipsis; }

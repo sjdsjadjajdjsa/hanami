@@ -172,6 +172,13 @@ fn load(path: &Path, px: u32) -> Option<DynamicImage> {
     reader.decode().ok()
 }
 
+/// A picture already in memory, for the sample games `hanami --snapshot` draws.
+pub fn from_bytes(data: &[u8], px: u32) -> Option<Pixels> {
+    let image = image::load_from_memory(data).ok()?;
+    let rgba = image.resize(px, px, FilterType::Lanczos3).into_rgba8();
+    Some(SharedPixelBuffer::clone_from_slice(rgba.as_raw(), rgba.width(), rgba.height()))
+}
+
 fn svg(data: &[u8], px: u32) -> Option<DynamicImage> {
     use resvg::tiny_skia::{Pixmap, Transform};
     let tree = resvg::usvg::Tree::from_data(data, &resvg::usvg::Options::default()).ok()?;

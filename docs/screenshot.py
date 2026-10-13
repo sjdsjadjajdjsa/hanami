@@ -1,18 +1,19 @@
-"""Draws the README pictures: the panel from `hanami --snapshot` over a
-blurred background, the way it looks with the desktop's blur turned on.
+"""Draws the README pictures and the site's link preview: the panel from
+`hanami --snapshot` over a blurred background, the way it looks with the
+desktop's blur turned on.
 
     hanami --snapshot panel.png
     python3 docs/screenshot.py panel.png
 
 Needs Pillow. Writes docs/screenshot-dark.webp and docs/screenshot-light.webp,
-for GitHub's dark and light themes.
+for GitHub's dark and light themes, and site/assets/social.png.
 """
 
 import random
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 W, H = 1600, 1040
 SCALE = 2
@@ -85,7 +86,8 @@ def fade(distance):
     return int(255 * t * t * (3 - 2 * t))
 
 
-def backdrop(scene, rand, panel_box):
+def backdrop(scene, rand, panel_box, size=(W, H)):
+    W, H = size
     top, bottom = (Image.new("RGBA", (W, H), c + (255,)) for c in (scene["top"], scene["bottom"]))
     image = Image.composite(bottom, top, Image.linear_gradient("L").resize((W, H)))
     for (x, y), colour, strength, radius in scene["glows"]:
@@ -123,35 +125,60 @@ def backdrop(scene, rand, panel_box):
 
 
 def dither(image):
-    noise = Image.effect_noise((W, H), 3)
+    noise = Image.effect_noise(image.size, 3)
     channels = [ImageChops.add(c, noise, 1.0, -128) for c in image.convert("RGB").split()]
     return Image.merge("RGB", channels)
 
 
-def draw(panel_path, name, scene, seed=7):
-    panel = Image.open(panel_path).convert("RGBA")
-    x, y = (W - panel.width) // 2, (H - panel.height) // 2
+def scene_with_panel(panel, scene, size, at, radius, seed=7):
+    """The backdrop, then the panel's shadow, frosted glass and the panel."""
+    x, y = at
     box = (x, y, x + panel.width, y + panel.height)
-    image = backdrop(scene, random.Random(seed), box)
+    image = backdrop(scene, random.Random(seed), box, size)
+    blur = panel.width * 36 // 680
 
     pad = 120
     shadow = Image.new("RGBA", (panel.width + pad * 2, panel.height + pad * 2), scene["shadow"] + (0,))
     mask = Image.new("L", shadow.size, 0)
-    mask.paste(rounded(panel.size, RADIUS, int(255 * scene["shadow_alpha"])), (pad, pad))
-    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(36)))
-    image.alpha_composite(shadow, (x - pad, y - pad + 26))
+    mask.paste(rounded(panel.size, radius, int(255 * scene["shadow_alpha"])), (pad, pad))
+    shadow.putalpha(mask.filter(ImageFilter.GaussianBlur(blur)))
+    image.alpha_composite(shadow, (x - pad, y - pad + blur * 3 // 4))
 
-    frosted = image.crop(box).filter(ImageFilter.GaussianBlur(36))
-    image.paste(frosted, (x, y), rounded(panel.size, RADIUS))
+    frosted = image.crop(box).filter(ImageFilter.GaussianBlur(blur))
+    image.paste(frosted, (x, y), rounded(panel.size, radius))
     image.alpha_composite(panel, (x, y))
+    return image
 
+
+def draw(panel, name, scene):
+    image = scene_with_panel(panel, scene, (W, H), ((W - panel.width) // 2, (H - panel.height) // 2), RADIUS)
     out = HERE / f"screenshot-{name}.webp"
     dither(image).save(out, quality=92, method=6)
+    print(out)
+
+
+def social(panel):
+    """The 1200 x 630 card chat apps show for a link to the site."""
+    size = (1200, 630)
+    scale = 540 / panel.height
+    small = panel.resize((round(panel.width * scale), 540), Image.LANCZOS)
+    image = scene_with_panel(small, SCENES["dark"], size, (size[0] - small.width - 110, 45), round(RADIUS * scale), seed=3)
+    fonts = HERE.parent / "assets"
+    draw = ImageDraw.Draw(image)
+    draw.text((96, 215), "hanami", font=ImageFont.truetype(str(fonts / "Inter-SemiBold.ttf"), 92), fill=(236, 230, 238))
+    regular = ImageFont.truetype(str(fonts / "Inter-Regular.ttf"), 30)
+    draw.text((100, 335), "A small game launcher", font=regular, fill=(155, 147, 163))
+    draw.text((100, 375), "for Linux and Windows", font=regular, fill=(155, 147, 163))
+    draw.text((100, 455), "hanami.lilygrove.dev", font=ImageFont.truetype(str(fonts / "Inter-Medium.ttf"), 26), fill=(244, 182, 200))
+    out = HERE.parent / "site" / "assets" / "social.png"
+    dither(image).save(out, optimize=True)
     print(out)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
+    panel = Image.open(sys.argv[1]).convert("RGBA")
     for name, scene in SCENES.items():
-        draw(sys.argv[1], name, scene)
+        draw(panel, name, scene)
+    social(panel)

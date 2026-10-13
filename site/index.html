@@ -35,23 +35,26 @@
         <p class="meta">Free and open source (GPL-3.0) · <a href="https://github.com/sjdsjadjajdjsa/hanami/releases">all releases</a></p>
       </div>
       <div class="demo-wrap">
-        <div class="demo" id="demo" tabindex="0" aria-label="Try the Hanami panel: type to filter, arrow keys to move, Enter to start a game, Escape to hide">
+        <div class="demo" id="demo" tabindex="0" aria-label="Try the Hanami panel: type to filter, arrow keys to move, Enter to start a game, Tab or right-click for more, Escape to hide">
           <canvas class="demo-petals" aria-hidden="true"></canvas>
           <div class="demo-body">
             <div class="demo-head">
               <span class="demo-title" id="demo-title">hanami</span>
               <span class="demo-count" id="demo-count">6 games</span>
-              <button class="demo-help" id="demo-help" type="button" aria-label="Copy a prompt that explains Hanami to your AI">?</button>
+              <span class="demo-buttons">
+                <button class="demo-help" id="demo-add" type="button" aria-label="Add a game">+</button>
+                <button class="demo-help" id="demo-help" type="button" aria-label="Copy a prompt that explains Hanami to your AI">?</button>
+              </span>
             </div>
             <ul class="demo-list" id="demo-list" role="listbox">
-            <li class="demo-row" role="option"><span class="demo-name">Celeste</span><span class="demo-label">steam</span></li>
-            <li class="demo-row" role="option"><span class="demo-name">Hades</span><span class="demo-label">epic</span></li>
-            <li class="demo-row" role="option"><span class="demo-name">Hollow Knight</span><span class="demo-label">gog</span></li>
-            <li class="demo-row" role="option"><span class="demo-name">Outer Wilds</span><span class="demo-label">steam</span></li>
-            <li class="demo-row" role="option"><span class="demo-name">Sober</span><span class="demo-label">app</span></li>
-            <li class="demo-row" role="option"><span class="demo-name">Stardew Valley</span><span class="demo-label">steam</span></li>
+            <li class="demo-row" role="option" data-pinned="true"><img class="demo-icon" src="assets/games/hades.png" alt=""><span class="demo-name">Hades</span><span class="demo-label">epic</span></li>
+            <li class="demo-row" role="option"><img class="demo-icon" src="assets/games/celeste.png" alt=""><span class="demo-name">Celeste</span><span class="demo-label">steam</span></li>
+            <li class="demo-row" role="option"><img class="demo-icon" src="assets/games/dead-cells.png" alt=""><span class="demo-name">Dead Cells</span><span class="demo-label">steam</span></li>
+            <li class="demo-row" role="option"><img class="demo-icon" src="assets/games/hollow-knight.png" alt=""><span class="demo-name">Hollow Knight</span><span class="demo-label">gog</span></li>
+            <li class="demo-row" role="option"><img class="demo-icon" src="assets/games/openttd.png" alt=""><span class="demo-name">OpenTTD</span><span class="demo-label">port</span></li>
+            <li class="demo-row" role="option"><img class="demo-icon" src="assets/games/stardew-valley.png" alt=""><span class="demo-name">Stardew Valley</span><span class="demo-label">steam</span></li>
             </ul>
-            <p class="demo-foot" id="demo-foot">type to search · enter to play · esc to hide</p>
+            <p class="demo-foot" id="demo-foot">type to search · enter to play · tab for more</p>
           </div>
         </div>
         <button class="demo-reopen" id="demo-reopen" type="button" hidden>Open the panel (Ctrl+Alt+H)</button>
@@ -62,12 +65,24 @@
       <h2>Features</h2>
       <dl class="points">
         <div>
-          <dt>Game detection</dt>
-          <dd>Steam, Heroic, Lutris and desktop entries on Linux; Steam, Epic and GOG on Windows. Other programs can be added in the settings file.</dd>
+          <dt>Finds your games</dt>
+          <dd>Steam, Heroic, Lutris and the app menu on Linux; Steam, Epic, GOG and Heroic on Windows. Each with its own icon.</dd>
         </div>
         <div>
-          <dt>Low resource use</dt>
-          <dd>About 30 MB of memory and no CPU use while hidden. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> opens the panel, typing filters the list, <kbd>Enter</kbd> launches.</dd>
+          <dt>Ports and rewrites</dt>
+          <dd>Spots ports, recomps and rewrites like Ship of Harkinian, Zelda 64: Recompiled and OpenMW, and Rust games you built yourself. It asks before adding them.</dd>
+        </div>
+        <div>
+          <dt>Your list, your way</dt>
+          <dd>Pin favourites to the top, rename or hide any game, add one with <strong>+</strong>. The games you play most come first.</dd>
+        </div>
+        <div>
+          <dt>Keyboard or controller</dt>
+          <dd><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> opens the panel and typing finds a game, even with a typo. On a controller, hold Start and Select.</dd>
+        </div>
+        <div>
+          <dt>Light</dt>
+          <dd>About 30 MB of memory and no CPU use while hidden.</dd>
         </div>
         <div>
           <dt>AI help prompt</dt>
