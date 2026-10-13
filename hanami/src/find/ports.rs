@@ -11,7 +11,7 @@ mod projects;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
 use serde::Deserialize;
@@ -69,6 +69,14 @@ static STATE: Mutex<State> = Mutex::new(State {
     running: false,
 });
 
+static CHANGED: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+
+/// Called from the scan's thread whenever a background scan finds a
+/// different set of games than the one before.
+pub fn on_change(changed: impl Fn() + Send + Sync + 'static) {
+    let _ = CHANGED.set(Box::new(changed));
+}
+
 fn state() -> MutexGuard<'static, State> {
     STATE.lock().unwrap_or_else(|poison| poison.into_inner())
 }
@@ -85,11 +93,16 @@ pub fn find(config: &Config) -> Vec<Game> {
         std::thread::spawn(move || {
             let games = scan(&settings);
             let mut state = self::state();
+            let changed = state.settings == settings && state.games != games;
             if state.settings == settings {
                 state.games = games;
                 state.finished = Some(Instant::now());
             }
             state.running = false;
+            drop(state);
+            if changed && let Some(changed) = CHANGED.get() {
+                changed();
+            }
         });
     }
     state.games.clone()

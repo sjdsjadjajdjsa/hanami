@@ -40,7 +40,7 @@ impl Source {
 }
 
 /// Scans for ports right away instead of in the background, for `--list`.
-pub use ports::scan_now as scan_ports;
+pub use ports::{on_change as on_ports_change, scan_now as scan_ports};
 #[cfg(test)]
 pub use steam::launch as steam_launch;
 

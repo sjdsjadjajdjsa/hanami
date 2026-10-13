@@ -278,6 +278,7 @@ impl App {
         }
         self.controller.set_enabled(self.config.borrow().controller);
         let (games, fresh) = listed(&self.config.borrow(), &self.state.borrow());
+        log(&format!("{} games, {} new", games.len(), fresh.len()));
         self.panel.set_total(games.len() as i32);
         self.panel.set_fresh(fresh.len() as i32);
         *self.games.borrow_mut() = games;
@@ -323,6 +324,18 @@ impl App {
         self.panel.set_query(query.as_str().into());
         self.panel.set_selected(0);
         *self.shown.borrow_mut() = shown;
+    }
+
+    /// A background search for ports finished with something new: show it,
+    /// unless the user is in the middle of renaming or picking an action.
+    fn ports_changed(&self) {
+        if !self.open.get() || self.panel.get_renaming() >= 0 || self.panel.get_acting() >= 0 {
+            return;
+        }
+        // Keep the highlight on the game the user moved to; otherwise stay on top.
+        let selected = self.panel.get_selected();
+        let picked = if selected > 0 { self.game(selected).map(|game| game.name) } else { None };
+        self.relist(&picked.unwrap_or_default());
     }
 
     /// Puts pictures that finished loading into the rows already showing,
@@ -848,7 +861,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     connect_panel(&panel);
 
     // The ports search runs in the background; start it now so the first
-    // panel already has its result.
+    // panel already has its result, and show what it finds while open.
+    find::on_ports_change(|| {
+        let _ = slint::invoke_from_event_loop(|| with_app(|app| app.ports_changed()));
+    });
     if config.find.contains(&Source::Ports) {
         find::games(Source::Ports, &config);
     }
