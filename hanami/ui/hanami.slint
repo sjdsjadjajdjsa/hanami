@@ -521,10 +521,14 @@ export component Panel inherits Window {
 }
 
 export component Tray inherits SystemTrayIcon {
+    // Set when a newer release is out, like "0.2.0"; empty hides the item.
+    in property <string> update-version;
+
     callback open-panel();
     callback show-panel();
     callback edit-settings();
     callback quit-app();
+    callback get-update();
 
     icon: @image-url("../../assets/hanami-icon.svg");
     title: "Hanami";
@@ -539,6 +543,10 @@ export component Tray inherits SystemTrayIcon {
         MenuItem {
             title: "Edit settings";
             activated => { root.edit-settings(); }
+        }
+        if root.update-version != "": MenuItem {
+            title: "Get Hanami " + root.update-version;
+            activated => { root.get-update(); }
         }
         MenuItem {
             title: "Quit";

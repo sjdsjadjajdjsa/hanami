@@ -15,6 +15,7 @@ mod launch;
 mod net;
 mod snapshot;
 mod state;
+mod update;
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -121,6 +122,8 @@ struct App {
     /// Kept alive: on Linux the copied text lasts only as long as this does.
     clipboard: RefCell<Option<arboard::Clipboard>>,
     icons: icons::Icons,
+    /// Said once, the next time the panel is open.
+    update_notice: RefCell<Option<String>>,
 }
 
 impl App {
@@ -148,6 +151,9 @@ impl App {
         self.reload();
         if let Some(problem) = &self.hotkey_problem {
             self.notify(problem.clone());
+        }
+        if let Some(message) = self.update_notice.take() {
+            self.notify(message);
         }
         self.query.borrow_mut().clear();
         self.refilter();
@@ -539,6 +545,16 @@ impl App {
         });
     }
 
+    /// A newer release exists; the tray menu already offers it.
+    fn offer_update(&self, version: &str) {
+        let message = format!("Hanami {version} is out. Get it from the tray menu.");
+        if self.open.get() {
+            self.notify(message);
+        } else {
+            *self.update_notice.borrow_mut() = Some(message);
+        }
+    }
+
     fn ask_ai(&self) {
         let prompt = guide::prompt(self.config_path.as_deref());
         let mut clipboard = self.clipboard.borrow_mut();
@@ -717,6 +733,24 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
     tray.on_quit_app(|| {
         let _ = slint::quit_event_loop();
     });
+    tray.on_get_update(|| {
+        if let Err(error) = open::that_detached(update::RELEASES) {
+            eprintln!("hanami: couldn't open {}: {error}", update::RELEASES);
+        }
+    });
+}
+
+/// Once a day at most, a newer release adds "Get Hanami x.y.z" to the tray
+/// menu and one notice in the panel.
+fn watch_updates(tray: &Tray, online: bool) {
+    let tray = tray.as_weak();
+    update::check(online, move |version| {
+        let _ = tray.upgrade_in_event_loop(move |tray| {
+            log(&format!("newer version: {version}"));
+            tray.set_update_version(version.as_str().into());
+            with_app(|app| app.offer_update(&version));
+        });
+    });
 }
 
 /// Opens the settings in the user's editor. Windows has none for .toml
@@ -871,6 +905,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tray = Tray::new()?;
     connect_tray(&tray, config_path.clone());
+    watch_updates(&tray, config.online);
     let hotkeys = register_hotkey(&config.hotkey);
     let hotkey_problem = hotkeys.as_ref().err().cloned();
     if let Some(problem) = &hotkey_problem {
@@ -904,6 +939,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         icons: icons::Icons::new(ICON_PX, || {
             let _ = slint::invoke_from_event_loop(|| with_app(|app| app.show_icons()));
         }),
+        update_notice: RefCell::new(None),
     });
     if let Some(message) = problem {
         app.notify(message);
