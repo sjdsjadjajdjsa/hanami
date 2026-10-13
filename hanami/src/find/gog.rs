@@ -26,6 +26,12 @@ pub fn find() -> Vec<Game> {
             if games.iter().any(|game: &Game| game.name == name) {
                 continue;
             }
+            // GOG puts the game's icon next to it; without it the exe's icon is used.
+            let icon = [value("path"), value("workingDir")]
+                .into_iter()
+                .flatten()
+                .map(|dir| PathBuf::from(dir).join(format!("goggame-{id}.ico")))
+                .find(|path| path.is_file());
             games.push(Game {
                 name,
                 label: "gog".into(),
@@ -34,7 +40,7 @@ pub fn find() -> Vec<Game> {
                     args,
                     dir: value("workingDir").map(PathBuf::from),
                 },
-                icon: None,
+                icon,
             });
         }
     }

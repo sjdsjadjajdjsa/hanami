@@ -9,6 +9,7 @@ mod find;
 mod gamepad;
 mod games;
 mod guide;
+mod icons;
 mod ipc;
 mod launch;
 mod net;
@@ -28,7 +29,7 @@ use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 use slint::winit_030::winit::event::WindowEvent;
 use slint::winit_030::winit::window::WindowAttributes;
 use slint::winit_030::{EventResult, WinitWindowAccessor};
-use slint::{ComponentHandle, ModelRc, PhysicalPosition, Timer, TimerMode, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, PhysicalPosition, Timer, TimerMode, VecModel};
 
 use config::{Config, OnLaunch};
 use find::Source;
@@ -43,6 +44,8 @@ const WIDTH: u32 = 340;
 const HEIGHT: u32 = 440;
 const RADIUS: u32 = 16;
 const PETALS: usize = 18;
+/// Icons are 24 px in the row, decoded at twice that for sharp HiDPI.
+const ICON_PX: u32 = 48;
 const FRAME: Duration = Duration::from_millis(33);
 const NOTICE: Duration = Duration::from_secs(4);
 /// Matches the fade in hanami.slint.
@@ -117,6 +120,7 @@ struct App {
     notice_clock: Timer,
     /// Kept alive: on Linux the copied text lasts only as long as this does.
     clipboard: RefCell<Option<arboard::Clipboard>>,
+    icons: icons::Icons,
 }
 
 impl App {
@@ -308,7 +312,7 @@ impl App {
                     GameRow {
                         name: game.name.as_str().into(),
                         label: label.into(),
-                        icon: slint::Image::default(),
+                        icon: game.icon.as_deref().and_then(|path| self.icons.get(path)).unwrap_or_default(),
                         initial: initial.unwrap_or_default().into(),
                         pinned,
                         new,
@@ -319,6 +323,22 @@ impl App {
         self.panel.set_query(query.as_str().into());
         self.panel.set_selected(0);
         *self.shown.borrow_mut() = shown;
+    }
+
+    /// Puts pictures that finished loading into the rows already showing,
+    /// without touching the highlight or the search.
+    fn show_icons(&self) {
+        let games = self.games.borrow();
+        for (row, &index) in self.shown.borrow().iter().enumerate() {
+            let Some(mut data) = self.rows.row_data(row) else { continue };
+            if data.icon.size().width > 0 {
+                continue;
+            }
+            if let Some(icon) = games[index].icon.as_deref().and_then(|path| self.icons.get(path)) {
+                data.icon = icon;
+                self.rows.set_row_data(row, data);
+            }
+        }
     }
 
     /// The game on `row` of the panel.
@@ -775,8 +795,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(message) = &problem {
             eprintln!("{message}");
         }
+        let verbose = VERBOSE.load(Ordering::Relaxed);
         for game in listed(&config, &State::load()).0 {
-            println!("{}\t{}", game.name, game.label);
+            match (&game.icon, verbose) {
+                (Some(icon), true) => println!("{}\t{}\t{}", game.name, game.label, icon.display()),
+                (None, true) => println!("{}\t{}\t(no icon)", game.name, game.label),
+                _ => println!("{}\t{}", game.name, game.label),
+            }
         }
         return Ok(());
     }
@@ -849,6 +874,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fade: Timer::default(),
         notice_clock: Timer::default(),
         clipboard: RefCell::new(None),
+        icons: icons::Icons::new(ICON_PX, || {
+            let _ = slint::invoke_from_event_loop(|| with_app(|app| app.show_icons()));
+        }),
     });
     if let Some(message) = problem {
         app.notify(message);

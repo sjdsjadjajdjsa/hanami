@@ -9,6 +9,8 @@ mod epic;
 mod gog;
 mod heroic;
 #[cfg(target_os = "linux")]
+mod icon_theme;
+#[cfg(target_os = "linux")]
 mod lutris;
 mod steam;
 
