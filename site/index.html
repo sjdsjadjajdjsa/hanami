@@ -34,8 +34,28 @@
         </div>
         <p class="meta">Free and open source (GPL-3.0) · <a href="https://github.com/sjdsjadjajdjsa/hanami/releases">all releases</a></p>
       </div>
-      <img class="panel" src="assets/hanami-panel.png" width="340" height="440"
-           alt="The Hanami panel: a dark, rounded, see-through window listing games like Celeste, Hades and Hollow Knight, with sakura petals behind the list.">
+      <div class="demo-wrap">
+        <div class="demo" id="demo" tabindex="0" aria-label="Try the Hanami panel: type to filter, arrow keys to move, Enter to start a game, Escape to hide">
+          <canvas class="demo-petals" aria-hidden="true"></canvas>
+          <div class="demo-body">
+            <div class="demo-head">
+              <span class="demo-title" id="demo-title">hanami</span>
+              <span class="demo-count" id="demo-count">6 games</span>
+              <button class="demo-help" id="demo-help" type="button" aria-label="Copy a prompt that explains Hanami to your AI">?</button>
+            </div>
+            <ul class="demo-list" id="demo-list" role="listbox">
+            <li class="demo-row" role="option"><span class="demo-name">Celeste</span><span class="demo-label">steam</span></li>
+            <li class="demo-row" role="option"><span class="demo-name">Hades</span><span class="demo-label">epic</span></li>
+            <li class="demo-row" role="option"><span class="demo-name">Hollow Knight</span><span class="demo-label">gog</span></li>
+            <li class="demo-row" role="option"><span class="demo-name">Outer Wilds</span><span class="demo-label">steam</span></li>
+            <li class="demo-row" role="option"><span class="demo-name">Sober</span><span class="demo-label">app</span></li>
+            <li class="demo-row" role="option"><span class="demo-name">Stardew Valley</span><span class="demo-label">steam</span></li>
+            </ul>
+            <p class="demo-foot" id="demo-foot">type to search · enter to play · esc to hide</p>
+          </div>
+        </div>
+        <button class="demo-reopen" id="demo-reopen" type="button" hidden>Open the panel (Ctrl+Alt+H)</button>
+      </div>
     </section>
 
     <section>
@@ -76,5 +96,6 @@
   </footer>
 
   <script src="petals.js" defer></script>
+  <script src="demo.js" defer></script>
 </body>
 </html>

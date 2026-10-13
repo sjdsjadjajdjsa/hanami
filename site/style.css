@@ -101,9 +101,10 @@ h1 {
   font-size: 15px;
   font-weight: 600;
   text-decoration: none;
-  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out, transform 80ms ease-out;
 }
-.button:hover { border-color: var(--dim); }
+.button:hover { border-color: var(--dim); background: rgb(255 255 255 / 8%); }
+.button:active { transform: translateY(1px); }
 .button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Pink means "this one": the download for the visitor's own system. */
 .button.mine { background: var(--accent); border-color: var(--accent); color: var(--base); }
@@ -112,7 +113,80 @@ h1 {
 .meta { margin: 0; font-size: 13px; color: var(--dim); }
 .meta a { color: var(--dim); }
 
-.panel { width: 340px; height: auto; display: block; }
+/* The live panel: the app's tokens (DESIGN.md) in CSS. */
+.demo-wrap { position: relative; width: 340px; height: 440px; }
+.demo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  background: rgb(23 20 29 / 72%);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  outline: none;
+  transition: opacity 140ms ease-out, transform 140ms ease-out, border-color 120ms ease-out;
+}
+.demo:focus-visible { border-color: rgb(244 182 200 / 40%); }
+.demo.away { opacity: 0; transform: scale(0.98); pointer-events: none; }
+.demo-petals { position: absolute; inset: 0; width: 100%; height: 100%; }
+.demo-body { position: relative; display: flex; flex-direction: column; gap: var(--space-2); height: 100%; padding: var(--space-4); }
+.demo-head { display: flex; align-items: center; gap: var(--space-3); padding: 0 14px 6px; }
+.demo-title { flex: 1; overflow: hidden; font-size: 15px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.demo-title.typing { font-weight: 400; }
+.demo-count { font-size: 11px; color: var(--dim); }
+.demo-help {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  cursor: pointer;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.demo-help:hover, .demo-help:focus-visible { background: var(--fill); color: var(--text); outline: none; }
+.demo-list { display: flex; flex: 1; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; overflow: hidden; list-style: none; }
+.demo-row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 120ms ease-out;
+}
+.demo-name { flex: 1; overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; transition: color 120ms ease-out; }
+.demo-label { font-size: 11px; color: var(--dim); }
+.demo-row.selected { background: rgb(244 182 200 / 14%); }
+.demo-row.selected .demo-name { color: var(--accent); }
+.demo-empty { margin: auto; font-size: 11px; color: var(--dim); }
+.demo-foot { margin: 0; overflow: hidden; font-size: 11px; color: var(--dim); text-align: center; white-space: nowrap; text-overflow: ellipsis; }
+.demo-foot.notice { color: var(--text); }
+.demo-reopen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 120ms ease-out;
+}
+.demo-reopen:hover { border-color: var(--dim); }
 
 section { padding: var(--space-6) 0; border-top: 1px solid var(--edge); }
 .hero { border-top: 0; }
@@ -162,7 +236,7 @@ footer p { margin: 0; }
 
 @media (max-width: 760px) {
   .hero { grid-template-columns: 1fr; gap: var(--space-5); padding-top: var(--space-6); }
-  .panel { width: min(340px, 100%); justify-self: center; }
+  .demo-wrap { justify-self: center; max-width: 100%; }
   h1 { font-size: 44px; }
   .points { grid-template-columns: 1fr; gap: var(--space-4); }
   .button { flex: 1 1 100%; text-align: center; }
