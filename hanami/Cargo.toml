@@ -26,6 +26,9 @@ toml_edit = "0.25"
 nucleo-matcher = "0.3"
 strsim = "0.11"
 rfd = "0.17"
+# xinput, not the default wgi: Windows Gaming Input only delivers input to a
+# focused window, and the panel is hidden when the controller has to open it.
+gilrs = { version = "0.11", default-features = false, features = ["xinput"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rusqlite = { version = "0.40", features = ["bundled"] }

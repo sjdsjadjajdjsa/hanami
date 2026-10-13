@@ -6,6 +6,7 @@
 
 mod config;
 mod find;
+mod gamepad;
 mod games;
 mod guide;
 mod ipc;
@@ -18,6 +19,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -30,6 +32,7 @@ use slint::{ComponentHandle, ModelRc, PhysicalPosition, Timer, TimerMode, VecMod
 
 use config::{Config, OnLaunch};
 use find::Source;
+use gamepad::Action;
 use games::key;
 use ipc::Request;
 use state::State;
@@ -108,6 +111,7 @@ struct App {
     /// The CPU renderer can't draw see-through on Windows, so the window
     /// itself is cut to the panel's rounded shape.
     cut_corners: bool,
+    controller: Arc<gamepad::Controller>,
     clock: Timer,
     fade: Timer,
     notice_clock: Timer,
@@ -125,6 +129,7 @@ impl App {
         self.open.set(true);
         self.panel.set_acting(-1);
         self.panel.set_renaming(-1);
+        self.controller.set_open(true);
         self.had_focus.set(false);
         self.opened_at.set(Instant::now());
         self.fade.stop();
@@ -202,6 +207,7 @@ impl App {
         }
         log("hide");
         self.open.set(false);
+        self.controller.set_open(false);
         self.had_focus.set(false);
         self.panel.set_shown(false);
         let panel = self.panel.as_weak();
@@ -266,6 +272,7 @@ impl App {
                 Err(message) => self.notify(message),
             }
         }
+        self.controller.set_enabled(self.config.borrow().controller);
         let (games, fresh) = listed(&self.config.borrow(), &self.state.borrow());
         self.panel.set_total(games.len() as i32);
         self.panel.set_fresh(fresh.len() as i32);
@@ -518,6 +525,23 @@ impl App {
             Request::Open => self.show(),
             Request::Toggle => self.toggle(),
             Request::Nothing => {}
+        }
+    }
+
+    /// A controller press, already turned into what it means for the panel.
+    fn control(self: &Rc<Self>, action: Action) {
+        log(&format!("controller {action:?}"));
+        match action {
+            Action::Toggle => self.toggle(),
+            _ if !self.open.get() => {}
+            Action::Hide => self.hide(),
+            Action::Launch => self.launch(self.panel.get_selected() as usize),
+            Action::Up | Action::Down => {
+                self.panel.set_acting(-1);
+                let last = (self.shown.borrow().len() as i32 - 1).max(0);
+                let step = if action == Action::Up { -1 } else { 1 };
+                self.panel.set_selected((self.panel.get_selected() + step).clamp(0, last));
+            }
         }
     }
 }
@@ -801,6 +825,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         log(problem);
     }
 
+    let controller = gamepad::Controller::new(config.controller);
     let app = Rc::new(App {
         panel,
         rows,
@@ -819,6 +844,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         opened_at: Cell::new(Instant::now()),
         focus_hidden_at: Cell::new(None),
         last_toggle: Cell::new(None),
+        controller: controller.clone(),
         clock: Timer::default(),
         fade: Timer::default(),
         notice_clock: Timer::default(),
@@ -829,6 +855,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     APP.with_borrow_mut(|slot| *slot = Some(app.clone()));
     Timer::single_shot(Duration::ZERO, move || app.handle(first));
+    gamepad::start(controller, |action| {
+        let _ = slint::invoke_from_event_loop(move || with_app(|app| app.control(action)));
+    });
 
     slint::run_event_loop_until_quit()?;
     APP.with_borrow_mut(|slot| slot.take());
