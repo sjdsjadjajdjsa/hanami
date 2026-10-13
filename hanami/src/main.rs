@@ -347,13 +347,16 @@ impl App {
     /// Puts pictures that finished loading into the rows already showing,
     /// without touching the highlight or the search.
     fn show_icons(&self) {
+        if !self.mapped.get() {
+            return;
+        }
         let games = self.games.borrow();
         for (row, &index) in self.shown.borrow().iter().enumerate() {
             let Some(mut data) = self.rows.row_data(row) else { continue };
             if data.icon.size().width > 0 {
                 continue;
             }
-            if let Some(icon) = games[index].icon.as_deref().and_then(|path| self.icons.get(path)) {
+            if let Some(icon) = games[index].icon.as_deref().and_then(|path| self.icons.peek(path)) {
                 data.icon = icon;
                 self.rows.set_row_data(row, data);
             }

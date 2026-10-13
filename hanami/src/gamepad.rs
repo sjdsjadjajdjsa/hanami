@@ -205,8 +205,13 @@ pub fn start(controller: Arc<Controller>, act: impl Fn(Action) + Send + 'static)
                 Some(event) => match input_of(event.event) {
                     Some(input) => input,
                     None => {
-                        if event.event == EventType::Connected {
-                            crate::log(&format!("controller: {}", gilrs.gamepad(event.id).name()));
+                        match event.event {
+                            EventType::Connected => {
+                                crate::log(&format!("controller: {}", gilrs.gamepad(event.id).name()));
+                            }
+                            // Buttons held on a pad that went away must not stay held.
+                            EventType::Disconnected => controls = Controls::default(),
+                            _ => {}
                         }
                         continue;
                     }

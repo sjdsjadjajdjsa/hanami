@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
-use toml_edit::{Array, ArrayOfTables, DocumentMut, InlineTable, Table, value};
+use toml_edit::{Array, ArrayOfTables, DocumentMut, InlineTable, value};
 
 use crate::find::Source;
 use crate::games::key;
@@ -139,9 +139,18 @@ pub fn load(path: &Path) -> Result<Config, String> {
     }
     let text = std::fs::read_to_string(path).map_err(|e| format!("Couldn't read the settings file: {e}"))?;
     let mut config = parse(&text)?;
-    // Settings written by 0.1 list every place there was; they get the new one too.
-    if config.find == OLD_FIND {
-        edit(path, |doc| add_name(doc, "find", "ports"))?;
+    // Settings written by 0.1 list every place there was and never mention
+    // ports; they get the new place once, with a note that also marks it done.
+    if config.find == OLD_FIND && !text.contains("ports") {
+        edit(path, |doc| {
+            add_name(doc, "find", "ports");
+            if let Some(mut find) = doc.as_table_mut().key_mut("find") {
+                let before = find.leaf_decor().prefix().and_then(|p| p.as_str()).unwrap_or_default().to_owned();
+                find.leaf_decor_mut().set_prefix(format!(
+                    "{before}# Since 0.2 also ports: game ports and rewrites, and your own Rust games.\n"
+                ));
+            }
+        })?;
         config.find.push(Source::Ports);
     }
     Ok(config)
@@ -191,11 +200,21 @@ pub fn remove_name(doc: &mut DocumentMut, field: &str, name: &str) {
 /// Changes a game's name: an own game's `[[game]]` entry directly, a found
 /// game through `rename`, from its `original` name.
 pub fn rename(doc: &mut DocumentMut, original: &str, from: &str, to: &str) {
-    if let Some(entry) = doc.get_mut("game").and_then(|item| item.as_array_of_tables_mut()).and_then(|games| {
-        games.iter_mut().find(|game| game.get("name").and_then(|n| n.as_str()).is_some_and(|n| key(n) == key(from)))
-    }) {
-        entry["name"] = value(to);
-    } else {
+    let named = |game: &dyn toml_edit::TableLike| {
+        game.get("name").and_then(|n| n.as_str()).is_some_and(|n| key(n) == key(from))
+    };
+    let own = match doc.get_mut("game") {
+        Some(item) if item.is_array_of_tables() => item
+            .as_array_of_tables_mut()
+            .and_then(|games| games.iter_mut().find(|game| named(*game)).map(|game| game["name"] = value(to))),
+        Some(item) => item.as_array_mut().and_then(|games| {
+            games.iter_mut().filter_map(|game| game.as_inline_table_mut()).find(|game| named(*game)).map(|game| {
+                game.insert("name", to.into());
+            })
+        }),
+        None => None,
+    };
+    if own.is_none() {
         if !doc.get("rename").is_some_and(|item| item.is_table_like()) {
             doc["rename"] = value(InlineTable::new());
         }
@@ -220,18 +239,23 @@ pub fn rename(doc: &mut DocumentMut, original: &str, from: &str, to: &str) {
     }
 }
 
-/// Adds a `[[game]]` entry that runs `command` in `dir`.
+/// Adds a game entry that runs `command` in `dir`: a `[[game]]` table, or
+/// one more item when the file lists its games as `game = [{ ... }]`.
 pub fn add_game(doc: &mut DocumentMut, name: &str, command: &Path, dir: Option<&Path>) {
+    let mut game = InlineTable::new();
+    game.insert("name", name.into());
+    game.insert("command", command.to_string_lossy().as_ref().into());
+    if let Some(dir) = dir {
+        game.insert("dir", dir.to_string_lossy().as_ref().into());
+    }
+    if let Some(games) = doc.get_mut("game").and_then(|item| item.as_array_mut()) {
+        games.push(game);
+        return;
+    }
     if !doc.get("game").is_some_and(|item| item.is_array_of_tables()) {
         doc["game"] = toml_edit::Item::ArrayOfTables(ArrayOfTables::new());
     }
-    let mut game = Table::new();
-    game["name"] = value(name);
-    game["command"] = value(command.to_string_lossy().as_ref());
-    if let Some(dir) = dir {
-        game["dir"] = value(dir.to_string_lossy().as_ref());
-    }
-    doc["game"].as_array_of_tables_mut().expect("just made it a list").push(game);
+    doc["game"].as_array_of_tables_mut().expect("just made it a list").push(game.into_table());
 }
 
 pub fn parse(text: &str) -> Result<Config, String> {
@@ -290,6 +314,11 @@ mod tests {
         rename(&mut doc, "Counter-Strike 2", "Counter-Strike 2", "CS2");
         rename(&mut doc, "Celeste", "Celeste", "Celeste Classic");
         add_game(&mut doc, "My Game", Path::new("/games/my game/run"), Some(Path::new("/games/my game")));
+        let mut inline: DocumentMut = "game = [{ name = \"A\", command = \"a\" }]\n".parse().unwrap();
+        add_game(&mut inline, "B", Path::new("b"), None);
+        rename(&mut inline, "A", "A", "Z");
+        let names: Vec<_> = parse(&inline.to_string()).unwrap().games.into_iter().map(|game| game.name).collect();
+        assert_eq!(names, ["Z", "B"]);
         rename(&mut doc, "My Game", "My Game", "Mine");
         remove_name(&mut doc, "hide", "SOBER");
         let text = doc.to_string();
@@ -316,6 +345,13 @@ mod tests {
         assert_eq!(parse(&std::fs::read_to_string(&path).unwrap()).unwrap().find, Source::ALL);
         std::fs::write(&path, "find = [\"steam\"]\n").unwrap();
         assert_eq!(load(&path).unwrap().find, [Source::Steam]);
+        // Taking ports out again is respected.
+        std::fs::write(
+            &path,
+            "# no ports, please\nfind = [\"steam\", \"heroic\", \"lutris\", \"apps\", \"epic\", \"gog\"]\n",
+        )
+        .unwrap();
+        assert!(!load(&path).unwrap().find.contains(&Source::Ports));
         std::fs::remove_dir_all(dir).unwrap();
     }
 

@@ -3,7 +3,7 @@
 //! opening the panel.
 
 use std::cell::{OnceCell, RefCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
@@ -32,6 +32,8 @@ pub struct Icons {
     px: u32,
     ready: Arc<dyn Fn() + Send + Sync>,
     cache: RefCell<HashMap<PathBuf, (Slot, u64)>>,
+    /// Paths that can't be read, kept apart so evicting never retries them.
+    failed: RefCell<HashSet<PathBuf>>,
     uses: RefCell<u64>,
     done: Done,
     worker: OnceCell<Sender<PathBuf>>,
@@ -45,6 +47,7 @@ impl Icons {
             px,
             ready: Arc::new(ready),
             cache: RefCell::default(),
+            failed: RefCell::default(),
             uses: RefCell::new(0),
             done: Arc::default(),
             worker: OnceCell::new(),
@@ -55,6 +58,9 @@ impl Icons {
     /// can't be read. The first ask starts decoding on a worker thread.
     pub fn get(&self, path: &Path) -> Option<Image> {
         self.take_done();
+        if self.failed.borrow().contains(path) {
+            return None;
+        }
         let mut cache = self.cache.borrow_mut();
         let mut uses = self.uses.borrow_mut();
         *uses += 1;
@@ -71,6 +77,15 @@ impl Icons {
         cache.insert(path.to_path_buf(), (Slot::Loading, *uses));
         let _ = self.worker().send(path.to_path_buf());
         None
+    }
+
+    /// The picture for `path` if it is decoded already; never starts loading.
+    pub fn peek(&self, path: &Path) -> Option<Image> {
+        self.take_done();
+        match self.cache.borrow().get(path) {
+            Some((Slot::Ready(image), _)) => image.clone(),
+            _ => None,
+        }
     }
 
     fn worker(&self) -> &Sender<PathBuf> {
@@ -92,8 +107,13 @@ impl Icons {
         }
         let mut cache = self.cache.borrow_mut();
         for (path, pixels) in done {
+            let Some(pixels) = pixels else {
+                cache.remove(&path);
+                self.failed.borrow_mut().insert(path);
+                continue;
+            };
             if let Some((slot, _)) = cache.get_mut(&path) {
-                *slot = Slot::Ready(pixels.map(Image::from_rgba8));
+                *slot = Slot::Ready(Some(Image::from_rgba8(pixels)));
             }
         }
     }
@@ -151,7 +171,8 @@ pub fn decode(path: &Path, px: u32) -> Option<Pixels> {
 }
 
 fn load(path: &Path, px: u32) -> Option<DynamicImage> {
-    let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+    // Heroic's cached art has no extension; the bytes say what it is.
+    let extension = path.extension().and_then(|ext| ext.to_str()).map(str::to_ascii_lowercase).unwrap_or_default();
     if extension == "exe" || extension == "dll" {
         let (width, height, rgba) = desktop::exe_icon(path, px)?;
         return RgbaImage::from_raw(width, height, rgba).map(DynamicImage::ImageRgba8);
@@ -279,7 +300,9 @@ mod tests {
         };
         assert_eq!((image.size().width, image.size().height), (48, 48));
         assert!(icons.get(&bad).is_none());
-        assert_eq!(icons.cache.borrow().len(), 2);
+        assert_eq!(icons.cache.borrow().len(), 1);
+        assert!(icons.failed.borrow().contains(&bad));
+        assert!(icons.peek(&good).is_some() && icons.peek(&bad).is_none());
         std::fs::remove_dir_all(dir).unwrap();
     }
 

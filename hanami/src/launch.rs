@@ -90,11 +90,32 @@ mod shell {
         if result as isize > 32 { Ok(()) } else { Err("Windows couldn't start it".into()) }
     }
 
+    /// One argument as Windows programs split their command line: quoted
+    /// when needed, with backslashes doubled before a quote.
     pub fn quote(arg: &str) -> String {
         if !arg.is_empty() && !arg.contains([' ', '\t', '"']) {
             return arg.into();
         }
-        format!("\"{}\"", arg.replace('"', "\\\""))
+        let mut quoted = String::from('"');
+        let mut slashes = 0;
+        for c in arg.chars() {
+            match c {
+                '\\' => slashes += 1,
+                '"' => {
+                    quoted.extend(std::iter::repeat_n('\\', slashes * 2 + 1));
+                    quoted.push('"');
+                    slashes = 0;
+                }
+                c => {
+                    quoted.extend(std::iter::repeat_n('\\', slashes));
+                    quoted.push(c);
+                    slashes = 0;
+                }
+            }
+        }
+        quoted.extend(std::iter::repeat_n('\\', slashes * 2));
+        quoted.push('"');
+        quoted
     }
 }
 
@@ -109,6 +130,8 @@ mod tests {
         assert_eq!(shell::quote("-fullscreen"), "-fullscreen");
         assert_eq!(shell::quote("C:\\My Games\\a.cfg"), "\"C:\\My Games\\a.cfg\"");
         assert_eq!(shell::quote(""), "\"\"");
+        assert_eq!(shell::quote("C:\\My Games\\"), "\"C:\\My Games\\\\\"");
+        assert_eq!(shell::quote("say \"hi\""), "\"say \\\"hi\\\"\"");
     }
 
     #[test]
