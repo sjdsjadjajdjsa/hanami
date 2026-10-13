@@ -12,6 +12,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -30,16 +31,16 @@ jobs:
       - name: Pack (Linux)
         if: runner.os == 'Linux'
         run: |
-          mkdir hanami
-          cp target/release/hanami README.md GUIDE.md LICENSE hanami/
-          tar czf ${{ matrix.archive }} hanami
+          mkdir -p dist/hanami
+          cp target/release/hanami README.md GUIDE.md LICENSE dist/hanami/
+          tar czf ${{ matrix.archive }} -C dist hanami
       - name: Pack (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory hanami | Out-Null
-          Copy-Item target/release/hanami.exe, README.md, GUIDE.md, LICENSE hanami/
-          Compress-Archive -Path hanami -DestinationPath ${{ matrix.archive }}
+          New-Item -ItemType Directory dist/hanami -Force | Out-Null
+          Copy-Item target/release/hanami.exe, README.md, GUIDE.md, LICENSE dist/hanami/
+          Compress-Archive -Path dist/hanami -DestinationPath ${{ matrix.archive }}
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.archive }}
