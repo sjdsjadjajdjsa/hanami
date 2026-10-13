@@ -47,6 +47,13 @@ cargo build --release
 [SPEC.md](SPEC.md) says what Hanami does, [DESIGN.md](DESIGN.md) how it
 looks, and [ROADMAP.md](ROADMAP.md) what comes next.
 
+## Who made it
+
+Hanami is designed and directed by [sjdsjadjajdjsa](https://github.com/sjdsjadjajdjsa)
+and written together with [Claude](https://github.com/claude), Anthropic's
+AI, as the coding partner: the ideas, choices and testing are human, most
+of the code is Claude's. Commits carry Claude as co-author.
+
 ## License
 
 Hanami is free software under the [GNU GPL, version 3 or later](LICENSE).
