@@ -15,6 +15,8 @@ opens a small panel that lists your installed games.
   documentation, for AI assistants that can read your computer (Claude Code,
   OpenCode and similar) to answer questions about Hanami.
 
+Website: <https://hanami.lilygrove.dev>
+
 ## Install
 
 Download the newest version from

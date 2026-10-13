@@ -29,7 +29,7 @@ use it in GUIDE.md.
    the Epic and GOG sources tested on real installs.
 3. **Packages:** an AUR package and an AppImage for Linux, an installer for
    Windows, built automatically for each release.
-4. **Site:** hanami.lilygrove.dev with download links (source in `site/`).
+4. ~~**Site**~~ at <https://hanami.lilygrove.dev> (source in `site/`).
 
 ## Later
 
