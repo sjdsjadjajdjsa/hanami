@@ -1,7 +1,9 @@
 name: release
 
-# Push a tag like v0.1.0 and this builds Hanami for Linux and Windows and
-# puts both downloads on the GitHub release for that tag.
+# Push a tag like v0.1.0 and this builds Hanami for Linux (tar.gz and
+# AppImage) and Windows (installer and zip) and puts the downloads on the
+# GitHub release for that tag. The tag must match the version in
+# hanami/Cargo.toml: the installer and the update check both use it.
 on:
   push:
     tags: ["v*"]
@@ -16,10 +18,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
-            archive: hanami-linux-x86_64.tar.gz
+            assets: |
+              hanami-linux-x86_64.tar.gz
+              hanami-x86_64.AppImage
           - os: windows-latest
-            archive: hanami-windows-x86_64.zip
+            assets: |
+              hanami-windows-x86_64.zip
+              hanami-setup-x86_64.exe
     runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -27,24 +35,37 @@ jobs:
       - name: System libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev
+      - name: Check the tag against Cargo.toml
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' hanami/Cargo.toml | head -1)
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG but hanami/Cargo.toml says $version"
+            exit 1
+          fi
       - run: cargo build --release --package hanami
       - name: Pack (Linux)
         if: runner.os == 'Linux'
         run: |
           mkdir -p dist/hanami
           cp target/release/hanami README.md GUIDE.md LICENSE dist/hanami/
-          tar czf ${{ matrix.archive }} -C dist hanami
+          tar czf hanami-linux-x86_64.tar.gz -C dist hanami
+          packaging/linux/appimage.sh target/release/hanami hanami-x86_64.AppImage
+          ./hanami-x86_64.AppImage --appimage-extract-and-run --help
       - name: Pack (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist/hanami -Force | Out-Null
           Copy-Item target/release/hanami.exe, README.md, GUIDE.md, LICENSE dist/hanami/
-          Compress-Archive -Path dist/hanami -DestinationPath ${{ matrix.archive }}
+          Compress-Archive -Path dist/hanami -DestinationPath hanami-windows-x86_64.zip
+          $version = $env:TAG.TrimStart("v")
+          iscc /Q "/DVersion=$version" "/DSource=$env:GITHUB_WORKSPACE\dist\hanami" packaging\windows\hanami.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.archive }}
-          path: ${{ matrix.archive }}
+          name: ${{ matrix.os }}
+          path: ${{ matrix.assets }}
 
   publish:
     needs: build

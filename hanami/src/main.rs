@@ -12,6 +12,7 @@ mod ipc;
 mod launch;
 mod net;
 mod snapshot;
+mod update;
 
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
@@ -105,6 +106,8 @@ struct App {
     notice_clock: Timer,
     /// Kept alive: on Linux the copied text lasts only as long as this does.
     clipboard: RefCell<Option<arboard::Clipboard>>,
+    /// Said once, the next time the panel is open.
+    update_notice: RefCell<Option<String>>,
 }
 
 impl App {
@@ -129,6 +132,9 @@ impl App {
         self.reload();
         if let Some(problem) = &self.hotkey_problem {
             self.notify(problem.clone());
+        }
+        if let Some(message) = self.update_notice.take() {
+            self.notify(message);
         }
         self.query.borrow_mut().clear();
         self.refilter();
@@ -269,7 +275,10 @@ impl App {
         self.rows.set_vec(
             shown
                 .iter()
-                .map(|&index| GameRow { name: games[index].name.as_str().into(), label: games[index].label.as_str().into() })
+                .map(|&index| GameRow {
+                    name: games[index].name.as_str().into(),
+                    label: games[index].label.as_str().into(),
+                })
                 .collect::<Vec<_>>(),
         );
         self.panel.set_query(query.as_str().into());
@@ -304,6 +313,16 @@ impl App {
         });
     }
 
+    /// A newer release exists; the tray menu already offers it.
+    fn offer_update(&self, version: &str) {
+        let message = format!("Hanami {version} is out. Get it from the tray menu.");
+        if self.open.get() {
+            self.notify(message);
+        } else {
+            *self.update_notice.borrow_mut() = Some(message);
+        }
+    }
+
     fn ask_ai(&self) {
         let prompt = guide::prompt(self.config_path.as_deref());
         let mut clipboard = self.clipboard.borrow_mut();
@@ -312,7 +331,9 @@ impl App {
         }
         let copied = clipboard.as_mut().is_some_and(|clipboard| clipboard.set_text(prompt).is_ok());
         log(&format!("ai prompt copied: {copied}"));
-        self.notify(if copied { "Copied. Paste it into your AI." } else { "Couldn't copy. Run hanami --guide instead." }.into());
+        self.notify(
+            if copied { "Copied. Paste it into your AI." } else { "Couldn't copy. Run hanami --guide instead." }.into(),
+        );
     }
 
     fn handle(self: &Rc<Self>, request: Request) {
@@ -440,6 +461,24 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
     tray.on_quit_app(|| {
         let _ = slint::quit_event_loop();
     });
+    tray.on_get_update(|| {
+        if let Err(error) = open::that_detached(update::RELEASES) {
+            eprintln!("hanami: couldn't open {}: {error}", update::RELEASES);
+        }
+    });
+}
+
+/// Once a day at most, a newer release adds "Get Hanami x.y.z" to the tray
+/// menu and one notice in the panel.
+fn watch_updates(tray: &Tray, online: bool) {
+    let tray = tray.as_weak();
+    update::check(online, move |version| {
+        let _ = tray.upgrade_in_event_loop(move |tray| {
+            log(&format!("newer version: {version}"));
+            tray.set_update_version(version.as_str().into());
+            with_app(|app| app.offer_update(&version));
+        });
+    });
 }
 
 /// Opens the settings in the user's editor. Windows has none for .toml
@@ -455,8 +494,9 @@ fn edit(path: &Path) -> std::io::Result<()> {
 /// The manager must stay alive for the hotkey to keep working.
 fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
-    let manager = GlobalHotKeyManager::new()
-        .map_err(|_| "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string())?;
+    let manager = GlobalHotKeyManager::new().map_err(|_| {
+        "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string()
+    })?;
     manager
         .register(hotkey)
         .map_err(|_| format!("{text} is taken by another app. Pick another hotkey in settings."))?;
@@ -574,6 +614,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tray = Tray::new()?;
     connect_tray(&tray, config_path.clone());
+    watch_updates(&tray, config.online);
     let hotkeys = register_hotkey(&config.hotkey);
     let hotkey_problem = hotkeys.as_ref().err().cloned();
     if let Some(problem) = &hotkey_problem {
@@ -600,6 +641,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fade: Timer::default(),
         notice_clock: Timer::default(),
         clipboard: RefCell::new(None),
+        update_notice: RefCell::new(None),
     });
     if let Some(message) = problem {
         app.notify(message);

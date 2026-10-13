@@ -5,11 +5,40 @@ Hanami is a game launcher for Linux and Windows
 It runs in the system tray and opens a small panel that lists the installed
 games. Picking a game starts it and hides the panel.
 
+## Installing and updating
+
+Downloads are at <https://github.com/sjdsjadjajdjsa/hanami/releases/latest>.
+
+- **Linux, AppImage:** `hanami-x86_64.AppImage`. Mark it executable
+  (`chmod +x`) and run it. It needs FUSE, which every common desktop Linux
+  has; without it, run `./hanami-x86_64.AppImage --appimage-extract-and-run`.
+- **Linux, plain binary:** `hanami-linux-x86_64.tar.gz` holds `hanami`,
+  README.md, GUIDE.md and LICENSE. Put `hanami` anywhere in your PATH.
+- **Arch Linux:** the `hanami-bin` package on the AUR, for example
+  `paru -S hanami-bin` or `yay -S hanami-bin`.
+- **Windows, installer:** `hanami-setup-x86_64.exe`. It installs for the
+  current user only (no admin rights) into `%LOCALAPPDATA%\Programs\Hanami`,
+  adds Hanami to the Start menu and offers a box "Start Hanami when Windows
+  starts" (ticked by default; it runs `hanami.exe --hidden` after sign-in).
+  Uninstall from Settings, Apps; that removes the program, the shortcut, the
+  startup entry and Hanami's cache, and leaves your settings file.
+- **Windows, portable:** `hanami-windows-x86_64.zip`. Unpack it anywhere and
+  run `hanami.exe`.
+
+**Updates.** When `online = true` (the default), Hanami asks GitHub at most
+once a day whether a newer release is out. If there is one, the tray menu
+gets an item "Get Hanami X.Y.Z" that opens the release page in the browser,
+and the panel says "Hanami X.Y.Z is out. Get it from the tray menu." once.
+Hanami never downloads or installs anything by itself; you install the new
+version the same way as the first one. The check remembers the newest
+version it saw in `~/.cache/hanami/latest` (Windows:
+`%LOCALAPPDATA%\hanami\latest`). `online = false` turns the check off.
+
 ## Opening and closing
 
 - **Hotkey:** `Ctrl+Alt+H` by default. Press it again to close.
 - **Tray icon:** click to open or close. Right-click for Open, Edit
-  settings, Quit.
+  settings, Quit, and "Get Hanami X.Y.Z" when a newer version is out.
 - **Command:** `hanami --toggle` opens or closes it. On Wayland, apps can't
   grab keys themselves, so bind this command to a key in the desktop's own
   keyboard shortcut settings.
@@ -64,6 +93,10 @@ find = ["steam", "heroic", "lutris", "apps", "epic", "gog"]
 
 # Found games to leave out, by name (case and punctuation don't matter).
 hide = ["Some Game"]
+
+# Hanami goes online at most once a day, only to GitHub, to check for a new
+# version. false = never.
+online = true
 
 # Your own games. Any program can be a game. ~ means the home folder.
 [[game]]

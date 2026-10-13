@@ -7,7 +7,8 @@ use crate::games::{Game, Launch};
 
 #[cfg(windows)]
 pub fn find() -> Vec<Game> {
-    let base = std::env::var_os("PROGRAMDATA").map(std::path::PathBuf::from).unwrap_or_else(|| r"C:\ProgramData".into());
+    let base =
+        std::env::var_os("PROGRAMDATA").map(std::path::PathBuf::from).unwrap_or_else(|| r"C:\ProgramData".into());
     let Ok(entries) = std::fs::read_dir(base.join(r"Epic\EpicGamesLauncher\Data\Manifests")) else { return Vec::new() };
     entries
         .flatten()
@@ -25,8 +26,13 @@ fn from_manifest(text: &str) -> Option<Game> {
     if manifest.get("bIsIncompleteInstall").and_then(Value::as_bool) == Some(true) {
         return None;
     }
-    let categories: Vec<&str> =
-        manifest.get("AppCategories").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
+    let categories: Vec<&str> = manifest
+        .get("AppCategories")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
     let addon = categories.contains(&"addons") && !categories.contains(&"addons/launchable");
     let engine = categories.iter().any(|c| c.starts_with("plugins"));
     if addon || engine {
@@ -55,10 +61,14 @@ mod tests {
                        "AppCategories": ["public", "games", "applications"]}"#;
         let found = from_manifest(game).unwrap();
         assert_eq!(found.name, "Hades");
-        assert_eq!(found.launch, Launch::Open("com.epicgames.launcher://apps/ns%3Aitem%3AMin?action=launch&silent=true".into()));
+        assert_eq!(
+            found.launch,
+            Launch::Open("com.epicgames.launcher://apps/ns%3Aitem%3AMin?action=launch&silent=true".into())
+        );
 
         let dlc = r#"{"DisplayName": "Pack", "AppName": "P", "AppCategories": ["addons"]}"#;
-        let launchable_dlc = r#"{"DisplayName": "Mode", "AppName": "M", "AppCategories": ["addons", "addons/launchable"]}"#;
+        let launchable_dlc =
+            r#"{"DisplayName": "Mode", "AppName": "M", "AppCategories": ["addons", "addons/launchable"]}"#;
         let engine = r#"{"DisplayName": "UE", "AppName": "UE_5", "AppCategories": ["plugins/engine"]}"#;
         let partial = r#"{"DisplayName": "Big", "AppName": "B", "bIsIncompleteInstall": true}"#;
         assert!(from_manifest(dlc).is_none());

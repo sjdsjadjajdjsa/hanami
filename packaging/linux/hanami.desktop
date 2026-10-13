@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Hanami
+GenericName=Game launcher
+Comment=Lists your installed games in a small panel from the tray
+Exec=hanami
+Icon=hanami
+Terminal=false
+Categories=Game;Utility;
+Keywords=games;launcher;steam;heroic;lutris;
+StartupNotify=false

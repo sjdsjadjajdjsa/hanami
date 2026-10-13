@@ -25,13 +25,18 @@ Website: <https://hanami.lilygrove.dev>
 ## Install
 
 Download the newest version from
-[Releases](https://github.com/sjdsjadjajdjsa/hanami/releases):
+[Releases](https://github.com/sjdsjadjajdjsa/hanami/releases/latest):
 
-- **Linux:** `hanami-linux-x86_64.tar.gz`. Unpack it and run `hanami`.
-- **Windows:** `hanami-windows-x86_64.zip`. Unpack it and run `hanami.exe`.
+- **Linux:** `hanami-x86_64.AppImage`. Mark it executable and run it. There
+  is also `hanami-linux-x86_64.tar.gz` with the plain binary, and on Arch
+  Linux the `hanami-bin` package on the AUR.
+- **Windows:** `hanami-setup-x86_64.exe`. It installs for your user only (no
+  admin rights), adds a Start menu entry and can start Hanami with Windows.
+  `hanami-windows-x86_64.zip` is the same program without an installer.
 
-To start it with your computer, add `hanami --hidden` to your startup
-programs ([how](GUIDE.md#starting-with-the-computer)).
+Hanami says in its tray menu when a newer version is out; it never updates
+itself. To start it with your computer on Linux, add `hanami --hidden` to
+your startup programs ([how](GUIDE.md#starting-with-the-computer)).
 
 ## Use
 

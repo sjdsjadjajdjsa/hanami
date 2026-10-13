@@ -1553,6 +1553,7 @@ dependencies = [
  "open",
  "png",
  "rusqlite",
+ "semver",
  "serde",
  "serde_json",
  "slint",
