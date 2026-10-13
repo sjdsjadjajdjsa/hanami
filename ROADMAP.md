@@ -30,7 +30,8 @@ how it looks in DESIGN.md, and everything a user can do in GUIDE.md.
    the Epic and GOG sources tested on real installs.
 3. **Packages:** an AUR package and an AppImage for Linux, an installer for
    Windows, built automatically for each release.
-4. **Site:** hanami.lilygrove.dev, one calm page with the newest downloads.
+4. **Site:** hanami.lilygrove.dev, one calm page with the newest downloads
+   (built in `site/`; going online next).
 
 ## Later
 

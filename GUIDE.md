@@ -87,6 +87,7 @@ Games started by Hanami keep running when Hanami closes.
 | `hanami --list` | print every game the panel would show, with its label |
 | `hanami --guide` | print the AI prompt the **?** button copies |
 | `hanami --verbose` | print what happens (opening, focus, where games were found) for bug reports |
+| `hanami --snapshot picture.png` | draw the panel with sample games into a picture, without opening it |
 
 ## Starting with the computer
 

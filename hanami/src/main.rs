@@ -6,9 +6,10 @@ mod games;
 mod guide;
 mod ipc;
 mod launch;
+mod snapshot;
 
 use std::cell::{Cell, RefCell};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -53,6 +54,8 @@ hanami: a small game launcher
   hanami --list     print the games the panel would show
   hanami --guide    print the prompt the ? button copies, for your AI
   hanami --verbose  print what happens, for bug reports
+  hanami --snapshot FILE.png
+                    draw the panel with sample games into a picture
 ";
 
 thread_local! {
@@ -453,6 +456,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(config) => (config, None),
         Err(message) => (Config::default(), Some(message)),
     };
+
+    if let Some(position) = args.iter().position(|arg| arg == "--snapshot") {
+        let path = args.get(position + 1).ok_or("--snapshot needs a file name, like hanami.png")?;
+        snapshot::render(Path::new(path), 2.0)?;
+        return Ok(());
+    }
 
     if flag("--guide") {
         print!("{}", guide::prompt(config_path.as_deref()));

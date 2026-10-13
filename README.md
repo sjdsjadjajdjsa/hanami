@@ -1,5 +1,7 @@
 # Hanami
 
+<p align="center"><img src="docs/screenshot.png" width="420" alt="The Hanami panel: a dark, rounded window listing games, with sakura petals behind the list"></p>
+
 A small game launcher for Linux and Windows. It lives in the tray, opens as
 a rounded, see-through panel with sakura petals drifting behind your games,
 starts the one you pick, and gets out of the way.
@@ -45,7 +47,8 @@ cargo build --release
 ```
 
 [SPEC.md](SPEC.md) says what Hanami does, [DESIGN.md](DESIGN.md) how it
-looks, and [ROADMAP.md](ROADMAP.md) what comes next.
+looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
+[site/](site), and `hanami --snapshot picture.png` redraws the screenshots.
 
 ## Who made it
 

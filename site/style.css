@@ -1,0 +1,169 @@
+/* Hanami's design system (DESIGN.md), on the web. */
+@font-face {
+  font-family: "Inter";
+  src: url("assets/Inter-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("assets/Inter-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+
+:root {
+  --base: #110f16;
+  --text: #ece6ee;
+  --dim: #9b93a3;
+  --accent: #f4b6c8;
+  --edge: rgb(255 255 255 / 9%);
+  --fill: rgb(255 255 255 / 5%);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 20px;
+  --space-5: 32px;
+  --space-6: 56px;
+  --space-7: 96px;
+  --radius: 10px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--base); }
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--base);
+  -webkit-font-smoothing: antialiased;
+}
+
+#petals {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+main, footer {
+  position: relative;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+a { color: var(--text); text-underline-offset: 3px; text-decoration-color: var(--dim); }
+a:hover { text-decoration-color: var(--accent); }
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-6);
+  align-items: center;
+  padding: var(--space-7) 0 var(--space-6);
+}
+
+h1 {
+  margin: 0 0 var(--space-3);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  margin: 0 0 var(--space-5);
+  max-width: 34em;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.button {
+  display: inline-block;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--fill);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+.button:hover { border-color: var(--dim); }
+.button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Pink means "this one": the download for the visitor's own system. */
+.button.mine { background: var(--accent); border-color: var(--accent); color: var(--base); }
+.button.mine:hover { background: #f8c9d6; border-color: #f8c9d6; }
+
+.meta { margin: 0; font-size: 13px; color: var(--dim); }
+.meta a { color: var(--dim); }
+
+.panel { width: 340px; height: auto; display: block; }
+
+section { padding: var(--space-6) 0; border-top: 1px solid var(--edge); }
+.hero { border-top: 0; }
+
+h2 {
+  margin: 0 0 var(--space-4);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  margin: 0;
+}
+.points dt { margin-bottom: var(--space-2); font-weight: 600; }
+.points dd { margin: 0; color: var(--dim); font-size: 15px; }
+
+.steps { margin: 0; padding-left: var(--space-4); color: var(--dim); }
+.steps li { padding-left: var(--space-2); margin-bottom: var(--space-2); }
+.steps li::marker { color: var(--dim); }
+.steps a { color: var(--text); }
+
+kbd, code {
+  font-family: inherit;
+  font-size: 0.9em;
+  padding: 1px 6px;
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  background: var(--fill);
+  color: var(--text);
+}
+
+footer {
+  padding: var(--space-5) var(--space-4) var(--space-6);
+  border-top: 1px solid var(--edge);
+  font-size: 13px;
+  color: var(--dim);
+}
+footer nav { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-3); }
+footer a { color: var(--dim); }
+footer p { margin: 0; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; gap: var(--space-5); padding-top: var(--space-6); }
+  .panel { width: min(340px, 100%); justify-self: center; }
+  h1 { font-size: 44px; }
+  .points { grid-template-columns: 1fr; gap: var(--space-4); }
+  .button { flex: 1 1 100%; text-align: center; }
+}
