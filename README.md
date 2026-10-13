@@ -1,6 +1,11 @@
 # Hanami
 
-<p align="center"><img src="docs/screenshot.png" width="420" alt="The Hanami panel: a dark, rounded window listing games, with sakura petals behind the list"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-light.webp">
+    <img src="docs/screenshot-dark.webp" width="800" alt="The Hanami panel: a dark, see-through rounded window listing games, with sakura petals falling behind it and around it">
+  </picture>
+</p>
 
 A game launcher for Linux and Windows. It runs in the system tray and
 opens a small panel that lists your installed games.
@@ -49,7 +54,8 @@ cargo build --release
 
 [SPEC.md](SPEC.md) says what Hanami does, [DESIGN.md](DESIGN.md) how it
 looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
-[site/](site), and `hanami --snapshot picture.png` redraws the screenshots.
+[site/](site), and `hanami --snapshot panel.png` followed by `python3 docs/screenshot.py panel.png`
+redraws the README pictures.
 
 ## License
 
