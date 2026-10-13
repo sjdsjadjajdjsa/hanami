@@ -63,9 +63,9 @@ pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height:
 #[cfg(target_os = "linux")]
 mod imp {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use x11rb::CURRENT_TIME;
     use x11rb::connection::Connection;
     use x11rb::protocol::randr::ConnectionExt as _;
-    use x11rb::CURRENT_TIME;
     use x11rb::protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt as _, EventMask, PropMode};
     use x11rb::wrapper::ConnectionExt as _;
 
@@ -122,11 +122,12 @@ mod imp {
             .ok()
             .is_some_and(|cookie| cookie.check().is_ok());
         let mask = EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY;
-        let asked = [[ADD, skip_taskbar, skip_pager, FROM_APP, 0], [ADD, above, 0, FROM_APP, 0]].into_iter().all(|data| {
-            conn.send_event(false, root, mask, ClientMessageEvent::new(32, id, state, data))
-                .ok()
-                .is_some_and(|cookie| cookie.check().is_ok())
-        });
+        let asked =
+            [[ADD, skip_taskbar, skip_pager, FROM_APP, 0], [ADD, above, 0, FROM_APP, 0]].into_iter().all(|data| {
+                conn.send_event(false, root, mask, ClientMessageEvent::new(32, id, state, data))
+                    .ok()
+                    .is_some_and(|cookie| cookie.check().is_ok())
+            });
         stored && asked
     }
 
@@ -154,10 +155,8 @@ mod imp {
     pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
         let Some(id) = x11_id(window) else { return false };
         let Ok((conn, _)) = x11rb::connect(None) else { return false };
-        let Some(atom) = conn
-            .intern_atom(false, b"_KDE_NET_WM_BLUR_BEHIND_REGION")
-            .ok()
-            .and_then(|cookie| cookie.reply().ok())
+        let Some(atom) =
+            conn.intern_atom(false, b"_KDE_NET_WM_BLUR_BEHIND_REGION").ok().and_then(|cookie| cookie.reply().ok())
         else {
             return false;
         };
@@ -201,7 +200,20 @@ mod imp {
         // SAFETY: the window, device context and GL context are made, used
         // and released in order on this thread; pointers outlive the calls.
         unsafe {
-            let window = CreateWindowExW(0, class.as_ptr(), null(), WS_POPUP, 0, 0, 1, 1, null_mut(), null_mut(), null_mut(), null());
+            let window = CreateWindowExW(
+                0,
+                class.as_ptr(),
+                null(),
+                WS_POPUP,
+                0,
+                0,
+                1,
+                1,
+                null_mut(),
+                null_mut(),
+                null_mut(),
+                null(),
+            );
             if window.is_null() {
                 return false;
             }

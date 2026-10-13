@@ -13,6 +13,10 @@ games. Picking a game starts it and hides the panel.
 - **Command:** `hanami --toggle` opens or closes it. On Wayland, apps can't
   grab keys themselves, so bind this command to a key in the desktop's own
   keyboard shortcut settings.
+- **Game controller:** hold Start and Select (the two small middle buttons;
+  Menu and View on an Xbox pad, Options and Share or Create on a PlayStation
+  pad) together for half a second. The same hold closes it again. See
+  [Game controller](#game-controller).
 - **Closing:** Esc, clicking somewhere else, the hotkey, or the tray icon.
 - Only one Hanami runs at a time; starting it again opens the running one.
 
@@ -24,6 +28,28 @@ games. Picking a game starts it and hides the panel.
 - Problems (a typo in the settings, a game that won't start) show as one
   line at the bottom for a few seconds.
 - The **?** button copies a prompt with this guide, for an AI assistant.
+
+## Game controller
+
+Any controller the system sees works (on Windows, those Windows treats as
+Xbox-style controllers; PlayStation pads work there through Steam or
+DS4Windows). It can be plugged in while Hanami runs.
+
+- **Hidden:** holding Start and Select together for half a second opens the
+  panel. Nothing else on the controller does anything while the panel is
+  hidden, so a game or emulator keeps the controller to itself.
+- **Open:** the D-pad or the left stick moves up and down (hold to keep
+  moving), A (the bottom button, Cross on a PlayStation pad) starts the
+  game, B (the right button, Circle) hides the panel. Holding Start and
+  Select again hides it too.
+- `controller = false` in the settings turns all of this off.
+
+Why Start and Select: the Guide button (the Xbox or PlayStation logo) is
+taken. Steam opens its overlay or Big Picture on it, Windows opens the Game
+Bar, and Steam often keeps the controller for itself while it runs. Holding
+one button is a common game action. Start and Select together, held, is
+bound by nothing well known, and the half-second hold keeps a quick press
+inside a game from opening the panel.
 
 ## Where games come from
 
@@ -64,6 +90,10 @@ find = ["steam", "heroic", "lutris", "apps", "epic", "gog"]
 
 # Found games to leave out, by name (case and punctuation don't matter).
 hide = ["Some Game"]
+
+# Game controller: hold Start and Select together for half a second to open
+# or hide the panel; in the panel, up and down move, A starts, B hides.
+controller = true
 
 # Your own games. Any program can be a game. ~ means the home folder.
 [[game]]

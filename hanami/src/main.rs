@@ -6,6 +6,7 @@
 
 mod config;
 mod find;
+mod gamepad;
 mod games;
 mod guide;
 mod ipc;
@@ -16,6 +17,7 @@ mod snapshot;
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -27,6 +29,7 @@ use slint::winit_030::{EventResult, WinitWindowAccessor};
 use slint::{ComponentHandle, ModelRc, PhysicalPosition, Timer, TimerMode, VecModel};
 
 use config::{Config, OnLaunch};
+use gamepad::Action;
 use ipc::Request;
 
 slint::include_modules!();
@@ -100,6 +103,7 @@ struct App {
     /// The CPU renderer can't draw see-through on Windows, so the window
     /// itself is cut to the panel's rounded shape.
     cut_corners: bool,
+    controller: Arc<gamepad::Controller>,
     clock: Timer,
     fade: Timer,
     notice_clock: Timer,
@@ -115,6 +119,7 @@ impl App {
         log("show");
         self.focus_hidden_at.set(None);
         self.open.set(true);
+        self.controller.set_open(true);
         self.had_focus.set(false);
         self.opened_at.set(Instant::now());
         self.fade.stop();
@@ -192,6 +197,7 @@ impl App {
         }
         log("hide");
         self.open.set(false);
+        self.controller.set_open(false);
         self.had_focus.set(false);
         self.panel.set_shown(false);
         let panel = self.panel.as_weak();
@@ -257,6 +263,7 @@ impl App {
             }
         }
         let config = self.config.borrow();
+        self.controller.set_enabled(config.controller);
         let games = games::collect(&config, found(&config));
         self.panel.set_total(games.len() as i32);
         *self.games.borrow_mut() = games;
@@ -269,7 +276,10 @@ impl App {
         self.rows.set_vec(
             shown
                 .iter()
-                .map(|&index| GameRow { name: games[index].name.as_str().into(), label: games[index].label.as_str().into() })
+                .map(|&index| GameRow {
+                    name: games[index].name.as_str().into(),
+                    label: games[index].label.as_str().into(),
+                })
                 .collect::<Vec<_>>(),
         );
         self.panel.set_query(query.as_str().into());
@@ -312,7 +322,9 @@ impl App {
         }
         let copied = clipboard.as_mut().is_some_and(|clipboard| clipboard.set_text(prompt).is_ok());
         log(&format!("ai prompt copied: {copied}"));
-        self.notify(if copied { "Copied. Paste it into your AI." } else { "Couldn't copy. Run hanami --guide instead." }.into());
+        self.notify(
+            if copied { "Copied. Paste it into your AI." } else { "Couldn't copy. Run hanami --guide instead." }.into(),
+        );
     }
 
     fn handle(self: &Rc<Self>, request: Request) {
@@ -321,6 +333,22 @@ impl App {
             Request::Open => self.show(),
             Request::Toggle => self.toggle(),
             Request::Nothing => {}
+        }
+    }
+
+    /// A controller press, already turned into what it means for the panel.
+    fn control(self: &Rc<Self>, action: Action) {
+        log(&format!("controller {action:?}"));
+        match action {
+            Action::Toggle => self.toggle(),
+            _ if !self.open.get() => {}
+            Action::Hide => self.hide(),
+            Action::Launch => self.launch(self.panel.get_selected() as usize),
+            Action::Up | Action::Down => {
+                let last = (self.shown.borrow().len() as i32 - 1).max(0);
+                let step = if action == Action::Up { -1 } else { 1 };
+                self.panel.set_selected((self.panel.get_selected() + step).clamp(0, last));
+            }
         }
     }
 }
@@ -455,8 +483,9 @@ fn edit(path: &Path) -> std::io::Result<()> {
 /// The manager must stay alive for the hotkey to keep working.
 fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
-    let manager = GlobalHotKeyManager::new()
-        .map_err(|_| "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string())?;
+    let manager = GlobalHotKeyManager::new().map_err(|_| {
+        "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string()
+    })?;
     manager
         .register(hotkey)
         .map_err(|_| format!("{text} is taken by another app. Pick another hotkey in settings."))?;
@@ -580,6 +609,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         log(problem);
     }
 
+    let controller = gamepad::Controller::new(config.controller);
     let app = Rc::new(App {
         panel,
         rows,
@@ -596,6 +626,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         opened_at: Cell::new(Instant::now()),
         focus_hidden_at: Cell::new(None),
         last_toggle: Cell::new(None),
+        controller: controller.clone(),
         clock: Timer::default(),
         fade: Timer::default(),
         notice_clock: Timer::default(),
@@ -606,6 +637,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     APP.with_borrow_mut(|slot| *slot = Some(app.clone()));
     Timer::single_shot(Duration::ZERO, move || app.handle(first));
+    gamepad::start(controller, |action| {
+        let _ = slint::invoke_from_event_loop(move || with_app(|app| app.control(action)));
+    });
 
     slint::run_event_loop_until_quit()?;
     APP.with_borrow_mut(|slot| slot.take());

@@ -43,7 +43,8 @@ folders = []
 # built there are offered in the panel.
 projects = []
 
-# Use a game controller in the panel.
+# Game controller: hold Start and Select together for half a second to open
+# or hide the panel; in the panel, up and down move, A starts, B hides.
 controller = true
 
 # Hanami goes online at most once a day, only to GitHub: for the newest list
