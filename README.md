@@ -11,11 +11,18 @@ A game launcher for Linux and Windows. It runs in the system tray and
 opens a small panel that lists your installed games.
 
 - **Game detection:** Steam, Heroic (Epic, GOG, Amazon), Lutris and desktop
-  entries on Linux; Steam, Epic and GOG on Windows. Other programs can be
-  added in the settings file.
-- **Resource use:** about 30 MB of memory, no CPU use while hidden.
+  entries on Linux; Steam, Epic, GOG and Heroic on Windows. Each game shows
+  its own icon.
+- **Ports and rewrites:** finds known ports, recomps and rewrites (Ship of
+  Harkinian, Zelda 64: Recompiled, OpenMW and more, listed in
+  [ports.toml](ports.toml)) and, if you want, Rust games you built yourself.
+  New finds wait for a yes before they join the list.
+- **Your list:** pin games to the top, rename or hide them, add any program
+  with **+**. Games you played last come first.
 - **Controls:** `Ctrl+Alt+H` or the tray icon opens the panel; type to
-  filter, Enter to launch.
+  search (first letters and small typos work too), Enter to launch, Tab or
+  right-click for more. A game controller works too: hold Start and Select.
+- **Resource use:** about 30 MB of memory, no CPU use while hidden.
 - **AI help prompt:** the **?** button copies a prompt containing the full
   documentation, for AI assistants that can read your computer (Claude Code,
   OpenCode and similar) to answer questions about Hanami.
@@ -42,14 +49,16 @@ your startup programs ([how](GUIDE.md#starting-with-the-computer)).
 - **Open and close:** `Ctrl+Alt+H`, a click on the tray icon, or
   `hanami --toggle` (bind that to a key on Wayland).
 - **Pick a game:** type to search, arrows and Enter, or click.
+- **More for one game:** Tab or right-click: Pin to top, Rename, Hide.
+- **Add a game:** the **+** button.
 - **Settings:** tray icon, Edit settings. Everything they can hold is in
   [GUIDE.md](GUIDE.md).
 
 ## Build from source
 
 Needs [Rust](https://rustup.rs). On Linux, also the development packages
-for xkbcommon, fontconfig, Wayland and D-Bus (on Debian and Ubuntu:
-`libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev`).
+for xkbcommon, fontconfig, Wayland, D-Bus and udev (on Debian and Ubuntu:
+`libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev libudev-dev`).
 
 ```
 cargo build --release

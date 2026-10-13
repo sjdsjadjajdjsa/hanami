@@ -40,6 +40,12 @@ something not on this page, add it here first.
 - Scale: 4, 8, 12, 14, 20 px.
 - Panel: 340 × 440, radius 16, padding 20, 1 px `edge` border.
 - Rows: height 44, radius 10, inner padding 14, gap 8.
+- Row icon: 24 × 24, radius 6, 10 from the row's left edge and 10 before
+  the name. A game without a picture shows its first letter, 11 px
+  SemiBold `dim`, on a `hover` tile of the same size.
+- Chips (row actions, Keep and Hide): height 32, radius 8, padding 12
+  sideways, gap 4. The chosen one gets `pick` and `accent` text, like a row.
+- Header buttons (+ and ?): 18 px circles, gap 4.
 - Header: row padding 14 sideways, 6 below.
 
 ## Motion
@@ -47,7 +53,7 @@ something not on this page, add it here first.
 - Row fill fades in 120 ms.
 - Petals: 18 at 30 fps; each 7–13 px, falling 12–28 px/s, swaying 6–20 px,
   turning up to ±35°/s. Seeded, so every open looks the same.
-- Panel open/close: 140 ms fade (to build).
+- Panel open/close: 140 ms fade.
 
 ## Platform
 

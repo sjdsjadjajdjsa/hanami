@@ -16,23 +16,34 @@ use it in GUIDE.md.
   entries win.
 - **Ask your AI:** the **?** button copies a prompt with GUIDE.md so any AI
   that can see the computer explains Hanami without changing anything.
-- **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 27 MB; open with
-  petals 0-1 % CPU and about 30 MB; looking through every game source takes
-  a few milliseconds.
+- **Your list (0.2):** pin, rename and hide from the panel (Tab or
+  right-click), **+** to add a program with the system file picker, settings
+  edits that keep comments, games played last first, search by first letters
+  and with small typos.
+- **Icons (0.2):** from Steam, the app menu's icon theme, Heroic, Lutris and,
+  on Windows, the game's exe; decoded in the background.
+- **Ports and rewrites (0.2):** a list of known ports on GitHub that anyone
+  can add to (PORTS.md), a `hanami-game.toml` port makers can ship, an
+  opt-in scan of a projects folder for Rust games; new finds wait for Keep
+  or Hide.
+- **Controller (0.2):** hold Start and Select to open; D-pad, A and B in the
+  panel. No CPU while idle.
+- **Packages and updates (0.2):** AppImage, a per-user Windows installer, an
+  AUR package ready to publish, and a tray item when a new version is out.
+- **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 30 MB; open with
+  petals 0-1 % CPU; looking through every game source takes a few
+  milliseconds, the ports scan runs in the background.
 
 ## Next
 
-1. **Add games from the panel:** a **+** that opens the system file picker,
-   saves the game to the settings without disturbing anything else in the
-   file, and a right-click to rename or remove.
+1. **Publish the AUR package** (`packaging/README.md` has the steps; needs
+   an AUR account).
 2. **Windows check on a real PC:** the see-through panel, focus from the
    hotkey, centring across monitors, and the Epic and GOG sources on real
    installs. Already checked: Windows builds and tests pass on GitHub, and in
    Wine one copy at a time, `--toggle` and both renderers work (0.1.2).
    Acrylic blur comes after that.
-3. **Packages:** an AUR package and an AppImage for Linux, an installer for
-   Windows, built automatically for each release.
-4. ~~**Site**~~ at <https://hanami.lilygrove.dev> (source in `site/`).
+3. **Controller on real pads:** checked with a virtual Xbox pad so far.
 
 ## Later
 
@@ -41,9 +52,4 @@ use it in GUIDE.md.
 - **Desktop widget mode:** the panel pinned to the desktop, below other
   windows, on every workspace, movable and resizable, near 0 % CPU while
   always visible. X11 desktops and Windows first; Wayland through XWayland.
-- **Ports and rewrites:** find recomps, decomp ports and Rust rewrites by
-  themselves: a list of known ports kept on GitHub that anyone can add to, a
-  small "works with Hanami" file port makers can ship, and an opt-in scan of
-  a projects folder for Rust games you built. New finds are offered, not
-  added silently.
 - **Themes.**
