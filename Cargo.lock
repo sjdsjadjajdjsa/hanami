@@ -1630,6 +1630,7 @@ dependencies = [
  "desktop",
  "dirs",
  "gilrs",
+ "glob",
  "global-hotkey",
  "image",
  "interprocess",
@@ -1649,6 +1650,7 @@ dependencies = [
  "toml 0.9.12+spec-1.1.0",
  "toml_edit",
  "ureq",
+ "walkdir",
  "windows-sys 0.61.2",
  "winreg",
 ]

@@ -580,7 +580,7 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
         }
         sources.push(source);
         let started = Instant::now();
-        let games = find::games(source);
+        let games = find::games(source, config);
         log(&format!("looked in {source:?} in {} ms", started.elapsed().as_millis()));
         for game in &games {
             let name = key(&game.name);
@@ -795,6 +795,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(message) = &problem {
             eprintln!("{message}");
         }
+        if config.find.contains(&Source::Ports) {
+            let started = Instant::now();
+            let ports = find::scan_ports(&config);
+            log(&format!("scanned for ports in {} ms, found {}", started.elapsed().as_millis(), ports.len()));
+        }
         let verbose = VERBOSE.load(Ordering::Relaxed);
         for game in listed(&config, &State::load()).0 {
             match (&game.icon, verbose) {
@@ -841,6 +846,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     panel.set_games(ModelRc::from(rows.clone()));
     panel.set_petals(ModelRc::from(Rc::new(VecModel::from(petals()))));
     connect_panel(&panel);
+
+    // The ports search runs in the background; start it now so the first
+    // panel already has its result.
+    if config.find.contains(&Source::Ports) {
+        find::games(Source::Ports, &config);
+    }
 
     let tray = Tray::new()?;
     connect_tray(&tray, config_path.clone());

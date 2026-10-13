@@ -1,0 +1,176 @@
+# Known game ports, recomps and rewrites that Hanami finds by itself.
+# Hanami ships this list and fetches the newest copy from GitHub once a day;
+# the higher version wins. PORTS.md says how to add a port.
+#
+# Each [[port]]:
+#   name     the name shown in the panel: the same one the port's own
+#            .desktop file (or Flatpak) uses, so the two merge into one row
+#   url      the project page
+#   linux    program file names on Linux, case doesn't matter, * matches
+#            anything; the file must be executable
+#   windows  program file names on Windows
+#   flatpak  Flatpak app ids, started with `flatpak run <id>`
+#   beside   optional: a file that has to sit next to the program, any one of
+#            them, for programs with everyday names
+version = 1
+
+[[port]]
+name = "Ship of Harkinian"
+url = "https://www.shipofharkinian.com/"
+linux = ["soh.appimage", "SoH-*.appimage", "soh.elf"]
+windows = ["soh.exe"]
+
+[[port]]
+name = "2 Ship 2 Harkinian"
+url = "https://github.com/HarbourMasters/2ship2harkinian"
+linux = ["2ship.appimage", "2Ship-*.appimage", "2s2h.elf"]
+windows = ["2ship.exe"]
+
+[[port]]
+name = "Starship"
+url = "https://github.com/HarbourMasters/Starship"
+linux = ["starship.appimage", "Starship-*.appimage"]
+windows = ["Starship.exe"]
+beside = ["starship.o2r", "starship.otr"]
+
+[[port]]
+name = "SpaghettiKart"
+url = "https://github.com/HarbourMasters/SpaghettiKart"
+linux = ["spaghetti.appimage", "Spaghettify-*.appimage"]
+windows = ["Spaghettify.exe"]
+
+[[port]]
+name = "Ghostship"
+url = "https://github.com/HarbourMasters/Ghostship"
+linux = ["ghostship.appimage", "Ghostship-*.appimage"]
+windows = ["Ghostship.exe"]
+
+[[port]]
+name = "Zelda 64: Recompiled"
+url = "https://github.com/Zelda64Recomp/Zelda64Recomp"
+linux = ["Zelda64Recompiled", "Zelda64Recompiled-*.appimage"]
+windows = ["Zelda64Recompiled.exe"]
+flatpak = ["io.github.zelda64recomp.zelda64recomp"]
+
+[[port]]
+name = "sm64coopdx"
+url = "https://sm64coopdx.com/"
+linux = ["sm64coopdx"]
+windows = ["sm64coopdx.exe"]
+
+[[port]]
+name = "Perfect Dark"
+url = "https://github.com/fgsfdsfgs/perfect_dark"
+linux = ["pd.x86_64", "pd.i686"]
+windows = ["pd.x86_64.exe", "pd.i686.exe"]
+flatpak = ["io.github.perfect_dark_pc_port.perfect_dark", "io.github.fgsfdsfgs.perfect_dark"]
+
+[[port]]
+name = "OpenMW"
+url = "https://openmw.org/"
+linux = ["openmw-launcher", "openmw-launcher.x86_64"]
+windows = ["openmw-launcher.exe"]
+flatpak = ["org.openmw.OpenMW"]
+
+[[port]]
+name = "OpenRCT2"
+url = "https://openrct2.io/"
+linux = ["openrct2", "OpenRCT2-*.appimage"]
+windows = ["openrct2.exe"]
+flatpak = ["io.openrct2.OpenRCT2"]
+
+[[port]]
+name = "OpenTTD"
+url = "https://www.openttd.org/"
+linux = ["openttd"]
+windows = ["openttd.exe"]
+flatpak = ["org.openttd.OpenTTD"]
+
+[[port]]
+name = "DevilutionX"
+url = "https://github.com/diasurgical/devilutionX"
+linux = ["devilutionx", "devilutionx-*.appimage"]
+windows = ["devilutionx.exe"]
+flatpak = ["org.diasurgical.DevilutionX"]
+
+[[port]]
+name = "fheroes2"
+url = "https://ihhub.github.io/fheroes2/"
+linux = ["fheroes2"]
+windows = ["fheroes2.exe"]
+flatpak = ["io.github.ihhub.Fheroes2"]
+
+[[port]]
+name = "Augustus"
+url = "https://github.com/Keriew/augustus"
+linux = ["augustus", "augustus-*.appimage"]
+windows = ["augustus.exe"]
+flatpak = ["com.github.keriew.augustus"]
+
+[[port]]
+name = "Julius"
+url = "https://github.com/bvschaik/julius"
+linux = ["julius", "julius-*.appimage"]
+windows = ["julius.exe"]
+flatpak = ["com.github.bvschaik.julius"]
+
+[[port]]
+name = "CorsixTH"
+url = "https://corsixth.com/"
+linux = ["corsix-th", "CorsixTH-*.appimage"]
+windows = ["CorsixTH.exe"]
+flatpak = ["com.corsixth.corsixth"]
+
+[[port]]
+name = "GZDoom"
+url = "https://zdoom.org/"
+linux = ["gzdoom"]
+windows = ["gzdoom.exe"]
+flatpak = ["org.zdoom.GZDoom"]
+
+[[port]]
+name = "UZDoom"
+url = "https://github.com/UZDoom/uzdoom"
+linux = ["uzdoom", "Linux-UZDoom-*.appimage"]
+windows = ["uzdoom.exe"]
+flatpak = ["org.zdoom.UZDoom"]
+
+[[port]]
+name = "Ironwail"
+url = "https://github.com/andrei-drexler/ironwail"
+linux = ["ironwail"]
+windows = ["ironwail.exe"]
+
+[[port]]
+name = "vkQuake"
+url = "https://github.com/Novum/vkQuake"
+linux = ["vkquake", "vkQuake-*.appimage"]
+windows = ["vkQuake.exe"]
+
+[[port]]
+name = "Sonic Mania"
+url = "https://github.com/RSDKModding/RSDKv5-Decompilation"
+linux = ["RSDKv5U", "RSDKv5"]
+windows = ["RSDKv5U.exe", "RSDKv5.exe"]
+beside = ["Data.rsdk"]
+
+[[port]]
+name = "Sonic 1 and 2"
+url = "https://github.com/RSDKModding/RSDKv4-Decompilation"
+linux = ["RSDKv4"]
+windows = ["RSDKv4.exe"]
+beside = ["Data.rsdk"]
+
+[[port]]
+name = "Sonic CD"
+url = "https://github.com/RSDKModding/RSDKv3-Decompilation"
+linux = ["RSDKv3"]
+windows = ["RSDKv3.exe"]
+beside = ["Data.rsdk"]
+
+[[port]]
+name = "Sonic 3: A.I.R."
+url = "https://sonic3air.org/"
+linux = ["sonic3air_linux"]
+windows = ["Sonic3AIR.exe"]
+flatpak = ["org.sonic3air.Sonic3AIR"]
