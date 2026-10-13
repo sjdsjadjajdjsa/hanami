@@ -1,0 +1,58 @@
+name: release
+
+# Push a tag like v0.1.0 and this builds Hanami for Linux and Windows and
+# puts both downloads on the GitHub release for that tag.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            archive: hanami-linux-x86_64.tar.gz
+          - os: windows-latest
+            archive: hanami-windows-x86_64.zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: System libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev
+      - run: cargo build --release --package hanami
+      - name: Pack (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir hanami
+          cp target/release/hanami README.md GUIDE.md LICENSE hanami/
+          tar czf ${{ matrix.archive }} hanami
+      - name: Pack (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory hanami | Out-Null
+          Copy-Item target/release/hanami.exe, README.md, GUIDE.md, LICENSE hanami/
+          Compress-Archive -Path hanami -DestinationPath ${{ matrix.archive }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" hanami-* --repo "${{ github.repository }}" --title "Hanami ${{ github.ref_name }}" --generate-notes

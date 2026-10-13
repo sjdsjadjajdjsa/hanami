@@ -1,0 +1,8 @@
+[workspace]
+resolver = "3"
+members = ["hanami", "desktop"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = true

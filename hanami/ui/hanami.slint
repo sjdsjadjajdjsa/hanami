@@ -1,0 +1,299 @@
+import "../../assets/Inter-Regular.ttf";
+import "../../assets/Inter-Medium.ttf";
+import "../../assets/Inter-SemiBold.ttf";
+
+export struct Petal {
+    x: float,
+    speed: float,
+    sway: float,
+    freq: float,
+    spin: float,
+    size: float,
+    alpha: float,
+    phase: float,
+}
+
+export struct GameRow {
+    name: string,
+    label: string,
+}
+
+// Every colour, size and gap comes from here (see DESIGN.md).
+global Tokens {
+    out property <color> panel: #17141db8;
+    out property <color> edge: #ffffff17;
+    out property <color> text: #ece6ee;
+    out property <color> dim: #9b93a3;
+    out property <color> accent: #f4b6c8;
+    out property <color> pick: #f4b6c824;
+    out property <color> hover: #ffffff0d;
+    out property <length> pad: 20px;
+    out property <length> gap: 8px;
+    out property <length> inset: 14px;
+    out property <length> radius: 16px;
+    out property <length> row-radius: 10px;
+    out property <length> row-height: 44px;
+    out property <length> row-step: self.row-height + self.gap;
+    out property <length> title-size: 15px;
+    out property <length> name-size: 14px;
+    out property <length> small-size: 11px;
+}
+
+component PetalView inherits Image {
+    in property <Petal> p;
+    in property <length> area-w;
+    in property <length> area-h;
+    in property <float> t;
+    source: @image-url("../../assets/petal.svg");
+    width: p.size * 1px;
+    height: p.size * 1.2px;
+    opacity: p.alpha;
+    x: area-w * p.x + p.sway * 1px * Math.sin((t * p.freq + p.phase) * 1rad) - self.width / 2;
+    y: Math.mod(t * p.speed + p.phase * 97, area-h / 1px + 40) * 1px - 20px;
+    transform-rotation: (t * p.spin + p.phase * 57) * 1deg;
+}
+
+component Row inherits Rectangle {
+    in property <GameRow> game;
+    in property <bool> picked;
+    callback activate();
+    callback point();
+    height: Tokens.row-height;
+    border-radius: Tokens.row-radius;
+    background: picked ? Tokens.pick : area.has-hover ? Tokens.hover : transparent;
+    animate background { duration: 120ms; }
+    HorizontalLayout {
+        padding-left: Tokens.inset;
+        padding-right: Tokens.inset;
+        spacing: 12px;
+        Text {
+            text: game.name;
+            font-size: Tokens.name-size;
+            font-weight: 500;
+            color: picked ? Tokens.accent : Tokens.text;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        Text {
+            text: game.label;
+            font-size: Tokens.small-size;
+            color: Tokens.dim;
+            vertical-alignment: center;
+        }
+    }
+    area := TouchArea {
+        clicked => { root.activate(); }
+        moved => { root.point(); }
+    }
+}
+
+export component Panel inherits Window {
+    in property <[Petal]> petals;
+    in property <[GameRow]> games;
+    in property <int> total;
+    in property <string> query;
+    in property <string> notice;
+    in property <float> t;
+    in property <bool> shown;
+    in-out property <int> selected: 0;
+
+    callback launch(int);
+    callback dismiss();
+    callback typed(string);
+    callback erased();
+    callback ask-ai();
+
+    public function focus-keys() {
+        keys.focus();
+        list.viewport-y = 0;
+    }
+
+    title: "Hanami";
+    no-frame: true;
+    always-on-top: true;
+    background: transparent;
+    width: 340px;
+    height: 440px;
+    default-font-family: "Inter";
+
+    function reveal() {
+        if (root.selected * Tokens.row-step + list.viewport-y < 0) {
+            list.viewport-y = -root.selected * Tokens.row-step;
+        }
+        if ((root.selected + 1) * Tokens.row-step - Tokens.gap + list.viewport-y > list.height) {
+            list.viewport-y = list.height - (root.selected + 1) * Tokens.row-step + Tokens.gap;
+        }
+    }
+
+    changed selected => {
+        root.reveal();
+    }
+
+    keys := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.dismiss();
+                return accept;
+            }
+            if (event.text == Key.DownArrow) {
+                if (root.games.length > 0) {
+                    root.selected = Math.min(root.selected + 1, root.games.length - 1);
+                }
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.selected = Math.max(root.selected - 1, 0);
+                return accept;
+            }
+            if (event.text == Key.Return) {
+                if (root.games.length > 0) {
+                    root.launch(root.selected);
+                }
+                return accept;
+            }
+            if (event.text == Key.Backspace) {
+                root.erased();
+                return accept;
+            }
+            if (event.modifiers.control || event.modifiers.alt || event.modifiers.meta) {
+                return reject;
+            }
+            root.typed(event.text);
+            accept
+        }
+
+        panel := Rectangle {
+            opacity: root.shown ? 1 : 0;
+            animate opacity { duration: 140ms; easing: ease-out; }
+            border-radius: Tokens.radius;
+            background: Tokens.panel;
+            border-width: 1px;
+            border-color: Tokens.edge;
+            clip: true;
+
+            for p in root.petals: PetalView {
+                p: p;
+                area-w: panel.width;
+                area-h: panel.height;
+                t: root.t;
+            }
+
+            VerticalLayout {
+                padding: Tokens.pad;
+                spacing: Tokens.gap;
+
+                HorizontalLayout {
+                    padding-left: Tokens.inset;
+                    padding-right: Tokens.inset;
+                    padding-bottom: 6px;
+                    spacing: 12px;
+                    Text {
+                        text: root.query == "" ? "hanami" : root.query;
+                        font-size: Tokens.title-size;
+                        font-weight: root.query == "" ? 600 : 500;
+                        color: Tokens.text;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+                    Text {
+                        text: root.query == "" ? root.total + " games" : root.games.length + " of " + root.total;
+                        font-size: Tokens.small-size;
+                        color: Tokens.dim;
+                        vertical-alignment: center;
+                    }
+                    // Copies a prompt that explains Hanami to the user's AI.
+                    Rectangle {
+                        width: 18px;
+                        height: 18px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: self.height / 2;
+                        background: help.has-hover ? Tokens.hover : transparent;
+                        animate background { duration: 120ms; }
+                        Text {
+                            text: "?";
+                            font-size: Tokens.small-size;
+                            font-weight: 600;
+                            color: help.has-hover ? Tokens.text : Tokens.dim;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        help := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.ask-ai(); }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    vertical-stretch: 1;
+
+                    list := Flickable {
+                        width: parent.width;
+                        height: parent.height;
+                        viewport-height: Math.max(root.games.length * Tokens.row-step - Tokens.gap, 0px);
+                        for game[i] in root.games: Row {
+                            x: 0;
+                            y: i * Tokens.row-step;
+                            width: list.width;
+                            game: game;
+                            picked: i == root.selected;
+                            activate => {
+                                root.selected = i;
+                                root.launch(i);
+                            }
+                            point => { root.selected = i; }
+                        }
+                    }
+
+                    if root.games.length == 0: Text {
+                        width: parent.width;
+                        height: parent.height;
+                        text: root.total == 0 ? "No games yet.\nAdd some in Hanami's settings." : "Nothing matches “" + root.query + "”.";
+                        font-size: Tokens.small-size;
+                        color: Tokens.dim;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+
+                Text {
+                    text: root.notice != "" ? root.notice
+                        : help.has-hover ? "Copy a prompt that explains Hanami to your AI"
+                        : "type to search  ·  enter to play  ·  esc to hide";
+                    font-size: Tokens.small-size;
+                    color: root.notice == "" ? Tokens.dim : Tokens.text;
+                    horizontal-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+}
+
+export component Tray inherits SystemTrayIcon {
+    callback open-panel();
+    callback show-panel();
+    callback edit-settings();
+    callback quit-app();
+
+    icon: @image-url("../../assets/hanami-icon.svg");
+    title: "Hanami";
+    tooltip: "Hanami";
+    clicked => { root.open-panel(); }
+
+    Menu {
+        MenuItem {
+            title: "Open";
+            activated => { root.show-panel(); }
+        }
+        MenuItem {
+            title: "Edit settings";
+            activated => { root.edit-settings(); }
+        }
+        MenuItem {
+            title: "Quit";
+            activated => { root.quit-app(); }
+        }
+    }
+}
