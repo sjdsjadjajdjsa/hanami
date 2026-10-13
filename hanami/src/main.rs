@@ -269,7 +269,10 @@ impl App {
         self.rows.set_vec(
             shown
                 .iter()
-                .map(|&index| GameRow { name: games[index].name.as_str().into(), label: games[index].label.as_str().into() })
+                .map(|&index| GameRow {
+                    name: games[index].name.as_str().into(),
+                    label: games[index].label.as_str().into(),
+                })
                 .collect::<Vec<_>>(),
         );
         self.panel.set_query(query.as_str().into());
@@ -312,7 +315,9 @@ impl App {
         }
         let copied = clipboard.as_mut().is_some_and(|clipboard| clipboard.set_text(prompt).is_ok());
         log(&format!("ai prompt copied: {copied}"));
-        self.notify(if copied { "Copied. Paste it into your AI." } else { "Couldn't copy. Run hanami --guide instead." }.into());
+        self.notify(
+            if copied { "Copied. Paste it into your AI." } else { "Couldn't copy. Run hanami --guide instead." }.into(),
+        );
     }
 
     fn handle(self: &Rc<Self>, request: Request) {
@@ -333,7 +338,7 @@ fn found(config: &Config) -> Vec<games::Game> {
         if !seen.contains(&source) {
             seen.push(source);
             let started = Instant::now();
-            games.extend(find::games(source));
+            games.extend(find::games(source, config));
             log(&format!("looked in {source:?} in {} ms", started.elapsed().as_millis()));
         }
     }
@@ -455,8 +460,9 @@ fn edit(path: &Path) -> std::io::Result<()> {
 /// The manager must stay alive for the hotkey to keep working.
 fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
-    let manager = GlobalHotKeyManager::new()
-        .map_err(|_| "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string())?;
+    let manager = GlobalHotKeyManager::new().map_err(|_| {
+        "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string()
+    })?;
     manager
         .register(hotkey)
         .map_err(|_| format!("{text} is taken by another app. Pick another hotkey in settings."))?;
@@ -529,6 +535,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if flag("--list") {
         if let Some(message) = &problem {
             eprintln!("{message}");
+        }
+        if config.find.contains(&find::Source::Ports) {
+            let started = Instant::now();
+            let ports = find::scan_ports(&config);
+            log(&format!("scanned for ports in {} ms, found {}", started.elapsed().as_millis(), ports.len()));
         }
         for game in games::collect(&config, found(&config)) {
             println!("{}\t{}", game.name, game.label);

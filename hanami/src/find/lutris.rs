@@ -33,7 +33,8 @@ fn game(id: i64, name: String, flatpak: bool) -> Game {
 
 /// Installed games, minus the ones in Lutris's hidden category.
 fn installed(db: &Path) -> Vec<(i64, String)> {
-    let Ok(conn) = Connection::open_with_flags(db, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX) else {
+    let Ok(conn) = Connection::open_with_flags(db, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
+    else {
         return Vec::new();
     };
     const WITH_HIDDEN: &str = "SELECT id, name FROM games WHERE installed = 1 AND id NOT IN (

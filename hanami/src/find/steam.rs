@@ -34,7 +34,12 @@ mod tests {
 
     #[test]
     fn tools_are_recognised_and_games_are_not() {
-        for tool in ["Proton 10.0", "Proton Experimental", "Steam Linux Runtime 3.0 (sniper)", "Steamworks Common Redistributables"] {
+        for tool in [
+            "Proton 10.0",
+            "Proton Experimental",
+            "Steam Linux Runtime 3.0 (sniper)",
+            "Steamworks Common Redistributables",
+        ] {
             assert!(is_tool(tool), "{tool}");
         }
         for game in ["Counter-Strike 2", "Portal 2", "SteamWorld Dig"] {

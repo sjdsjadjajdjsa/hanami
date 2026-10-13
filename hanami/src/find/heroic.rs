@@ -22,7 +22,8 @@ pub fn find() -> Vec<Game> {
 
 /// Heroic's settings folder, native and (on Linux) Flatpak.
 fn roots() -> Vec<(PathBuf, bool)> {
-    let mut roots: Vec<(PathBuf, bool)> = dirs::config_dir().map(|dir| (dir.join("heroic"), false)).into_iter().collect();
+    let mut roots: Vec<(PathBuf, bool)> =
+        dirs::config_dir().map(|dir| (dir.join("heroic"), false)).into_iter().collect();
     if cfg!(target_os = "linux")
         && let Some(home) = dirs::home_dir()
     {
@@ -52,10 +53,7 @@ impl Found {
 }
 
 fn read(path: &Path) -> Value {
-    std::fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or(Value::Null)
+    std::fs::read_to_string(path).ok().and_then(|text| serde_json::from_str(&text).ok()).unwrap_or(Value::Null)
 }
 
 fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
@@ -85,7 +83,9 @@ fn installed(root: &Path) -> Vec<Found> {
         .flatten()
         .filter_map(|game| Some((text(game, "app_name")?.to_string(), text(game, "title")?.to_string())))
         .collect();
-    for game in read(&root.join("gog_store/installed.json")).get("installed").and_then(Value::as_array).into_iter().flatten() {
+    for game in
+        read(&root.join("gog_store/installed.json")).get("installed").and_then(Value::as_array).into_iter().flatten()
+    {
         let Some(app) = text(game, "appName") else { continue };
         if app == "gog-redist" || game.get("is_dlc").and_then(Value::as_bool) == Some(true) {
             continue;
@@ -114,7 +114,9 @@ fn installed(root: &Path) -> Vec<Found> {
     }
 
     // Added by hand; entries with a browser URL are web pages, not programs.
-    for game in read(&root.join("sideload_apps/library.json")).get("games").and_then(Value::as_array).into_iter().flatten() {
+    for game in
+        read(&root.join("sideload_apps/library.json")).get("games").and_then(Value::as_array).into_iter().flatten()
+    {
         let installed = game.get("is_installed").and_then(Value::as_bool).unwrap_or(true);
         if !installed || game.get("browserUrl").is_some_and(|url| !url.is_null()) {
             continue;
@@ -139,21 +141,41 @@ mod tests {
     #[test]
     fn every_store_is_read_and_extras_are_skipped() {
         let root = std::env::temp_dir().join(format!("hanami-heroic-{}", std::process::id()));
-        write(&root, "legendaryConfig/legendary/installed.json", r#"{
+        write(
+            &root,
+            "legendaryConfig/legendary/installed.json",
+            r#"{
             "Fortnite": {"app_name": "Fortnite", "title": "Fortnite", "is_dlc": false},
-            "Pack": {"app_name": "Pack", "title": "Some DLC", "is_dlc": true}}"#);
-        write(&root, "store_cache/gog_library.json", r#"{"games": [
+            "Pack": {"app_name": "Pack", "title": "Some DLC", "is_dlc": true}}"#,
+        );
+        write(
+            &root,
+            "store_cache/gog_library.json",
+            r#"{"games": [
             {"app_name": "1207658924", "title": "Unreal Gold"},
             {"app_name": "gog-redist", "title": "Galaxy Common Redistributables"}],
-            "__timestamp.games": 1}"#);
-        write(&root, "gog_store/installed.json", r#"{"installed": [
-            {"appName": "1207658924", "platform": "windows"}, {"appName": "gog-redist"}]}"#);
+            "__timestamp.games": 1}"#,
+        );
+        write(
+            &root,
+            "gog_store/installed.json",
+            r#"{"installed": [
+            {"appName": "1207658924", "platform": "windows"}, {"appName": "gog-redist"}]}"#,
+        );
         write(&root, "nile_config/nile/library.json", r#"[{"product": {"id": "amzn1.x", "title": "Amazon Game"}}]"#);
-        write(&root, "nile_config/nile/installed.json", r#"[{"id": "amzn1.x", "path": "/g"}, {"id": "amzn1.unknown"}]"#);
-        write(&root, "sideload_apps/library.json", r#"{"games": [
+        write(
+            &root,
+            "nile_config/nile/installed.json",
+            r#"[{"id": "amzn1.x", "path": "/g"}, {"id": "amzn1.unknown"}]"#,
+        );
+        write(
+            &root,
+            "sideload_apps/library.json",
+            r#"{"games": [
             {"app_name": "abc", "title": "My Emulator", "is_installed": true},
             {"app_name": "web", "title": "Web Game", "browserUrl": "https://x"},
-            {"app_name": "gone", "title": "Removed", "is_installed": false}]}"#);
+            {"app_name": "gone", "title": "Removed", "is_installed": false}]}"#,
+        );
 
         let mut found = installed(&root);
         found.sort_by(|a, b| a.name.cmp(&b.name));
@@ -173,7 +195,10 @@ mod tests {
     #[test]
     fn launch_urls_native_and_flatpak() {
         let found = || Found { name: "X".into(), app: "Fort nite".into(), runner: "legendary", label: "epic" };
-        assert_eq!(found().into_game(false).launch, Launch::Open("heroic://launch?appName=Fort%20nite&runner=legendary".into()));
+        assert_eq!(
+            found().into_game(false).launch,
+            Launch::Open("heroic://launch?appName=Fort%20nite&runner=legendary".into())
+        );
         let Launch::Command { program, args, .. } = found().into_game(true).launch else { panic!() };
         assert_eq!(program, PathBuf::from("flatpak"));
         assert_eq!(args[1], FLATPAK_ID);

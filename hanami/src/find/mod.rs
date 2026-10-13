@@ -10,10 +10,12 @@ mod gog;
 mod heroic;
 #[cfg(target_os = "linux")]
 mod lutris;
+mod ports;
 mod steam;
 
 use serde::Deserialize;
 
+use crate::config::Config;
 use crate::games::Game;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -35,13 +37,17 @@ impl Source {
         [Source::Steam, Source::Heroic, Source::Lutris, Source::Apps, Source::Epic, Source::Gog, Source::Ports];
 }
 
+/// Scans for ports right away instead of in the background, for `--list`.
+pub use ports::scan_now as scan_ports;
 #[cfg(test)]
 pub use steam::launch as steam_launch;
 
-pub fn games(source: Source) -> Vec<Game> {
+/// The config is for `ports`, which reads `folders`, `projects` and `online`.
+pub fn games(source: Source, config: &Config) -> Vec<Game> {
     match source {
         Source::Steam => steam::find(),
         Source::Heroic => heroic::find(),
+        Source::Ports => ports::find(config),
         #[cfg(target_os = "linux")]
         Source::Lutris => lutris::find(),
         #[cfg(target_os = "linux")]

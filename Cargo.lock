@@ -1548,6 +1548,7 @@ dependencies = [
  "arboard",
  "desktop",
  "dirs",
+ "glob",
  "global-hotkey",
  "interprocess",
  "open",
@@ -1560,6 +1561,7 @@ dependencies = [
  "steamlocate",
  "toml 0.9.12+spec-1.1.0",
  "ureq",
+ "walkdir",
  "windows-sys 0.61.2",
  "winreg",
 ]

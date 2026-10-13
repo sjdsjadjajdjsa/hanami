@@ -36,11 +36,13 @@ hide = []
 
 # Extra folders to look in for game ports and rewrites (like Ship of
 # Harkinian or Zelda 64: Recompiled) and for games that come with a
-# hanami-game.toml file.
+# hanami-game.toml file. ~/Games, ~/Downloads and a few other usual places
+# are always searched.
 folders = []
 
 # Folders with your own Rust game projects, like ["~/Projects"]. Games
-# built there are offered in the panel.
+# built there (a program in target/release or target/debug of a project
+# that uses a game engine) are offered in the panel.
 projects = []
 
 # Use a game controller in the panel.
