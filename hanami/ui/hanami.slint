@@ -30,6 +30,7 @@ global Tokens {
     out property <color> dim: #9b93a3;
     out property <color> accent: #f4b6c8;
     out property <color> pick: #f4b6c824;
+    out property <color> select: #f4b6c859;
     out property <color> hover: #ffffff0d;
     out property <length> pad: 20px;
     out property <length> gap: 8px;
@@ -186,7 +187,7 @@ component Row inherits Rectangle {
             font-size: Tokens.name-size;
             font-weight: 500;
             color: Tokens.accent;
-            selection-background-color: Tokens.pick;
+            selection-background-color: Tokens.select;
             selection-foreground-color: Tokens.text;
             vertical-alignment: center;
             horizontal-stretch: 1;

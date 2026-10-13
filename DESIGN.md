@@ -23,7 +23,8 @@ something not on this page, add it here first.
 | `dim` | `#9b93a3` | labels, counts, hints |
 | `accent` | `#f4b6c8` | highlighted row text |
 | `pick` | accent at 14 % | highlighted row fill |
-| `hover` | white at 5 % | row under the mouse, when not highlighted |
+| `hover` | white at 5 % | row under the mouse, when not highlighted; letter tile behind a missing icon |
+| `select` | accent at 35 % | selected text while renaming |
 | `petal` | `#f7c4d3`, vein `#e9a3b8` | petals, 35–80 % opacity |
 
 ## Type (Inter)
