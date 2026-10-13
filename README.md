@@ -2,19 +2,18 @@
 
 <p align="center"><img src="docs/screenshot.png" width="420" alt="The Hanami panel: a dark, rounded window listing games, with sakura petals behind the list"></p>
 
-A small game launcher for Linux and Windows. It lives in the tray, opens as
-a rounded, see-through panel with sakura petals drifting behind your games,
-starts the one you pick, and gets out of the way.
+A game launcher for Linux and Windows. It runs in the system tray and
+opens a small panel that lists your installed games.
 
-- **Finds your games by itself:** Steam, Heroic (Epic, GOG, Amazon), Lutris
-  and the games in your Linux app menu; Steam, Epic and GOG on Windows. Add
-  anything else in one settings file.
-- **Light:** written in Rust, about 30 MB of memory and no CPU while hidden.
-- **Quick:** `Ctrl+Alt+H` or a click on the tray icon, type a few letters,
-  press Enter.
-- **Explains itself:** the **?** button copies a prompt you can paste into
-  any AI that can see your computer (Claude Code, Kimi Code, OpenCode, ...),
-  and it walks you through everything Hanami can do.
+- **Game detection:** Steam, Heroic (Epic, GOG, Amazon), Lutris and desktop
+  entries on Linux; Steam, Epic and GOG on Windows. Other programs can be
+  added in the settings file.
+- **Resource use:** about 30 MB of memory, no CPU use while hidden.
+- **Controls:** `Ctrl+Alt+H` or the tray icon opens the panel; type to
+  filter, Enter to launch.
+- **AI help prompt:** the **?** button copies a prompt containing the full
+  documentation, for AI assistants that can read your computer (Claude Code,
+  OpenCode and similar) to answer questions about Hanami.
 
 ## Install
 
@@ -24,8 +23,8 @@ Download the newest version from
 - **Linux:** `hanami-linux-x86_64.tar.gz`. Unpack it and run `hanami`.
 - **Windows:** `hanami-windows-x86_64.zip`. Unpack it and run `hanami.exe`.
 
-To have it in the tray from the start, add `hanami --hidden` to the programs
-that start with your computer ([how](GUIDE.md#starting-with-the-computer)).
+To start it with your computer, add `hanami --hidden` to your startup
+programs ([how](GUIDE.md#starting-with-the-computer)).
 
 ## Use
 

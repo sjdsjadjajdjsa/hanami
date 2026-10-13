@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hanami: a small game launcher</title>
-  <meta name="description" content="A small game launcher for Linux and Windows. It lives in the tray, finds your games by itself, and gets out of the way.">
+  <title>Hanami: game launcher for Linux and Windows</title>
+  <meta name="description" content="A game launcher for Linux and Windows that runs in the system tray and lists your installed games.">
   <meta name="theme-color" content="#110f16">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <meta property="og:title" content="Hanami">
-  <meta property="og:description" content="A small game launcher for Linux and Windows, with sakura petals drifting behind your games.">
+  <meta property="og:description" content="A game launcher for Linux and Windows that runs in the system tray.">
   <meta property="og:image" content="https://hanami.lilygrove.dev/assets/hanami-panel.png">
   <meta property="og:url" content="https://hanami.lilygrove.dev/">
   <link rel="preload" href="assets/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -21,31 +21,31 @@
     <section class="hero">
       <div class="intro">
         <h1>hanami</h1>
-        <p class="lead">A small game launcher for Linux and Windows. It lives in the tray, finds your games by itself, starts the one you pick, and gets out of the way.</p>
+        <p class="lead">A game launcher for Linux and Windows. It runs in the system tray and opens a small panel that lists your installed games.</p>
         <div class="downloads">
           <a class="button" data-os="linux" href="https://github.com/sjdsjadjajdjsa/hanami/releases/latest/download/hanami-linux-x86_64.tar.gz">Download for Linux</a>
           <a class="button" data-os="windows" href="https://github.com/sjdsjadjajdjsa/hanami/releases/latest/download/hanami-windows-x86_64.zip">Download for Windows</a>
         </div>
-        <p class="meta">Free and open source · about 30 MB · <a href="https://github.com/sjdsjadjajdjsa/hanami/releases">all releases</a></p>
+        <p class="meta">Free and open source (GPL-3.0) · <a href="https://github.com/sjdsjadjajdjsa/hanami/releases">all releases</a></p>
       </div>
       <img class="panel" src="assets/hanami-panel.png" width="340" height="440"
            alt="The Hanami panel: a dark, rounded, see-through window listing games like Celeste, Hades and Hollow Knight, with sakura petals behind the list.">
     </section>
 
     <section>
-      <h2>What it does</h2>
+      <h2>Features</h2>
       <dl class="points">
         <div>
-          <dt>Finds your games</dt>
-          <dd>Steam, Heroic, Lutris and your app menu on Linux; Steam, Epic and GOG on Windows. Anything else goes in one settings file.</dd>
+          <dt>Game detection</dt>
+          <dd>Steam, Heroic, Lutris and desktop entries on Linux; Steam, Epic and GOG on Windows. Other programs can be added in the settings file.</dd>
         </div>
         <div>
-          <dt>Stays out of the way</dt>
-          <dd>No CPU while it waits in the tray. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>, type a few letters, press <kbd>Enter</kbd>, and it is gone again.</dd>
+          <dt>Low resource use</dt>
+          <dd>About 30 MB of memory and no CPU use while hidden. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> opens the panel, typing filters the list, <kbd>Enter</kbd> launches.</dd>
         </div>
         <div>
-          <dt>Explains itself</dt>
-          <dd>The <strong>?</strong> in the panel copies a prompt for any AI that can see your computer. It tells you everything Hanami can do and changes nothing.</dd>
+          <dt>AI help prompt</dt>
+          <dd>The <strong>?</strong> button copies a prompt containing the full documentation, for AI assistants that can read your computer to answer questions about Hanami.</dd>
         </div>
       </dl>
     </section>
@@ -53,9 +53,9 @@
     <section>
       <h2>Start</h2>
       <ol class="steps">
-        <li>Download for your system and unpack it.</li>
-        <li>Run <code>hanami</code>. A blossom appears in your tray.</li>
-        <li>Open it with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> or a click on the blossom. The <a href="https://github.com/sjdsjadjajdjsa/hanami/blob/main/GUIDE.md">guide</a> covers the rest.</li>
+        <li>Download the archive for your system and unpack it.</li>
+        <li>Run <code>hanami</code>. Its icon appears in the system tray.</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> or click the icon to open the panel. Settings are described in the <a href="https://github.com/sjdsjadjajdjsa/hanami/blob/main/GUIDE.md">guide</a>.</li>
       </ol>
     </section>
   </main>
@@ -67,7 +67,6 @@
       <a href="https://github.com/sjdsjadjajdjsa/hanami/blob/main/ROADMAP.md">Roadmap</a>
       <a href="https://github.com/sjdsjadjajdjsa/hanami/blob/main/LICENSE">GPL-3.0</a>
     </nav>
-    <p>Designed by <a href="https://github.com/sjdsjadjajdjsa">sjdsjadjajdjsa</a>, written with <a href="https://github.com/claude">Claude</a>. Part of <a href="https://lilygrove.dev">lilygrove</a>.</p>
   </footer>
 
   <script src="petals.js" defer></script>

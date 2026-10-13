@@ -1,13 +1,12 @@
 # Hanami v1: spec
 
-Hanami is a small game launcher. It lives in the tray, opens as a rounded
-frosted panel with sakura petals drifting behind the list, starts a game,
-and gets out of the way. Built with Slint (software renderer) in Rust, for
-Linux and Windows.
+Hanami is a game launcher that runs in the system tray and opens a small
+panel listing installed games. Built with Slint (software renderer) in Rust,
+for Linux and Windows.
 
 ## What v1 does
 
-1. **Lives in the tray.** One copy at a time: starting Hanami again just
+1. **Runs in the tray.** One copy at a time: starting Hanami again just
    opens the running one. `hanami` opens the panel, `hanami --hidden` starts
    in the tray only (for starting with the system). The tray menu has Open,
    Edit settings, Quit.
@@ -17,7 +16,7 @@ Linux and Windows.
    keys). The panel opens centred on the screen the mouse is on, with
    keyboard focus, fading in over 140 ms. It never shows in the taskbar.
 3. **Finds games by itself**, from every place in the `find` setting, and
-   lists each game once, alphabetically, with a quiet label saying where it
+   lists each game once, alphabetically, with a small label saying where it
    came from:
    - **steam:** installed Steam games (Steam's own tools left out).
    - **heroic:** Heroic's Epic, GOG and Amazon games and its added programs
@@ -37,20 +36,20 @@ Linux and Windows.
 5. **Starts the game.** Config games: run the command detached, so closing
    Hanami never closes the game. Steam games: open
    `steam://rungameid/<id>`.
-6. **Then gets out of the way.** One setting, `on_launch`:
+6. **After launching:** one setting, `on_launch`:
    `hide` (default), `keep`, `quit`.
 7. **Hides on** Esc, clicking outside the panel, the hotkey again or the
    tray icon again, with the same fade. Key repeat and double presses count
    once. The hotkey and the tray click take focus from the panel just before
    they arrive; that focus loss and the press are one action, so the panel
    closes and stays closed.
-8. **Explains itself through your AI.** A small **?** in the header copies
+8. **AI help prompt.** A small **?** in the header copies
    a prompt (Hanami's GUIDE.md plus this computer's settings path) to paste
    into any AI that can look around the computer. It asks the AI to explain
    what Hanami does, what it found and how to customise it, and to change
    nothing. Hovering the **?** says so in the footer first. `hanami --guide`
    prints the same prompt.
-9. **Says what went wrong, quietly.** A game that fails to start shows one
+9. **Errors.** A game that fails to start shows one
    line in the panel footer for a few seconds. Nothing pops up elsewhere.
 
 ## Config

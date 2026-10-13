@@ -1,6 +1,6 @@
 # Hanami design system
 
-Calm, small, plain. The frosted panel and the petals are the only effects;
+The frosted panel and the petals are the only effects;
 everything else is type, spacing and two colours. If a new screen needs
 something not on this page, add it here first.
 
@@ -11,7 +11,7 @@ something not on this page, add it here first.
   screen.
 - Every size, gap and radius comes from the tables below.
 - Pink means "this one": the highlighted row and nothing else.
-- Motion is slow and quiet. Nothing bounces, nothing flashes.
+- Motion is slow: no bouncing, no flashing.
 
 ## Colour
 

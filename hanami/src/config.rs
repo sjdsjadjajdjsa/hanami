@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::find::Source;
 
-/// Written on first run, so the file explains itself.
+/// Written on first run, with a comment for every setting.
 pub const DEFAULT: &str = r#"# Hanami settings. Changes show up the next time the panel opens.
 
 # Key that opens and hides the panel, like "Ctrl+Alt+H" or "Super+H".

@@ -1,8 +1,7 @@
 # Hanami roadmap
 
-Hanami grows slowly on purpose: each step is planned, built, measured and
-checked by hand before the next one starts. What v1 does is in SPEC.md,
-how it looks in DESIGN.md, and everything a user can do in GUIDE.md.
+What version 1 does is in SPEC.md, how it looks in DESIGN.md, and how to
+use it in GUIDE.md.
 
 ## Done
 
@@ -30,8 +29,7 @@ how it looks in DESIGN.md, and everything a user can do in GUIDE.md.
    the Epic and GOG sources tested on real installs.
 3. **Packages:** an AUR package and an AppImage for Linux, an installer for
    Windows, built automatically for each release.
-4. **Site:** hanami.lilygrove.dev, one calm page with the newest downloads
-   (built in `site/`; going online next).
+4. **Site:** hanami.lilygrove.dev with download links (source in `site/`).
 
 ## Later
 

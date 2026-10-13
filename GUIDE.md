@@ -1,10 +1,9 @@
 # Hanami guide
 
-Hanami is a small game launcher for Linux and Windows
+Hanami is a game launcher for Linux and Windows
 (<https://github.com/sjdsjadjajdjsa/hanami>, free software under the GPL).
-It lives in the system tray and opens as a small rounded, see-through panel with sakura
-petals drifting behind a list of games. You pick a game, it starts, and
-Hanami gets out of the way.
+It runs in the system tray and opens a small panel that lists the installed
+games. Picking a game starts it and hides the panel.
 
 ## Opening and closing
 
@@ -20,11 +19,11 @@ Hanami gets out of the way.
 ## In the panel
 
 - Type to search. Arrow keys move, Enter or a click starts the game.
-- Each game has a quiet label saying where it came from: steam, epic, gog,
+- Each game has a small label saying where it came from: steam, epic, gog,
   amazon, lutris, heroic, app, or your own label.
 - Problems (a typo in the settings, a game that won't start) show as one
   line at the bottom for a few seconds.
-- The **?** button copies a prompt like the one that brought you here.
+- The **?** button copies a prompt with this guide, for an AI assistant.
 
 ## Where games come from
 
@@ -72,7 +71,7 @@ name = "My Game"
 command = "~/Games/my-game/my-game"   # the program to run
 args = ["--fullscreen"]               # optional
 dir = "~/Games/my-game"               # optional: folder it runs in
-label = "my label"                    # optional: the quiet label in the list
+label = "my label"                    # optional: the label shown in the list
 ```
 
 Games started by Hanami keep running when Hanami closes.
