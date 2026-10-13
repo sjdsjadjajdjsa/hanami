@@ -16,6 +16,10 @@ export struct Petal {
 export struct GameRow {
     name: string,
     label: string,
+    icon: image,
+    initial: string,
+    pinned: bool,
+    new: bool,
 }
 
 // Every colour, size and gap comes from here (see DESIGN.md).
@@ -34,6 +38,10 @@ global Tokens {
     out property <length> row-radius: 10px;
     out property <length> row-height: 44px;
     out property <length> row-step: self.row-height + self.gap;
+    out property <length> icon-size: 24px;
+    out property <length> icon-radius: 6px;
+    out property <length> chip-height: 32px;
+    out property <length> chip-radius: 8px;
     out property <length> title-size: 15px;
     out property <length> name-size: 14px;
     out property <length> small-size: 11px;
@@ -53,20 +61,118 @@ component PetalView inherits Image {
     transform-rotation: (t * p.spin + p.phase * 57) * 1deg;
 }
 
+// A small text button: row actions and the new-games prompt.
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> lit;
+    in property <length> font-size: Tokens.name-size;
+    callback clicked();
+    height: Tokens.chip-height;
+    border-radius: Tokens.chip-radius;
+    background: lit ? Tokens.pick : touch.has-hover ? Tokens.hover : transparent;
+    animate background { duration: 120ms; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        Text {
+            text: root.text;
+            font-size: root.font-size;
+            font-weight: 500;
+            color: root.lit ? Tokens.accent : Tokens.text;
+            vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+// "+" and "?" in the header.
+component Round inherits Rectangle {
+    in property <string> text;
+    out property <bool> hovered: touch.has-hover;
+    callback clicked();
+    width: 18px;
+    height: 18px;
+    border-radius: self.height / 2;
+    background: touch.has-hover ? Tokens.hover : transparent;
+    animate background { duration: 120ms; }
+    Text {
+        text: root.text;
+        font-size: Tokens.small-size;
+        font-weight: 600;
+        color: touch.has-hover ? Tokens.text : Tokens.dim;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component Icon inherits Rectangle {
+    in property <GameRow> game;
+    width: Tokens.icon-size;
+    height: Tokens.icon-size;
+    border-radius: Tokens.icon-radius;
+    clip: true;
+    background: game.icon.width > 0 ? transparent : Tokens.hover;
+    Image {
+        width: parent.width;
+        height: parent.height;
+        source: game.icon;
+        image-fit: contain;
+    }
+    if game.icon.width == 0: Text {
+        text: game.initial;
+        font-size: Tokens.small-size;
+        font-weight: 600;
+        color: Tokens.dim;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
 component Row inherits Rectangle {
     in property <GameRow> game;
     in property <bool> picked;
+    in property <bool> acting;
+    in property <int> action;
+    in property <bool> renaming;
     callback activate();
     callback point();
+    callback more();
+    callback act(int);
+    callback renamed(string);
     height: Tokens.row-height;
     border-radius: Tokens.row-radius;
-    background: picked ? Tokens.pick : area.has-hover ? Tokens.hover : transparent;
+    background: (picked && !acting) || renaming ? Tokens.pick : area.has-hover && !acting ? Tokens.hover : transparent;
     animate background { duration: 120ms; }
-    HorizontalLayout {
-        padding-left: Tokens.inset;
+
+    area := TouchArea {
+        clicked => {
+            if (!root.acting && !root.renaming) {
+                root.activate();
+            }
+        }
+        moved => { root.point(); }
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.right && event.kind == PointerEventKind.down) {
+                root.more();
+            }
+        }
+    }
+
+    if !acting: HorizontalLayout {
+        padding-left: Tokens.inset - 4px;
         padding-right: Tokens.inset;
-        spacing: 12px;
-        Text {
+        padding-top: (Tokens.row-height - Tokens.icon-size) / 2;
+        padding-bottom: (Tokens.row-height - Tokens.icon-size) / 2;
+        spacing: 10px;
+        Icon { game: root.game; }
+        if !renaming: Text {
             text: game.name;
             font-size: Tokens.name-size;
             font-weight: 500;
@@ -75,16 +181,52 @@ component Row inherits Rectangle {
             horizontal-stretch: 1;
             overflow: elide;
         }
-        Text {
+        if renaming: TextInput {
+            text: game.name;
+            font-size: Tokens.name-size;
+            font-weight: 500;
+            color: Tokens.accent;
+            selection-background-color: Tokens.pick;
+            selection-foreground-color: Tokens.text;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            single-line: true;
+            init => {
+                self.focus();
+                self.select-all();
+            }
+            accepted => { root.renamed(self.text); }
+        }
+        if !renaming: Text {
             text: game.label;
             font-size: Tokens.small-size;
             color: Tokens.dim;
             vertical-alignment: center;
         }
     }
-    area := TouchArea {
-        clicked => { root.activate(); }
-        moved => { root.point(); }
+
+    if acting: HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        padding-top: (Tokens.row-height - Tokens.chip-height) / 2;
+        padding-bottom: (Tokens.row-height - Tokens.chip-height) / 2;
+        spacing: 4px;
+        alignment: start;
+        Chip {
+            text: game.new ? "Keep" : game.pinned ? "Unpin" : "Pin to top";
+            lit: root.action == 0;
+            clicked => { root.act(0); }
+        }
+        Chip {
+            text: "Rename";
+            lit: root.action == 1;
+            clicked => { root.act(1); }
+        }
+        Chip {
+            text: "Hide";
+            lit: root.action == 2;
+            clicked => { root.act(2); }
+        }
     }
 }
 
@@ -92,17 +234,28 @@ export component Panel inherits Window {
     in property <[Petal]> petals;
     in property <[GameRow]> games;
     in property <int> total;
+    in property <int> fresh;
     in property <string> query;
     in property <string> notice;
     in property <float> t;
     in property <bool> shown;
     in-out property <int> selected: 0;
+    // The row showing its actions, and which action is highlighted.
+    in-out property <int> acting: -1;
+    in-out property <int> action: 0;
+    in-out property <int> renaming: -1;
 
     callback launch(int);
     callback dismiss();
     callback typed(string);
     callback erased();
     callback ask-ai();
+    callback add-game();
+    callback pin(int);
+    callback rename(int, string);
+    callback hide-game(int);
+    callback keep-new();
+    callback hide-new();
 
     public function focus-keys() {
         keys.focus();
@@ -126,6 +279,27 @@ export component Panel inherits Window {
         }
     }
 
+    function act(row: int, which: int) {
+        root.acting = -1;
+        if (which == 0) {
+            root.pin(row);
+        } else if (which == 1) {
+            root.selected = row;
+            root.renaming = row;
+        } else {
+            root.hide-game(row);
+        }
+    }
+
+    function more(row: int) {
+        if (root.renaming >= 0) {
+            return;
+        }
+        root.selected = row;
+        root.acting = row;
+        root.action = 0;
+    }
+
     changed selected => {
         root.reveal();
     }
@@ -133,8 +307,48 @@ export component Panel inherits Window {
     keys := FocusScope {
         key-pressed(event) => {
             if (event.text == Key.Escape) {
-                root.dismiss();
+                if (root.renaming >= 0) {
+                    root.renaming = -1;
+                    keys.focus();
+                } else if (root.acting >= 0) {
+                    root.acting = -1;
+                } else {
+                    root.dismiss();
+                }
                 return accept;
+            }
+            // The name field takes what it needs; the rest must not move the list.
+            if (root.renaming >= 0) {
+                return accept;
+            }
+            if (event.text == Key.Tab || event.text == Key.Menu) {
+                if (root.acting >= 0) {
+                    root.action = Math.mod(root.action + 1, 3);
+                } else if (root.games.length > 0) {
+                    root.more(root.selected);
+                }
+                return accept;
+            }
+            if (event.text == Key.Backtab) {
+                if (root.acting >= 0) {
+                    root.action = Math.mod(root.action + 2, 3);
+                }
+                return accept;
+            }
+            if (root.acting >= 0) {
+                if (event.text == Key.RightArrow) {
+                    root.action = Math.min(root.action + 1, 2);
+                    return accept;
+                }
+                if (event.text == Key.LeftArrow) {
+                    root.action = Math.max(root.action - 1, 0);
+                    return accept;
+                }
+                if (event.text == Key.Return) {
+                    root.act(root.acting, root.action);
+                    return accept;
+                }
+                root.acting = -1;
             }
             if (event.text == Key.DownArrow) {
                 if (root.games.length > 0) {
@@ -203,26 +417,42 @@ export component Panel inherits Window {
                         color: Tokens.dim;
                         vertical-alignment: center;
                     }
-                    // Copies a prompt that explains Hanami to the user's AI.
-                    Rectangle {
-                        width: 18px;
-                        height: 18px;
-                        y: (parent.height - self.height) / 2;
-                        border-radius: self.height / 2;
-                        background: help.has-hover ? Tokens.hover : transparent;
-                        animate background { duration: 120ms; }
-                        Text {
-                            text: "?";
-                            font-size: Tokens.small-size;
-                            font-weight: 600;
-                            color: help.has-hover ? Tokens.text : Tokens.dim;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
+                    HorizontalLayout {
+                        spacing: 4px;
+                        alignment: center;
+                        add := Round {
+                            y: (parent.height - self.height) / 2;
+                            text: "+";
+                            clicked => { root.add-game(); }
                         }
-                        help := TouchArea {
-                            mouse-cursor: pointer;
+                        // Copies a prompt that explains Hanami to the user's AI.
+                        help := Round {
+                            y: (parent.height - self.height) / 2;
+                            text: "?";
                             clicked => { root.ask-ai(); }
                         }
+                    }
+                }
+
+                if root.fresh > 0 && root.query == "": HorizontalLayout {
+                    padding-left: Tokens.inset;
+                    spacing: 4px;
+                    Text {
+                        text: root.fresh == 1 ? "Found a new game" : "Found " + root.fresh + " new games";
+                        font-size: Tokens.small-size;
+                        color: Tokens.text;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                    }
+                    Chip {
+                        text: "Keep";
+                        font-size: Tokens.small-size;
+                        clicked => { root.keep-new(); }
+                    }
+                    Chip {
+                        text: "Hide";
+                        font-size: Tokens.small-size;
+                        clicked => { root.hide-new(); }
                     }
                 }
 
@@ -239,18 +469,32 @@ export component Panel inherits Window {
                             width: list.width;
                             game: game;
                             picked: i == root.selected;
+                            acting: i == root.acting;
+                            action: root.action;
+                            renaming: i == root.renaming;
                             activate => {
                                 root.selected = i;
                                 root.launch(i);
                             }
-                            point => { root.selected = i; }
+                            point => {
+                                if (root.acting < 0 && root.renaming < 0) {
+                                    root.selected = i;
+                                }
+                            }
+                            more => { root.more(i); }
+                            act(which) => { root.act(i, which); }
+                            renamed(name) => {
+                                root.renaming = -1;
+                                keys.focus();
+                                root.rename(i, name);
+                            }
                         }
                     }
 
                     if root.games.length == 0: Text {
                         width: parent.width;
                         height: parent.height;
-                        text: root.total == 0 ? "No games yet.\nAdd some in Hanami's settings." : "Nothing matches “" + root.query + "”.";
+                        text: root.total == 0 ? "No games yet.\nAdd one with +." : "Nothing matches “" + root.query + "”.";
                         font-size: Tokens.small-size;
                         color: Tokens.dim;
                         horizontal-alignment: center;
@@ -260,8 +504,11 @@ export component Panel inherits Window {
 
                 Text {
                     text: root.notice != "" ? root.notice
-                        : help.has-hover ? "Copy a prompt that explains Hanami to your AI"
-                        : "type to search  ·  enter to play  ·  esc to hide";
+                        : help.hovered ? "Copy a prompt that explains Hanami to your AI"
+                        : add.hovered ? "Add a game by picking its program"
+                        : root.renaming >= 0 ? "enter to save  ·  esc to cancel"
+                        : root.acting >= 0 ? "← → to choose  ·  enter to do it  ·  esc to go back"
+                        : "type to search  ·  enter to play  ·  tab for more";
                     font-size: Tokens.small-size;
                     color: root.notice == "" ? Tokens.dim : Tokens.text;
                     horizontal-alignment: center;

@@ -12,8 +12,10 @@ mod ipc;
 mod launch;
 mod net;
 mod snapshot;
+mod state;
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -27,7 +29,10 @@ use slint::winit_030::{EventResult, WinitWindowAccessor};
 use slint::{ComponentHandle, ModelRc, PhysicalPosition, Timer, TimerMode, VecModel};
 
 use config::{Config, OnLaunch};
+use find::Source;
+use games::key;
 use ipc::Request;
+use state::State;
 
 slint::include_modules!();
 
@@ -85,6 +90,9 @@ struct App {
     rows: Rc<VecModel<GameRow>>,
     games: RefCell<Vec<games::Game>>,
     shown: RefCell<Vec<usize>>,
+    /// Name keys of found games the user hasn't said yes or no to yet.
+    fresh: RefCell<HashSet<String>>,
+    state: RefCell<State>,
     query: RefCell<String>,
     config: RefCell<Config>,
     config_path: Option<PathBuf>,
@@ -115,6 +123,8 @@ impl App {
         log("show");
         self.focus_hidden_at.set(None);
         self.open.set(true);
+        self.panel.set_acting(-1);
+        self.panel.set_renaming(-1);
         self.had_focus.set(false);
         self.opened_at.set(Instant::now());
         self.fade.stop();
@@ -256,22 +266,46 @@ impl App {
                 Err(message) => self.notify(message),
             }
         }
-        let config = self.config.borrow();
-        let games = games::collect(&config, found(&config));
+        let (games, fresh) = listed(&self.config.borrow(), &self.state.borrow());
         self.panel.set_total(games.len() as i32);
+        self.panel.set_fresh(fresh.len() as i32);
         *self.games.borrow_mut() = games;
+        *self.fresh.borrow_mut() = fresh;
     }
 
     fn refilter(&self) {
         let games = self.games.borrow();
+        let fresh = self.fresh.borrow();
+        let favourites: HashSet<String> = self.config.borrow().favourites.iter().map(|name| key(name)).collect();
         let query = self.query.borrow();
         let shown = games::filter(&games, &query);
         self.rows.set_vec(
             shown
                 .iter()
-                .map(|&index| GameRow {
-                    name: games[index].name.as_str().into(),
-                    label: games[index].label.as_str().into(),
+                .map(|&index| {
+                    let game = &games[index];
+                    let name = key(&game.name);
+                    let (new, pinned) = (fresh.contains(&name), favourites.contains(&name));
+                    let mark = if new {
+                        "new"
+                    } else if pinned {
+                        "pinned"
+                    } else {
+                        ""
+                    };
+                    let label = match (mark, game.label.as_str()) {
+                        ("", label) | (label, "") => label.to_owned(),
+                        (mark, label) => format!("{mark} · {label}"),
+                    };
+                    let initial = game.name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().to_string());
+                    GameRow {
+                        name: game.name.as_str().into(),
+                        label: label.into(),
+                        icon: slint::Image::default(),
+                        initial: initial.unwrap_or_default().into(),
+                        pinned,
+                        new,
+                    }
                 })
                 .collect::<Vec<_>>(),
         );
@@ -280,19 +314,177 @@ impl App {
         *self.shown.borrow_mut() = shown;
     }
 
+    /// The game on `row` of the panel.
+    fn game(&self, row: i32) -> Option<games::Game> {
+        let index = *self.shown.borrow().get(usize::try_from(row).ok()?)?;
+        self.games.borrow().get(index).cloned()
+    }
+
+    /// Shows the list again after a change, with `name` highlighted.
+    fn relist(&self, name: &str) {
+        self.reload();
+        self.refilter();
+        let games = self.games.borrow();
+        if let Some(row) = self.shown.borrow().iter().position(|&index| key(&games[index].name) == key(name)) {
+            self.panel.set_selected(row as i32);
+        }
+    }
+
+    fn edit_settings(&self, change: impl FnOnce(&mut toml_edit::DocumentMut)) -> bool {
+        let Some(path) = &self.config_path else {
+            return false;
+        };
+        match config::edit(path, change) {
+            Ok(()) => true,
+            Err(message) => {
+                self.notify(message);
+                false
+            }
+        }
+    }
+
+    fn save_state(&self) {
+        if let Err(message) = self.state.borrow().save() {
+            log(&format!("couldn't save what was played: {message}"));
+        }
+    }
+
+    /// "Pin to top" and "Unpin", or "Keep" for a new find.
+    fn pin(&self, row: i32) {
+        let Some(game) = self.game(row) else { return };
+        let name = key(&game.name);
+        if self.fresh.borrow().contains(&name) {
+            self.state.borrow_mut().kept.insert(name);
+            self.save_state();
+        } else {
+            let pinned = self.config.borrow().favourites.iter().any(|favourite| key(favourite) == name);
+            if !self.edit_settings(|doc| {
+                if pinned {
+                    config::remove_name(doc, "favourites", &game.name);
+                } else {
+                    config::add_name(doc, "favourites", &game.name);
+                }
+            }) {
+                return;
+            }
+        }
+        self.relist(&game.name);
+    }
+
+    fn rename(&self, row: i32, name: &str) {
+        let Some(game) = self.game(row) else { return };
+        let name = name.trim();
+        if name.is_empty() || name == game.name {
+            return;
+        }
+        let original = games::original_name(&self.config.borrow(), &game.name).to_owned();
+        if !self.edit_settings(|doc| config::rename(doc, &original, &game.name, name)) {
+            return;
+        }
+        {
+            let mut state = self.state.borrow_mut();
+            if self.fresh.borrow().contains(&key(&game.name)) {
+                state.kept.insert(key(&game.name));
+            }
+            state.renamed(&game.name, name);
+        }
+        self.save_state();
+        self.relist(name);
+    }
+
+    fn hide_game(&self, row: i32) {
+        let Some(game) = self.game(row) else { return };
+        if self.edit_settings(|doc| config::add_name(doc, "hide", &game.name)) {
+            self.relist("");
+            self.notify(format!("Hid {}. It's listed under hide in the settings.", game.name));
+        }
+    }
+
+    fn keep_new(&self) {
+        let fresh = self.fresh.borrow().clone();
+        self.state.borrow_mut().kept.extend(fresh);
+        self.save_state();
+        self.relist("");
+    }
+
+    fn hide_new(&self) {
+        let names: Vec<String> = {
+            let fresh = self.fresh.borrow();
+            self.games
+                .borrow()
+                .iter()
+                .filter(|game| fresh.contains(&key(&game.name)))
+                .map(|game| game.name.clone())
+                .collect()
+        };
+        if self.edit_settings(|doc| names.iter().for_each(|name| config::add_name(doc, "hide", name))) {
+            self.relist("");
+            self.notify("Hidden. They're listed under hide in the settings.".into());
+        }
+    }
+
+    /// Asks for a program with the system's file picker, then adds it and
+    /// lets the user name it.
+    fn pick_game(&self) {
+        self.hide();
+        std::thread::spawn(|| {
+            let picked = rfd::FileDialog::new().set_title("Pick a game's program").pick_file();
+            if let Some(path) = picked {
+                let _ = slint::invoke_from_event_loop(move || with_app(|app| app.add_game(&path)));
+            }
+        });
+    }
+
+    fn add_game(self: &Rc<Self>, program: &Path) {
+        let name = games::readable(program);
+        let name = {
+            let config = self.config.borrow();
+            let taken = |name: &str| {
+                self.games.borrow().iter().any(|game| key(&game.name) == key(name))
+                    || config.hide.iter().any(|hidden| key(hidden) == key(name))
+            };
+            (1..)
+                .map(|n| if n == 1 { name.clone() } else { format!("{name} {n}") })
+                .find(|name| !taken(name))
+                .unwrap_or(name)
+        };
+        if !self.edit_settings(|doc| config::add_game(doc, &name, program, program.parent())) {
+            return;
+        }
+        self.show();
+        self.relist(&name);
+        self.panel.set_renaming(self.panel.get_selected());
+    }
+
     fn launch(&self, row: usize) {
-        let Some(&index) = self.shown.borrow().get(row) else { return };
+        let Some(&index) = self.shown.borrow().get(row) else {
+            return;
+        };
         let game = self.games.borrow()[index].clone();
         log(&format!("launch {}", game.name));
         match launch::start(&game.launch) {
-            Ok(()) => match self.config.borrow().on_launch {
-                OnLaunch::Hide => self.hide(),
-                OnLaunch::Keep => {}
-                OnLaunch::Quit => {
-                    let _ = slint::quit_event_loop();
+            Ok(()) => {
+                {
+                    let mut state = self.state.borrow_mut();
+                    state.played_now(&game.name);
+                    if self.fresh.borrow().contains(&key(&game.name)) {
+                        state.kept.insert(key(&game.name));
+                    }
                 }
-            },
+                self.save_state();
+                self.after_launch();
+            }
             Err(reason) => self.notify(format!("Couldn't start {}: {reason}", game.name)),
+        }
+    }
+
+    fn after_launch(&self) {
+        match self.config.borrow().on_launch {
+            OnLaunch::Hide => self.hide(),
+            OnLaunch::Keep => {}
+            OnLaunch::Quit => {
+                let _ = slint::quit_event_loop();
+            }
         }
     }
 
@@ -330,19 +522,36 @@ impl App {
     }
 }
 
-/// Every game found in the places the settings name.
-fn found(config: &Config) -> Vec<games::Game> {
-    let mut seen = Vec::new();
-    let mut games = Vec::new();
+/// Every game for the panel, in the order it shows them, and the name keys
+/// of new finds still waiting for a yes or no. Only ports and rewrites ask
+/// first; a game another place also lists isn't new.
+fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>) {
+    let mut sources = Vec::new();
+    let mut found = Vec::new();
+    let mut known: HashSet<String> = config.games.iter().map(|game| key(&game.name)).collect();
+    let mut fresh = HashSet::new();
     for &source in &config.find {
-        if !seen.contains(&source) {
-            seen.push(source);
-            let started = Instant::now();
-            games.extend(find::games(source));
-            log(&format!("looked in {source:?} in {} ms", started.elapsed().as_millis()));
+        if sources.contains(&source) {
+            continue;
         }
+        sources.push(source);
+        let started = Instant::now();
+        let games = find::games(source);
+        log(&format!("looked in {source:?} in {} ms", started.elapsed().as_millis()));
+        for game in &games {
+            let name = key(&game.name);
+            if source != Source::Ports {
+                known.insert(name);
+            } else if !state.kept.contains(&name) {
+                fresh.insert(name);
+            }
+        }
+        found.extend(games);
     }
-    games
+    let mut games = games::collect(config, found);
+    fresh.retain(|name| !known.contains(name) && games.iter().any(|game| key(&game.name) == *name));
+    games::order(&mut games, &fresh, &config.favourites, &state.played);
+    (games, fresh)
 }
 
 fn with_app(f: impl FnOnce(&Rc<App>)) {
@@ -402,6 +611,12 @@ fn connect_panel(panel: &Panel) {
     panel.on_launch(|row| with_app(|app| app.launch(row as usize)));
     panel.on_dismiss(|| with_app(|app| app.hide()));
     panel.on_ask_ai(|| with_app(|app| app.ask_ai()));
+    panel.on_add_game(|| with_app(|app| app.pick_game()));
+    panel.on_pin(|row| with_app(|app| app.pin(row)));
+    panel.on_rename(|row, name| with_app(|app| app.rename(row, &name)));
+    panel.on_hide_game(|row| with_app(|app| app.hide_game(row)));
+    panel.on_keep_new(|| with_app(|app| app.keep_new()));
+    panel.on_hide_new(|| with_app(|app| app.hide_new()));
     panel.on_typed(|text| {
         let typed: String = text.chars().filter(|c| !c.is_control()).collect();
         if !typed.is_empty() {
@@ -536,7 +751,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(message) = &problem {
             eprintln!("{message}");
         }
-        for game in games::collect(&config, found(&config)) {
+        for game in listed(&config, &State::load()).0 {
             println!("{}\t{}", game.name, game.label);
         }
         return Ok(());
@@ -591,6 +806,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rows,
         games: RefCell::default(),
         shown: RefCell::default(),
+        fresh: RefCell::default(),
+        state: RefCell::new(State::load()),
         query: RefCell::default(),
         config: RefCell::new(config),
         config_path,

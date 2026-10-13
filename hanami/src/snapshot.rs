@@ -39,8 +39,17 @@ pub fn render(path: &Path, scale: f32) -> Result<(), Box<dyn Error>> {
     window.set_size(PhysicalSize::new(width, height));
 
     let panel = Panel::new()?;
-    let rows: Vec<GameRow> =
-        SAMPLE.iter().map(|&(name, label)| GameRow { name: name.into(), label: label.into() }).collect();
+    let rows: Vec<GameRow> = SAMPLE
+        .iter()
+        .map(|&(name, label)| GameRow {
+            name: name.into(),
+            label: label.into(),
+            icon: slint::Image::default(),
+            initial: name[..1].into(),
+            pinned: false,
+            new: false,
+        })
+        .collect();
     panel.set_total(rows.len() as i32);
     panel.set_games(ModelRc::new(VecModel::from(rows)));
     panel.set_petals(ModelRc::new(VecModel::from(petals())));
