@@ -1,7 +1,7 @@
 # Maintainer: sjdsjadjajdjsa <https://github.com/sjdsjadjajdjsa>
 pkgname=hanami-bin
 _pkgname=hanami
-pkgver=0.2.6
+pkgver=0.2.7
 pkgrel=1
 pkgdesc="Game launcher in the tray: a small panel that lists your installed games"
 arch=('x86_64')
@@ -17,7 +17,7 @@ conflicts=("$_pkgname")
 source=("$_pkgname-$pkgver-linux-x86_64.tar.gz::https://github.com/sjdsjadjajdjsa/hanami/releases/download/v$pkgver/hanami-linux-x86_64.tar.gz"
         "$_pkgname-$pkgver.svg::https://raw.githubusercontent.com/sjdsjadjajdjsa/hanami/v$pkgver/assets/hanami-icon.svg"
         "$_pkgname.desktop")
-sha256sums=('db1d09a1a44cee0f446ce7f8930a2c483b979837d49a42a7d1271290ce80e8c4'
+sha256sums=('7b1aeb81acad357b163abb3ef4a60264d7e1f264a466ec58fa284a3257dab1f2'
             'd506fce091d95b5e747c2c4a6eae36a2c2fbf085e4923a05f8bca042240c0384'
             '27cb082f89105156905613696228a5d77c1c165279698929f37ce5500f418dcc')
 

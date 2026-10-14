@@ -1,6 +1,6 @@
 pkgbase = hanami-bin
 	pkgdesc = Game launcher in the tray: a small panel that lists your installed games
-	pkgver = 0.2.6
+	pkgver = 0.2.7
 	pkgrel = 1
 	url = https://hanami.lilygrove.dev
 	arch = x86_64
@@ -21,10 +21,10 @@ pkgbase = hanami-bin
 	optdepends = heroic-games-launcher-bin: find Epic, GOG and Amazon games
 	provides = hanami
 	conflicts = hanami
-	source = hanami-0.2.6-linux-x86_64.tar.gz::https://github.com/sjdsjadjajdjsa/hanami/releases/download/v0.2.6/hanami-linux-x86_64.tar.gz
-	source = hanami-0.2.6.svg::https://raw.githubusercontent.com/sjdsjadjajdjsa/hanami/v0.2.6/assets/hanami-icon.svg
+	source = hanami-0.2.7-linux-x86_64.tar.gz::https://github.com/sjdsjadjajdjsa/hanami/releases/download/v0.2.7/hanami-linux-x86_64.tar.gz
+	source = hanami-0.2.7.svg::https://raw.githubusercontent.com/sjdsjadjajdjsa/hanami/v0.2.7/assets/hanami-icon.svg
 	source = hanami.desktop
-	sha256sums = db1d09a1a44cee0f446ce7f8930a2c483b979837d49a42a7d1271290ce80e8c4
+	sha256sums = 7b1aeb81acad357b163abb3ef4a60264d7e1f264a466ec58fa284a3257dab1f2
 	sha256sums = d506fce091d95b5e747c2c4a6eae36a2c2fbf085e4923a05f8bca042240c0384
 	sha256sums = 27cb082f89105156905613696228a5d77c1c165279698929f37ce5500f418dcc
 
