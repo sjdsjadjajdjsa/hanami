@@ -7,7 +7,7 @@ use crate::games::Launch;
 
 pub fn start(launch: &Launch) -> Result<(), String> {
     match launch {
-        Launch::Open(link) => open::that_detached(link).map_err(describe),
+        Launch::Open(link) => open_link(link),
         Launch::Command { program, args, dir, env } => {
             let mut command = Command::new(program);
             command
@@ -31,6 +31,25 @@ pub fn start(launch: &Launch) -> Result<(), String> {
             Ok(())
         }
     }
+}
+
+/// xdg-open in a KDE session started without `KDE_SESSION_VERSION` falls back
+/// to the long-gone kfmclient and still reports success, so gio, which looks up
+/// the link's handler itself, goes first.
+#[cfg(target_os = "linux")]
+fn open_link(link: &str) -> Result<(), String> {
+    let mut gio = Command::new("gio");
+    gio.args(["open", "--", link]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    detach(&mut gio);
+    if gio.status().is_ok_and(|status| status.success()) {
+        return Ok(());
+    }
+    open::that_detached(link).map_err(describe)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn open_link(link: &str) -> Result<(), String> {
+    open::that_detached(link).map_err(describe)
 }
 
 fn describe(error: io::Error) -> String {
