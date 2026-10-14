@@ -476,9 +476,11 @@ impl App {
     /// Asks for a program with the system's file picker, then adds it and
     /// lets the user name it.
     fn pick_game(&self) {
+        log("asking for a program");
         self.hide();
         std::thread::spawn(|| {
             let picked = rfd::FileDialog::new().set_title("Pick a game's program").pick_file();
+            log(&format!("picked {picked:?}"));
             if let Some(path) = picked {
                 let _ = slint::invoke_from_event_loop(move || with_app(|app| app.add_game(&path)));
             }
