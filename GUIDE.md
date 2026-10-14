@@ -298,8 +298,8 @@ Then rebuild with `cargo build --release` (needs Rust).
 ## Known limits
 
 - The frosted blur needs KDE Plasma's Blur effect (System Settings, Desktop
-  Effects, Blur) on Linux. Elsewhere, Windows included, the panel is plain
-  see-through.
+  Effects, Blur) on Linux, on X11 or Wayland. Elsewhere, Windows included,
+  the panel is plain see-through.
 - Windows without a graphics driver (virtual machines, Remote Desktop) gets
   a solid panel drawn on the CPU. If the panel never shows on Windows, set
   the environment variable `HANAMI_RENDERER=software` to force that.

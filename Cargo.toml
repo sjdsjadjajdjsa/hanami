@@ -33,3 +33,7 @@ opt-level = 3
 opt-level = 3
 [profile.release.package.slint]
 opt-level = 3
+
+# See third_party/softbuffer/PATCH.md: see-through panel on Wayland.
+[patch.crates-io]
+softbuffer = { path = "third_party/softbuffer" }

@@ -32,6 +32,11 @@ use it in GUIDE.md.
   AUR package ready to publish, and a tray item when a new version is out.
 - **Open at login (0.2.5):** a tray menu item that adds or removes the login
   entry (autostart desktop file on Linux, the installer's Run key on Windows).
+- **KDE on Wayland (0.2.5):** the panel is see-through (a patched softbuffer,
+  see `third_party/softbuffer/PATCH.md`), gets KWin's frosted blur, stays out
+  of the taskbar and the window switcher, and the tray's hidden helper window
+  no longer shows up as a task. Checked on Kubuntu 26.04; GNOME on Wayland
+  is see-through too now.
 - **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 35 MB; open with
   petals 0-1 % CPU; looking through every game source takes a few
   milliseconds, the ports scan runs in the background.
@@ -56,9 +61,8 @@ use it in GUIDE.md.
 ## Next
 
 1. **Works everywhere:** still to check: Windows 10 and 11 on a real
-   machine or a VM (so far only Wine), KDE on Wayland without the taskbar
-   entry (needs KDE's own window protocol), and other desktops (MATE,
-   Budgie, LXQt, Hyprland).
+   machine or a VM (so far only Wine), and other desktops (MATE, Budgie,
+   LXQt, Hyprland).
 2. **Publish the AUR package** (`packaging/README.md` has the steps; needs
    an AUR account).
 3. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources

@@ -30,8 +30,9 @@ use std::time::{Duration, Instant};
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 use slint::winit_030::winit::event::WindowEvent;
-use slint::winit_030::winit::window::WindowAttributes;
-use slint::winit_030::{EventResult, WinitWindowAccessor};
+use slint::winit_030::winit::event_loop::ActiveEventLoop;
+use slint::winit_030::winit::window::{WindowAttributes, WindowId};
+use slint::winit_030::{CustomApplicationHandler, EventResult, WinitWindowAccessor};
 use slint::{ComponentHandle, Model, ModelRc, PhysicalPosition, Timer, TimerMode, VecModel};
 
 use config::{Config, OnLaunch};
@@ -197,8 +198,9 @@ impl App {
 
     /// Blur, taskbar and focus need the native window, which may not exist yet.
     fn focus(&self) {
+        let scale = self.panel.window().scale_factor();
         let (width, height) = self.physical_size();
-        let radius = (RADIUS as f32 * self.panel.window().scale_factor()) as u32;
+        let radius = (RADIUS as f32 * scale) as u32;
         let cut_corners = self.cut_corners;
         let panel = self.panel.as_weak();
         let _ = slint::spawn_local(async move {
@@ -210,7 +212,7 @@ impl App {
                     desktop::cut_corners(&*window, width, height, radius);
                 }
                 desktop::prepare(&*window);
-                desktop::blur_behind(&*window, width, height, radius);
+                desktop::blur_behind(&*window, WIDTH, HEIGHT, RADIUS, scale);
                 if !desktop::activate(&*window) {
                     window.focus_window();
                 }
@@ -712,6 +714,30 @@ fn connect_panel(panel: &Panel) {
     });
 }
 
+/// Runs `desktop::prepare` on every native window as soon as it exists.
+/// Wayland makes a fresh window for each show, and KDE wants to know before
+/// its first frame that it stays out of the taskbar. The tray keeps a window
+/// of its own that never shows, and KDE would list even that one.
+struct PrepareWindows;
+
+impl CustomApplicationHandler for PrepareWindows {
+    fn window_event(
+        &mut self,
+        _: &ActiveEventLoop,
+        _: WindowId,
+        window: Option<&slint::winit_030::winit::window::Window>,
+        _: Option<&slint::Window>,
+        event: &WindowEvent,
+    ) -> EventResult {
+        // The first configure of a window arrives as a resize; the panel never
+        // resizes otherwise.
+        if let (Some(window), WindowEvent::Resized(_)) = (window, event) {
+            desktop::prepare(window);
+        }
+        EventResult::Propagate
+    }
+}
+
 fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
     // A click on the icon toggles; "Open" in its menu always opens.
     tray.on_open_panel(|| with_app(|app| app.toggle()));
@@ -903,7 +929,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gpu = cfg!(windows)
         && std::env::var("HANAMI_RENDERER").map_or_else(|_| desktop::opengl_works(), |name| name != "software");
     log(if gpu { "drawing with OpenGL" } else { "drawing with the CPU" });
-    let mut backend = slint::BackendSelector::new().with_winit_window_attributes_hook(window_attributes);
+    let mut backend = slint::BackendSelector::new()
+        .with_winit_window_attributes_hook(window_attributes)
+        .with_winit_custom_application_handler(PrepareWindows);
     if cfg!(windows) {
         backend = backend.renderer_name(if gpu { "femtovg" } else { "software" }.into());
     }

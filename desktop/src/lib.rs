@@ -1,9 +1,9 @@
 //! Desktop glue the toolkit doesn't provide: blur behind the panel on KWin
-//! (X11), keeping the panel out of the taskbar, focusing it, and finding
-//! where to open it. Each function quietly does nothing where it has no
-//! support, so callers never need platform checks.
+//! (X11 and Wayland), keeping the panel out of the taskbar, focusing it, and
+//! finding where to open it. Each function quietly does nothing where it has
+//! no support, so callers never need platform checks.
 
-use raw_window_handle::HasWindowHandle;
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 /// Horizontal strips that together cover a `width` x `height` rectangle with
 /// corners rounded by `radius`, as KWin's blur region (x, y, w, h per strip).
@@ -42,7 +42,7 @@ pub fn return_memory() {
 /// Keeps `window` out of the taskbar and pager and above other windows.
 /// Call it before every show: X11 window managers forget these states when
 /// a window is hidden.
-pub fn prepare(window: &(impl HasWindowHandle + ?Sized)) -> bool {
+pub fn prepare(window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized)) -> bool {
     imp::prepare(window)
 }
 
@@ -66,9 +66,16 @@ pub fn cut_corners(window: &(impl HasWindowHandle + ?Sized), width: u32, height:
 }
 
 /// Asks the compositor to blur what is behind `window`, inside a rounded
-/// rectangle. Returns whether the request was accepted.
-pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
-    imp::blur_behind(window, width, height, radius)
+/// rectangle of `width` x `height` logical pixels with `radius` corners,
+/// drawn at `scale`. Returns whether the request was accepted.
+pub fn blur_behind(
+    window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
+    width: u32,
+    height: u32,
+    radius: u32,
+    scale: f32,
+) -> bool {
+    imp::blur_behind(window, width, height, radius, scale)
 }
 
 /// The icon inside a Windows program (or `.ico`, `.dll`) at about `px`
@@ -80,7 +87,7 @@ pub fn exe_icon(path: &std::path::Path, px: u32) -> Option<(u32, u32, Vec<u8>)> 
 
 #[cfg(target_os = "linux")]
 mod imp {
-    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawWindowHandle};
     use x11rb::CURRENT_TIME;
     use x11rb::connection::Connection;
     use x11rb::protocol::randr::ConnectionExt as _;
@@ -121,10 +128,10 @@ mod imp {
         Some(atoms)
     }
 
-    pub fn prepare(window: &(impl HasWindowHandle + ?Sized)) -> bool {
+    pub fn prepare(window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized)) -> bool {
         const ADD: u32 = 1;
         const FROM_APP: u32 = 1;
-        let Some(id) = x11_id(window) else { return false };
+        let Some(id) = x11_id(window) else { return wayland::prepare(window) };
         let Ok((conn, screen)) = x11rb::connect(None) else { return false };
         let Some(root) = conn.setup().roots.get(screen).map(|s| s.root) else { return false };
         let Some([state, skip_taskbar, skip_pager, above]) = atoms(
@@ -174,8 +181,16 @@ mod imp {
         None
     }
 
-    pub fn blur_behind(window: &(impl HasWindowHandle + ?Sized), width: u32, height: u32, radius: u32) -> bool {
-        let Some(id) = x11_id(window) else { return false };
+    pub fn blur_behind(
+        window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
+        width: u32,
+        height: u32,
+        radius: u32,
+        scale: f32,
+    ) -> bool {
+        let Some(id) = x11_id(window) else { return wayland::blur_behind(window, width, height, radius) };
+        let (width, height, radius) =
+            ((width as f32 * scale) as u32, (height as f32 * scale) as u32, (radius as f32 * scale) as u32);
         let Ok((conn, _)) = x11rb::connect(None) else { return false };
         let Some(atom) =
             conn.intern_atom(false, b"_KDE_NET_WM_BLUR_BEHIND_REGION").ok().and_then(|cookie| cookie.reply().ok())
@@ -189,6 +204,172 @@ mod imp {
             .ok()
             .is_some_and(|cookie| cookie.check().is_ok())
     }
+
+    /// KDE's own Wayland protocols, spoken over the toolkit's connection:
+    /// one plasma surface per window (asking twice is a protocol error that
+    /// ends the program) and one blur per window. KWin places new windows in
+    /// the middle of the screen by itself, as `centre_on_pointer` does on X11.
+    mod wayland {
+        use std::cell::RefCell;
+
+        use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
+        use wayland_backend::client::{Backend, ObjectId};
+        use wayland_client::protocol::wl_compositor::WlCompositor;
+        use wayland_client::protocol::wl_region::WlRegion;
+        use wayland_client::protocol::wl_registry::{self, WlRegistry};
+        use wayland_client::protocol::wl_surface::WlSurface;
+        use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, delegate_noop};
+        use wayland_protocols_plasma::blur::client::org_kde_kwin_blur::OrgKdeKwinBlur;
+        use wayland_protocols_plasma::blur::client::org_kde_kwin_blur_manager::OrgKdeKwinBlurManager;
+        use wayland_protocols_plasma::plasma_shell::client::org_kde_plasma_shell::OrgKdePlasmaShell;
+        use wayland_protocols_plasma::plasma_shell::client::org_kde_plasma_surface::OrgKdePlasmaSurface;
+
+        /// The globals Hanami uses, each with the name the registry gave it:
+        /// KWin takes the blur one away and brings it back as the Blur effect
+        /// is turned off and on.
+        #[derive(Default)]
+        struct Globals {
+            compositor: Option<WlCompositor>,
+            shell: Option<(u32, OrgKdePlasmaShell)>,
+            blur: Option<(u32, OrgKdeKwinBlurManager)>,
+        }
+
+        impl Dispatch<WlRegistry, ()> for Globals {
+            fn event(
+                state: &mut Self,
+                registry: &WlRegistry,
+                event: wl_registry::Event,
+                _: &(),
+                _: &Connection,
+                qh: &QueueHandle<Self>,
+            ) {
+                match event {
+                    wl_registry::Event::Global { name, interface, version } => match interface.as_str() {
+                        "wl_compositor" => state.compositor = Some(registry.bind(name, version.min(4), qh, ())),
+                        "org_kde_plasma_shell" => {
+                            state.shell = Some((name, registry.bind(name, version.min(8), qh, ())));
+                        }
+                        "org_kde_kwin_blur_manager" => state.blur = Some((name, registry.bind(name, 1, qh, ()))),
+                        _ => {}
+                    },
+                    wl_registry::Event::GlobalRemove { name } => {
+                        if state.shell.as_ref().is_some_and(|(known, _)| *known == name) {
+                            state.shell = None;
+                        }
+                        if state.blur.as_ref().is_some_and(|(known, _)| *known == name) {
+                            state.blur = None;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        delegate_noop!(Globals: ignore WlCompositor);
+        delegate_noop!(Globals: ignore WlRegion);
+        delegate_noop!(Globals: ignore OrgKdePlasmaShell);
+        delegate_noop!(Globals: ignore OrgKdePlasmaSurface);
+        delegate_noop!(Globals: ignore OrgKdeKwinBlurManager);
+        delegate_noop!(Globals: ignore OrgKdeKwinBlur);
+
+        struct Plasma {
+            conn: Connection,
+            queue: EventQueue<Globals>,
+            globals: Globals,
+            surfaces: Vec<(WlSurface, OrgKdePlasmaSurface)>,
+            blurs: Vec<(WlSurface, OrgKdeKwinBlur)>,
+        }
+
+        thread_local! {
+            static PLASMA: RefCell<Option<Plasma>> = const { RefCell::new(None) };
+        }
+
+        impl Plasma {
+            /// Joins the toolkit's connection the first time; None off Wayland.
+            fn with<T>(window: &(impl HasDisplayHandle + ?Sized), f: impl FnOnce(&mut Plasma) -> T) -> Option<T> {
+                PLASMA.with_borrow_mut(|slot| {
+                    if slot.is_none() {
+                        let RawDisplayHandle::Wayland(handle) = window.display_handle().ok()?.as_raw() else {
+                            return None;
+                        };
+                        // SAFETY: the display belongs to the toolkit's connection,
+                        // which outlives every window and this thread-local.
+                        let backend = unsafe { Backend::from_foreign_display(handle.display.as_ptr().cast()) };
+                        let conn = Connection::from_backend(backend);
+                        let mut queue = conn.new_event_queue();
+                        let mut globals = Globals::default();
+                        conn.display().get_registry(&queue.handle(), ());
+                        queue.roundtrip(&mut globals).ok()?;
+                        *slot = Some(Plasma { conn, queue, globals, surfaces: Vec::new(), blurs: Vec::new() });
+                    }
+                    let plasma = slot.as_mut()?;
+                    // Globals that came or went since last time.
+                    let _ = plasma.queue.dispatch_pending(&mut plasma.globals);
+                    Some(f(plasma))
+                })
+            }
+
+            fn surface(&self, window: &(impl HasWindowHandle + ?Sized)) -> Option<WlSurface> {
+                let RawWindowHandle::Wayland(handle) = window.window_handle().ok()?.as_raw() else { return None };
+                // SAFETY: the toolkit keeps the surface alive while the window exists,
+                // and the id remembers when it goes away.
+                let id = unsafe { ObjectId::from_ptr(WlSurface::interface(), handle.surface.as_ptr().cast()) }.ok()?;
+                WlSurface::from_id(&self.conn, id).ok()
+            }
+        }
+
+        pub fn prepare(window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized)) -> bool {
+            Plasma::with(window, |plasma| {
+                let Some(surface) = plasma.surface(window) else { return false };
+                plasma.surfaces.retain(|(known, _)| known.is_alive());
+                if plasma.surfaces.iter().any(|(known, _)| *known == surface) {
+                    return true;
+                }
+                let Some((_, shell)) = &plasma.globals.shell else { return false };
+                let plasma_surface = shell.get_surface(&surface, &plasma.queue.handle(), ());
+                plasma_surface.set_skip_taskbar(1);
+                if shell.version() >= 5 {
+                    plasma_surface.set_skip_switcher(1);
+                }
+                plasma.surfaces.push((surface, plasma_surface));
+                plasma.conn.flush().is_ok()
+            })
+            .unwrap_or(false)
+        }
+
+        pub fn blur_behind(
+            window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
+            width: u32,
+            height: u32,
+            radius: u32,
+        ) -> bool {
+            Plasma::with(window, |plasma| {
+                let Some(surface) = plasma.surface(window) else { return false };
+                let (Some(compositor), Some((_, manager))) = (&plasma.globals.compositor, &plasma.globals.blur) else {
+                    return false;
+                };
+                let qh = plasma.queue.handle();
+                plasma.blurs.retain(|(known, _)| known.is_alive());
+                let blur = match plasma.blurs.iter().find(|(known, _)| *known == surface) {
+                    Some((_, blur)) => blur.clone(),
+                    None => {
+                        let blur = manager.create(&surface, &qh, ());
+                        plasma.blurs.push((surface, blur.clone()));
+                        blur
+                    }
+                };
+                let region = compositor.create_region(&qh, ());
+                for strip in super::super::rounded_region(width, height, radius).chunks(4) {
+                    region.add(strip[0] as i32, strip[1] as i32, strip[2] as i32, strip[3] as i32);
+                }
+                blur.set_region(Some(&region));
+                blur.commit();
+                region.destroy();
+                plasma.conn.flush().is_ok()
+            })
+            .unwrap_or(false)
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -198,7 +379,7 @@ mod imp {
     use std::path::Path;
     use std::ptr::{null, null_mut};
 
-    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::Foundation::{HWND, POINT};
     use windows_sys::Win32::Graphics::Gdi::{
         BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateRoundRectRgn, DIB_RGB_COLORS, DeleteDC,
@@ -400,7 +581,7 @@ mod imp {
 
     // Taskbar, rounding and Acrylic are window attributes on Windows, set
     // when the window is created; focus works through winit.
-    pub fn prepare(_window: &(impl HasWindowHandle + ?Sized)) -> bool {
+    pub fn prepare(_window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized)) -> bool {
         true
     }
 
@@ -408,14 +589,20 @@ mod imp {
         false
     }
 
-    pub fn blur_behind(_window: &(impl HasWindowHandle + ?Sized), _width: u32, _height: u32, _radius: u32) -> bool {
+    pub fn blur_behind(
+        _window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
+        _width: u32,
+        _height: u32,
+        _radius: u32,
+        _scale: f32,
+    ) -> bool {
         false
     }
 }
 
 #[cfg(not(any(target_os = "linux", windows)))]
 mod imp {
-    use raw_window_handle::HasWindowHandle;
+    use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
     pub fn centre_on_pointer(_width: u32, _height: u32, _scale: f32) -> Option<(i32, i32)> {
         None
@@ -433,7 +620,7 @@ mod imp {
         false
     }
 
-    pub fn prepare(_window: &(impl HasWindowHandle + ?Sized)) -> bool {
+    pub fn prepare(_window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized)) -> bool {
         false
     }
 
@@ -441,7 +628,13 @@ mod imp {
         false
     }
 
-    pub fn blur_behind(_window: &(impl HasWindowHandle + ?Sized), _width: u32, _height: u32, _radius: u32) -> bool {
+    pub fn blur_behind(
+        _window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
+        _width: u32,
+        _height: u32,
+        _radius: u32,
+        _scale: f32,
+    ) -> bool {
         false
     }
 }
