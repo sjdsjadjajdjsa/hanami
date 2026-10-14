@@ -59,12 +59,13 @@ impl Found {
     }
 }
 
-/// Heroic's downloaded art: `images-cache/<sha256 of the picture's URL>`.
-/// Epic covers are fetched with a resize query, so both forms are tried.
+/// Heroic's downloaded art: `images-cache/<sha256 of the picture's URL>`
+/// (src/backend/images_cache.ts). The library asks for Epic covers with a
+/// resize query and the game page for a bigger one, so all forms are tried.
 fn cached_art(root: &Path, urls: &[&str]) -> Option<PathBuf> {
     let cache = root.join("images-cache");
     urls.iter()
-        .flat_map(|url| [url.to_string(), format!("{url}?h=400&resize=1&w=300")])
+        .flat_map(|url| [url.to_string(), format!("{url}?h=400&resize=1&w=300"), format!("{url}?h=800&resize=1&w=600")])
         .map(|url| cache.join(hex(&Sha256::digest(url.as_bytes()))))
         .find(|path| path.is_file())
 }
