@@ -10,6 +10,7 @@ mod find;
 mod gamepad;
 mod games;
 mod guide;
+#[cfg(all(unix, not(target_vendor = "apple")))]
 mod hotkey;
 mod icons;
 mod ipc;
@@ -812,7 +813,8 @@ fn edit(path: &Path) -> std::io::Result<()> {
 /// UI thread; a problem there reaches the panel as a notice.
 fn register_hotkey(text: &str) -> Result<Option<GlobalHotKeyManager>, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
-    if cfg!(all(unix, not(target_vendor = "apple"))) && std::env::var_os("WAYLAND_DISPLAY").is_some() {
+    #[cfg(all(unix, not(target_vendor = "apple")))]
+    if std::env::var_os("WAYLAND_DISPLAY").is_some() {
         let text = text.to_owned();
         std::thread::spawn(move || {
             let result = hotkey::bind(&text);

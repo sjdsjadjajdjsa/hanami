@@ -85,7 +85,6 @@ impl Keys {
     }
 }
 
-#[cfg(all(unix, not(target_vendor = "apple")))]
 mod platform {
     use std::process::Command;
 
@@ -209,13 +208,6 @@ mod platform {
     }
 }
 
-#[cfg(not(all(unix, not(target_vendor = "apple"))))]
-mod platform {
-    pub fn bind(_text: &str) -> Result<&'static str, String> {
-        Err("No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".into())
-    }
-}
-
 pub use platform::bind;
 
 #[cfg(test)]
@@ -235,7 +227,6 @@ mod tests {
         assert_eq!(parse("Ctrl+Alt+1").unwrap().qt(), 0x0C00_0031);
     }
 
-    #[cfg(all(unix, not(target_vendor = "apple")))]
     #[test]
     fn gsettings_values_are_quoted() {
         assert_eq!(super::platform::literal("Hanami"), "'Hanami'");
