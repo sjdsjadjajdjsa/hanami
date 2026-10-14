@@ -40,6 +40,10 @@ Download the newest version from
   admin rights), adds a Start menu entry and can start Hanami with Windows.
   `hanami-windows-x86_64.zip` is the same program without an installer.
 
+Each release also has a `SHA256SUMS` file and a signed record of how every
+file was built; [SECURITY.md](SECURITY.md) says how to check a download and
+how to report a security problem.
+
 Hanami says in its tray menu when a newer version is out; it never updates
 itself. To start it with your computer on Linux, add `hanami --hidden` to
 your startup programs ([how](GUIDE.md#starting-with-the-computer)).
