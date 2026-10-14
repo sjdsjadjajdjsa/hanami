@@ -46,3 +46,4 @@ windows-sys = { version = "0.61", features = ["Win32_System_Console", "Win32_UI_
 
 [build-dependencies]
 slint-build = "1.18"
+winresource = "0.1"
