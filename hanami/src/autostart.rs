@@ -75,8 +75,8 @@ mod platform {
 #[cfg(windows)]
 mod platform {
     use super::program;
-    use winreg::RegKey;
     use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
+    use winreg::RegKey;
 
     const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
@@ -98,6 +98,30 @@ mod platform {
             match key.delete_value("Hanami") {
                 Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(format!("Couldn't clear the Run key: {e}")),
                 _ => Ok(()),
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        /// Runs against the real Run key of whoever runs the tests, and puts
+        /// back what was there.
+        #[test]
+        fn the_run_key_is_set_and_cleared() {
+            let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(RUN, KEY_READ | KEY_WRITE).unwrap();
+            let before: Option<String> = key.get_value("Hanami").ok();
+            set(true).unwrap();
+            assert!(enabled());
+            let command: String = key.get_value("Hanami").unwrap();
+            assert!(command.starts_with('"') && command.ends_with("\" --hidden"), "{command}");
+            assert!(std::path::Path::new(&command[1..command.len() - 10]).exists(), "{command}");
+            set(false).unwrap();
+            assert!(!enabled());
+            set(false).unwrap();
+            if let Some(before) = before {
+                key.set_value("Hanami", &before).unwrap();
             }
         }
     }
