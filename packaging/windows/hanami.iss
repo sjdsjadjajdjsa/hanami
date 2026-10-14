@@ -19,6 +19,8 @@ AppName=Hanami
 AppVersion={#Version}
 AppVerName=Hanami {#Version}
 AppPublisher=Hanami
+AppCopyright=Hanami contributors, GPL-3.0-or-later
+VersionInfoDescription=Hanami installer
 AppPublisherURL=https://hanami.lilygrove.dev
 AppSupportURL=https://github.com/sjdsjadjajdjsa/hanami
 AppUpdatesURL=https://github.com/sjdsjadjajdjsa/hanami/releases
@@ -46,7 +48,7 @@ RestartApplications=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "startup"; Description: "Start Hanami when Windows starts"
+Name: "startup"; Description: "Start Hanami when Windows starts"; Flags: unchecked
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 
 [Files]
@@ -70,7 +72,8 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "{app}\hanami.exe"; Description: "Start Hanami now"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM hanami.exe"; Flags: runhidden; RunOnceId: "QuitHanami"
+; Asks a running Hanami to close (and waits for it) so its file can go.
+Filename: "{app}\hanami.exe"; Parameters: "--quit"; Flags: runhidden waituntilterminated; RunOnceId: "QuitHanami"
 
 [UninstallDelete]
 ; Hanami's cache (the once-a-day update check stamp). Settings in

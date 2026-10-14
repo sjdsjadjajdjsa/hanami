@@ -30,10 +30,11 @@ leaves it out even when an AppImage tool installs it under another name.
 
 - per user (`PrivilegesRequired=lowest`), into `%LOCALAPPDATA%\Programs\Hanami`
 - Start menu shortcut, optional desktop shortcut
-- a ticked-by-default task "Start Hanami when Windows starts" that writes
+- a task "Start Hanami when Windows starts", off unless ticked, that writes
   `"...\hanami.exe" --hidden` to `HKCU\...\CurrentVersion\Run`; running the
   installer again with the box unticked removes it
-- uninstall removes the program, shortcuts, the Run entry and
+- uninstall first asks a running Hanami to close (`hanami.exe --quit`),
+  then removes the program, shortcuts, the Run entry and
   `%LOCALAPPDATA%\hanami` (the update stamp); settings in `%APPDATA%\hanami`
   stay
 

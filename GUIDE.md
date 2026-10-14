@@ -17,7 +17,7 @@ Downloads are at <https://github.com/sjdsjadjajdjsa/hanami/releases/latest>.
 - **Windows, installer:** `hanami-setup-x86_64.exe`. It installs for the
   current user only (no admin rights) into `%LOCALAPPDATA%\Programs\Hanami`,
   adds Hanami to the Start menu and offers a box "Start Hanami when Windows
-  starts" (ticked by default; it runs `hanami.exe --hidden` after sign-in).
+  starts" (off unless you tick it; it runs `hanami.exe --hidden` after sign-in).
   Uninstall from Settings, Apps; that removes the program, the shortcut, the
   startup entry and Hanami's cache, and leaves your settings file.
 - **Windows, portable:** `hanami-windows-x86_64.zip`. Unpack it anywhere and
@@ -266,6 +266,7 @@ Games started by Hanami keep running when Hanami closes.
 | `hanami` | open the panel (starts Hanami if needed) |
 | `hanami --hidden` | start in the tray only; use this to start with the computer |
 | `hanami --toggle` | open or close the panel |
+| `hanami --quit` | close the running Hanami (the tray menu's Quit does the same) |
 | `hanami --list` | print every game the panel would show, with its label (with `--verbose`, also its icon file) |
 | `hanami --guide` | print the AI prompt the **?** button copies |
 | `hanami --verbose` | print what happens (opening, focus, where games were found, how long the ports search took) for bug reports |

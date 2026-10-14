@@ -37,7 +37,8 @@ Download the newest version from
 - **Linux:** `hanami-x86_64.AppImage`. Mark it executable and run it. There
   is also `hanami-linux-x86_64.tar.gz` with the plain binary.
 - **Windows:** `hanami-setup-x86_64.exe`. It installs for your user only (no
-  admin rights), adds a Start menu entry and can start Hanami with Windows.
+  admin rights), adds a Start menu entry and, if you tick the box, starts
+  Hanami with Windows.
   `hanami-windows-x86_64.zip` is the same program without an installer.
 
 Each release also has a `SHA256SUMS` file and a signed record of how every

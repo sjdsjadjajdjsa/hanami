@@ -69,6 +69,7 @@ hanami: a small game launcher
   hanami --toggle   open or hide the panel; bind this to a key in your
                     desktop's shortcut settings if the built-in hotkey
                     can't work there (Wayland)
+  hanami --quit     close the running Hanami
   hanami --list     print the games the panel would show
   hanami --guide    print the prompt the ? button copies, for your AI
   hanami --verbose  print what happens, for bug reports
@@ -581,6 +582,9 @@ impl App {
             Request::Open => self.show(),
             Request::Toggle => self.toggle(),
             Request::Nothing => {}
+            Request::Quit => {
+                let _ = slint::quit_event_loop();
+            }
         }
     }
 
@@ -803,6 +807,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     VERBOSE.store(flag("--verbose"), Ordering::Relaxed);
+    // Before anything else, so the uninstaller's `--quit` never writes settings.
+    if flag("--quit") {
+        if !ipc::quit_running()? {
+            log("Hanami wasn't running");
+        }
+        return Ok(());
+    }
 
     let config_path = config::path();
     let initial = config_path.as_deref().map(config::load).unwrap_or(Ok(Config::default()));

@@ -12,6 +12,7 @@ pub enum Request {
     Open,
     Toggle,
     Nothing,
+    Quit,
 }
 
 impl Request {
@@ -20,11 +21,14 @@ impl Request {
             Request::Open => "open",
             Request::Toggle => "toggle",
             Request::Nothing => "nothing",
+            Request::Quit => "quit",
         }
     }
 
     fn from_word(word: &str) -> Option<Self> {
-        [Request::Open, Request::Toggle, Request::Nothing].into_iter().find(|request| request.word() == word)
+        [Request::Open, Request::Toggle, Request::Nothing, Request::Quit]
+            .into_iter()
+            .find(|request| request.word() == word)
     }
 }
 
@@ -65,6 +69,21 @@ pub fn claim(request: Request, handle: impl Fn(Request) + Send + 'static) -> io:
     }
 }
 
+/// Asks the running copy to quit and waits up to five seconds for it to be
+/// gone, so its files can be replaced or removed right after. Returns
+/// whether one was running.
+pub fn quit_running() -> io::Result<bool> {
+    let Ok(stream) = Stream::connect(name()?) else { return Ok(false) };
+    send(stream, Request::Quit)?;
+    for _ in 0..50 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if Stream::connect(name()?).is_err() {
+            break;
+        }
+    }
+    Ok(true)
+}
+
 fn send(mut stream: Stream, request: Request) -> io::Result<()> {
     allow_focus();
     stream.write_all(format!("{}\n", request.word()).as_bytes())
@@ -95,9 +114,9 @@ mod tests {
 
     #[test]
     fn words_round_trip() {
-        for request in [Request::Open, Request::Toggle, Request::Nothing] {
+        for request in [Request::Open, Request::Toggle, Request::Nothing, Request::Quit] {
             assert_eq!(Request::from_word(request.word()), Some(request));
         }
-        assert_eq!(Request::from_word("quit"), None);
+        assert_eq!(Request::from_word("delete"), None);
     }
 }
