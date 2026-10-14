@@ -10,6 +10,7 @@ mod find;
 mod gamepad;
 mod games;
 mod guide;
+mod hotkey;
 mod icons;
 mod ipc;
 mod launch;
@@ -69,8 +70,8 @@ hanami: a small game launcher
   hanami            open the panel (starts Hanami if it isn't running)
   hanami --hidden   start in the tray without opening the panel
   hanami --toggle   open or hide the panel; bind this to a key in your
-                    desktop's shortcut settings if the built-in hotkey
-                    can't work there (Wayland)
+                    desktop's shortcut settings on a Wayland desktop
+                    other than KDE Plasma or GNOME
   hanami --quit     close the running Hanami
   hanami --list     print the games the panel would show
   hanami --guide    print the prompt the ? button copies, for your AI
@@ -805,13 +806,25 @@ fn edit(path: &Path) -> std::io::Result<()> {
     }
 }
 
-/// The manager must stay alive for the hotkey to keep working.
-fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
+/// The manager must stay alive for the hotkey to keep working. On Wayland
+/// no app can grab a key itself (registering through Xwayland would succeed
+/// and never fire), so the desktop is asked for the key instead, off the
+/// UI thread; a problem there reaches the panel as a notice.
+fn register_hotkey(text: &str) -> Result<Option<GlobalHotKeyManager>, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
-    // Wayland gives no app a global key. Registering through Xwayland would
-    // succeed and then never fire, so say so instead.
     if cfg!(all(unix, not(target_vendor = "apple"))) && std::env::var_os("WAYLAND_DISPLAY").is_some() {
-        return Err("Wayland has no hotkey: bind hanami --toggle to a key".into());
+        let text = text.to_owned();
+        std::thread::spawn(move || {
+            let result = hotkey::bind(&text);
+            let _ = slint::invoke_from_event_loop(move || match result {
+                Ok(desktop) => log(&format!("{text} set up through {desktop}")),
+                Err(problem) => {
+                    log(&problem);
+                    with_app(|app| *app.hotkey_problem.borrow_mut() = Some(problem));
+                }
+            });
+        });
+        return Ok(None);
     }
     let manager = GlobalHotKeyManager::new().map_err(|_| {
         "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string()
@@ -830,7 +843,7 @@ fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
             HotKeyState::Pressed => {}
         }
     }));
-    Ok(manager)
+    Ok(Some(manager))
 }
 
 /// Windows apps built without a console print nowhere; when started from a

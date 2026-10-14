@@ -47,16 +47,17 @@ use it in GUIDE.md.
 
   | Desktop | Tray | Panel | Hotkey |
   |---|---|---|---|
-  | Kubuntu 26.04, KDE Plasma, Wayland | yes, click opens | yes (fixed, see below); shows in the taskbar | no (Wayland) |
-  | Ubuntu 26.04, GNOME, Wayland | yes (Ubuntu's indicator), click shows the menu | yes (fixed) | no (Wayland) |
-  | Fedora 44, GNOME, Wayland | none: stock GNOME has no tray | yes (fixed) | no (Wayland) |
+  | Kubuntu 26.04, KDE Plasma, Wayland | yes, click opens | yes (fixed, see below) | yes (since 0.2.6) |
+  | Ubuntu 26.04, GNOME, Wayland | yes (Ubuntu's indicator), click shows the menu | yes (fixed) | yes (since 0.2.6) |
+  | Fedora 44, GNOME, Wayland | none: stock GNOME has no tray | yes (fixed) | yes (since 0.2.6, same way as Ubuntu; not re-checked) |
   | Xubuntu 26.04, Xfce, X11 | yes, click shows the menu | yes | yes |
   | Linux Mint 22.3, Cinnamon, X11 | yes, click opens | yes | yes |
 
   Found and fixed: on Wayland, a Hanami started `--hidden` (the normal way)
-  never showed its panel; v0.2.3 has this bug on KDE and GNOME. On Wayland
-  the panel now says once to bind `hanami --toggle` to a key, since no app
-  can have a global hotkey there.
+  never showed its panel; v0.2.3 has this bug on KDE and GNOME. Since 0.2.6
+  the hotkey works on KDE Plasma and GNOME under Wayland too: Hanami adds it
+  to the desktop's own shortcuts. Elsewhere on Wayland the panel says once
+  to bind `hanami --toggle` to a key.
 
 ## Next
 

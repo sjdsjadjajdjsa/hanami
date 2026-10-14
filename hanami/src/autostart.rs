@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 /// The program to start: the AppImage itself when running from one.
-fn program() -> Result<PathBuf, String> {
+pub fn program() -> Result<PathBuf, String> {
     if let Some(image) = std::env::var_os("APPIMAGE") {
         return Ok(PathBuf::from(image));
     }
@@ -75,8 +75,8 @@ mod platform {
 #[cfg(windows)]
 mod platform {
     use super::program;
-    use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
     use winreg::RegKey;
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
 
     const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
@@ -111,7 +111,8 @@ mod platform {
         #[test]
         fn the_run_key_is_set_and_cleared() {
             // A fresh account has no Run key yet.
-            let (key, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey_with_flags(RUN, KEY_READ | KEY_WRITE).unwrap();
+            let (key, _) =
+                RegKey::predef(HKEY_CURRENT_USER).create_subkey_with_flags(RUN, KEY_READ | KEY_WRITE).unwrap();
             let before: Option<String> = key.get_value("Hanami").ok();
             set(true).unwrap();
             assert!(enabled());

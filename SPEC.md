@@ -14,7 +14,7 @@ for Linux and Windows.
 2. **Opens and closes on demand.** Tray click, the built-in hotkey (default
    `Ctrl+Alt+H`, changeable), or `hanami --toggle` bound to a key in the
    desktop's own shortcut settings (needed on Wayland, where apps can't grab
-   keys). The panel opens centred on the screen the mouse is on, with
+   keys; on KDE Plasma and GNOME Hanami adds that binding itself). The panel opens centred on the screen the mouse is on, with
    keyboard focus, fading in over 140 ms. It never shows in the taskbar.
 3. **Finds games by itself**, from every place in the `find` setting, and
    lists each game once, alphabetically, with a small label saying where it

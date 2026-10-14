@@ -39,8 +39,9 @@ version it saw in `~/.cache/hanami/latest` (Windows:
   settings, Open at login, Quit, and "Get Hanami X.Y.Z" when a newer
   version is out.
 - **Command:** `hanami --toggle` opens or closes it. On Wayland, apps can't
-  grab keys themselves, so bind this command to a key in the desktop's own
-  keyboard shortcut settings.
+  grab keys themselves: on KDE Plasma and GNOME, Hanami adds its hotkey to
+  the desktop's own keyboard shortcuts for you (it shows up there as
+  "Hanami"); on other Wayland desktops bind this command to a key yourself.
 - **Game controller:** hold Start and Select (the two small middle buttons;
   Menu and View on an Xbox pad, Options and Share or Create on a PlayStation
   pad) together for half a second. The same hold closes it again. See

@@ -52,7 +52,7 @@ menu.
 ## Use
 
 - **Open and close:** `Ctrl+Alt+H`, a click on the tray icon, or
-  `hanami --toggle` (bind that to a key on Wayland).
+  `hanami --toggle`.
 - **Pick a game:** type to search, arrows and Enter, or click.
 - **More for one game:** Tab or right-click: Pin to top, Rename, Hide.
 - **Add a game:** the **+** button.
