@@ -6,16 +6,17 @@ nothing borrowed).
     python3 docs/video.py hanami.mp4
     python3 docs/video.py --tall hanami-tall.mp4
 
-Writes the video (60 fps, 11 seconds) and a thumbnail next to it: 1920 x 1080
+Writes the video (60 fps, 18 seconds) and a thumbnail next to it: 1920 x 1080
 for YouTube, or 1080 x 1920 with --tall for Shorts, TikTok and Reels. Needs
-Rust, ffmpeg, Pillow, NumPy and SciPy, KDE Plasma with Spectacle and Dolphin
-for the desktop, and a minute or two. Frames are kept
+Rust, ffmpeg, Pillow, NumPy and SciPy; KDE Plasma with Konsole and Spectacle
+for the desktop; Claude Code for the terminal (`claude` on PATH, or
+CLAUDE=/path/to/claude; no account needed); and a few minutes. Frames are kept
 in ~/.cache/hanami-video while it runs.
 """
 
 import functools
+import http.server
 import json
-import textwrap
 import math
 import multiprocessing
 import os
@@ -24,12 +25,14 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
+import threading
+import time
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from scipy.io import wavfile
-from fontTools.ttLib import TTFont
 from scipy.signal import butter, fftconvolve, istft, sosfilt, stft
 
 HERE = Path(__file__).parent
@@ -46,6 +49,7 @@ CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hanami
 
 TEXT = (236, 230, 238)
 DIM = (155, 147, 163)
+SUB = (226, 220, 232)
 ACCENT = (244, 182, 200)
 INK = (23, 20, 29)
 
@@ -66,7 +70,7 @@ CAPTIONS = [
     (b(2.0), b(5.25), "Every game,\none key away.", "Steam, Epic, GOG, Heroic and more."),
     (b(5.5), b(8.5), "Find any game\nin a keystroke.", "First letters and small typos work too."),
     (b(8.75), b(12.0), "Your list,\nyour way.", "Pin, rename or hide any game."),
-    (b(12.5), b(20.75), "Questions?\nAsk your AI.", "The ? button copies a guide it can read."),
+    (b(12.5), b(17.5), "Questions?\nAsk your AI.", "The ? button copies a guide it can read."),
 ]
 TYPED = [(b(5.5), "h"), (b(6.0), "hk"), (b(8.0), "h"), (b(8.25), "")]
 DOWNS = [b(8.75), b(9.0), b(9.25)]
@@ -76,8 +80,7 @@ CLICKS = [at for at, _ in TYPED] + DOWNS + [TAB, ENTER]
 # the panel; the prompt is pasted into Claude Code there and sent.
 ASK, AWAY = b(13.5), b(15.0)
 PASTE, SEND = b(16.0), b(16.75)
-TOOL, ANSWER, DONE = b(17.5), b(18.25), b(20.5)
-END = b(21.5)
+END = b(23.5)
 LENGTH = END + 2.65
 FRAMES = round(LENGTH * FPS)
 
@@ -112,8 +115,9 @@ MINIMISE = """for (const w of workspace.windowList()) {
     }
 }
 """
-# The terminal is captured on its own, then minimised, so the taskbar shows
-# it running; the video puts it back on the right of the screen.
+# Claude Code is captured on its own as the scene plays: idle, with the
+# prompt pasted, then a few times a second after Enter. Then the terminal is
+# minimised, so the taskbar shows it running, and the desktop is captured.
 SESSION = """#!/bin/sh
 plasmashell --no-respawn &
 sleep 10
@@ -125,9 +129,21 @@ sleep 2
 kquitapp6 plasmashell
 plasmashell --no-respawn &
 env -u WAYLAND_DISPLAY '{hanami}' --hidden &
-konsole --hide-menubar -qwindowgeometry {size} -e '{claude}' &
-sleep 10
-spectacle --background --nonotify --activewindow --output '{window}'
+konsole --hide-menubar --profile Video -qwindowgeometry {size} -e '{claude}' &
+sleep 12
+shot() {{
+    spectacle --background --nonotify --activewindow --output '{shots}'/$1.png
+    echo "$1 $(date +%s.%N)" >> '{shots}/times'
+}}
+shot idle
+terminal=$(qdbus6 | grep -m1 org.kde.konsole)
+qdbus6 $terminal /Sessions/1 org.kde.konsole.Session.sendText "$(cat '{paste}')"
+sleep 1
+shot pasted
+echo "enter $(date +%s.%N)" >> '{shots}/times'
+qdbus6 $terminal /Sessions/1 org.kde.konsole.Session.sendText "$(printf '\\r')"
+n=100
+while [ $n -lt 130 ]; do shot $n; n=$((n + 1)); done
 dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \\
     string:'{minimise}' string:minimise > /dev/null
 dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.start > /dev/null
@@ -155,7 +171,9 @@ LAYOUTS = {
             (REVEAL + 0.9, 790, 540, 1.7),
             (b(14.75), 780, 540, 1.76),
             (b(15.75), 1260, 457, 1.55),
-            (END - 0.2, 1262, 460, 1.57),
+            (b(18.5), 1260, 457, 1.55),
+            (b(19.75), 1371, 457, 1.75),
+            (END - 0.2, 1371, 459, 1.76),
             (END + 0.8, 960, 540, 1.0),
         ],
         words=(148, 400),
@@ -385,171 +403,236 @@ def keycap(label, pressed):
 
 # --- The terminal ------------------------------------------------------------
 
-TERM_BG = (35, 38, 39)
-TERM_TEXT = (252, 252, 252)
-TERM_DIM = (153, 153, 153)
-CLAUDE = (215, 119, 87)
-GREEN = (78, 186, 101)
-# Konsole's default font, Hack at 10 pt, and its line height.
-TERM_SIZE, TERM_LINE = 40 / 3, 16
-TERM_FONTS = ("Hack", "DejaVu Sans Mono", "Noto Sans Symbols", "Noto Sans Symbols 2")
-LISTED = ["Hades\tepic", "Hollow Knight\tgog", "Celeste\tsteam", "Dead Cells\tsteam", "OpenTTD\tport",
-          "Stardew Valley\tsteam"]
+# The terminal runs Claude Code itself, against a stand-in for Anthropic's API
+# on this computer, so the scene needs no account or network and plays the
+# same every time. The stand-in sends the reply below; Claude Code runs
+# `hanami --list` for real, on a home folder with the video's six games.
+CLAUDE_HOME = Path(tempfile.gettempdir()) / "alex"
+STAND_IN_PORT = 47811
+DEMO_KEY = "sk-ant-api03-" + "0" * 80 + "-AAAAAAAA"
+INTRO = "I'll read the guide, then check which games Hanami finds."
 REPLY = (
     "Hanami is a small game launcher that lives in your tray.\n\n"
-    "- Open or close it with Ctrl+Alt+H or a click on the tray flower; Esc or a click anywhere else hides it.\n"
-    "- It found 6 games: Celeste, Dead Cells and Stardew Valley from Steam, Hades from Epic, Hollow Knight "
-    "from GOG, and OpenTTD as a port.\n"
-    "- Add your own with the + button, or hide one with Tab, then Hide.\n"
-    "- Pins, names, hidden games and the hotkey live in ~/.config/hanami/config.toml.\n\n"
+    "- **Open and close:** Ctrl+Alt+H or a click on the tray flower. Esc or a click anywhere else hides it.\n"
+    "- **Your games:** it found 6. Celeste, Dead Cells and Stardew Valley come from Steam, Hades from Epic, "
+    "Hollow Knight from GOG, and OpenTTD is a port. Hades and Hollow Knight are pinned.\n"
+    "- **Adding and hiding:** the + button adds a game by its program. Tab or right-click on a game pins, "
+    "renames or hides it.\n"
+    "- **Customising:** the hotkey, sources, pins and names live in `~/.config/hanami/config.toml`. The look "
+    "itself is set in the source for now.\n\n"
     "What would you like to do first?"
 )
 
 
-@functools.lru_cache(None)
-def font_file(name):
-    return subprocess.run(["fc-match", "-f", "%{file}", name], capture_output=True, text=True).stdout
+class StandIn(http.server.BaseHTTPRequestHandler):
+    """Answers Claude Code's API calls: the first turn reads and runs
+    `hanami --list`, the next one streams REPLY. Anything else gets a short
+    reply or an empty object."""
+
+    def log_message(self, *args):
+        pass
+
+    def reply(self, kind, body):
+        self.send_response(200)
+        self.send_header("content-type", kind)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def event(self, data):
+        self.wfile.write(f"event: {data['type']}\ndata: {json.dumps(data)}\n\n".encode())
+        self.wfile.flush()
+
+    def text(self, index, words, pause):
+        self.event({"type": "content_block_start", "index": index, "content_block": {"type": "text", "text": ""}})
+        for k in range(0, len(words), 3):
+            chunk = " ".join(words[k : k + 3]) + (" " if k + 3 < len(words) else "")
+            self.event({"type": "content_block_delta", "index": index, "delta": {"type": "text_delta", "text": chunk}})
+            time.sleep(pause)
+        self.event({"type": "content_block_stop", "index": index})
+
+    def do_GET(self):
+        self.reply("application/json", b"{}")
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers.get("content-length", 0))) or b"{}")
+        if not self.path.startswith("/v1/messages") or "count_tokens" in self.path:
+            self.reply("application/json", b'{"input_tokens": 1200}')
+            return
+        messages = body.get("messages") or []
+        main = bool(body.get("tools")) and "Hanami" in json.dumps(messages)
+        if not body.get("stream"):
+            message = {"id": "msg", "type": "message", "role": "assistant", "model": body.get("model"),
+                       "content": [{"type": "text", "text": "Hanami overview"}], "stop_reason": "end_turn",
+                       "stop_sequence": None, "usage": {"input_tokens": 10, "output_tokens": 3}}
+            self.reply("application/json", json.dumps(message).encode())
+            return
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.end_headers()
+        self.event({"type": "message_start", "message": {
+            "id": "msg", "type": "message", "role": "assistant", "model": body.get("model"), "content": [],
+            "stop_reason": None, "stop_sequence": None, "usage": {"input_tokens": 4200, "output_tokens": 1}}})
+        stop = "end_turn"
+        if not main:
+            self.text(0, ["Hanami", "overview"], 0)
+        elif not any("tool_result" in json.dumps(message) for message in messages):
+            time.sleep(1.0)
+            self.text(0, INTRO.split(" "), 0.02)
+            tool = {"type": "tool_use", "id": "toolu_hanami", "name": "Bash", "input": {}}
+            command = json.dumps({"command": "hanami --list", "description": "List the games Hanami finds"})
+            self.event({"type": "content_block_start", "index": 1, "content_block": tool})
+            self.event({"type": "content_block_delta", "index": 1,
+                        "delta": {"type": "input_json_delta", "partial_json": command}})
+            self.event({"type": "content_block_stop", "index": 1})
+            stop = "tool_use"
+        else:
+            time.sleep(0.4)
+            self.text(0, REPLY.split(" "), 0.07)
+        self.event({"type": "message_delta", "delta": {"stop_reason": stop, "stop_sequence": None},
+                    "usage": {"output_tokens": 100}})
+        self.event({"type": "message_stop"})
 
 
-@functools.lru_cache(None)
-def charset(path):
-    return set(TTFont(path, fontNumber=0).getBestCmap())
+def prepare_claude(claude):
+    """A home folder for Claude Code and Hanami that shows the video's games,
+    and the script the terminal runs. Returns the script and the text to paste."""
+    shutil.rmtree(CLAUDE_HOME, ignore_errors=True)
+    (CLAUDE_HOME / ".claude").mkdir(parents=True)
+    (CLAUDE_HOME / ".config" / "hanami").mkdir(parents=True)
+    (CLAUDE_HOME / "bin").mkdir()
+    (CLAUDE_HOME / "bin" / "hanami").symlink_to(ROOT / "target" / "release" / "hanami")
+    (CLAUDE_HOME / ".claude.json").write_text(json.dumps({
+        "hasCompletedOnboarding": True, "theme": "dark", "autoUpdates": False, "numStartups": 5,
+        "hasSeenAutoDefaultNotice": True, "hasSeenAutoDefaultNudge": True,
+        "customApiKeyResponses": {"approved": [DEMO_KEY[-20:]], "rejected": []},
+        "projects": {str(CLAUDE_HOME): {"hasTrustDialogAccepted": True, "allowedTools": []}},
+    }))
+    (CLAUDE_HOME / ".claude" / "settings.json").write_text(json.dumps({"permissions": {"allow": ["Bash(hanami --list)"], "defaultMode": "default"}}))
+    settings = 'find = []\nfavourites = ["Hades", "Hollow Knight"]\nonline = false\ncontroller = false\n'
+    for name, label, _ in GAMES:
+        settings += f'\n[[game]]\nname = "{name}"\ncommand = "/usr/bin/true"\nlabel = "{label}"\n'
+    (CLAUDE_HOME / ".config" / "hanami" / "config.toml").write_text(settings)
+    env = {"HOME": str(CLAUDE_HOME), "PATH": "/usr/bin:/bin"}
+    guide = subprocess.run([CLAUDE_HOME / "bin" / "hanami", "--guide"], env=env, capture_output=True, text=True, check=True)
+    start = CLAUDE_HOME / "bin" / "start"
+    start.write_text(
+        f"#!/bin/sh\nexport HOME={CLAUDE_HOME} PATH={CLAUDE_HOME / 'bin'}:/usr/bin:/bin ANTHROPIC_API_KEY={DEMO_KEY}"
+        f" ANTHROPIC_BASE_URL=http://127.0.0.1:{STAND_IN_PORT} CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1"
+        f" DISABLE_AUTOUPDATER=1 DISABLE_TELEMETRY=1\ncd {CLAUDE_HOME}\nexec {CLAUDE_HOME / 'bin' / 'claude'}\n"
+    )
+    start.chmod(0o755)
+    (CLAUDE_HOME / "bin" / "claude").symlink_to(claude)
+    # Konsole hands this over as one bracketed paste, like Ctrl+Shift+V.
+    paste = CLAUDE_HOME / "paste.txt"
+    paste.write_text("\x1b[200~" + guide.stdout + "\x1b[201~")
+    return start, paste
 
 
-@functools.lru_cache(None)
-def glyph_font(ch, bold):
-    """Hack, or the first fallback font that has the character, as Konsole does."""
-    for name in TERM_FONTS:
-        name = f"{name}:bold" if bold and name == "Hack" else name
-        if ord(ch) in charset(font_file(name)):
-            return ImageFont.truetype(font_file(name), round(TERM_SIZE * DESK))
-    return glyph_font("?", bold)
+@functools.lru_cache(4)
+def term_shot(path):
+    return Image.open(path).convert("RGBA").crop(TERM_FRAME)
 
 
-def term_rows(t, cols):
-    """What Claude Code shows at t: rows of (text, colour, bold) runs."""
-    inner = 52
+def settled(shots):
+    """When the terminal stops changing: the first shot that looks like the last."""
 
-    def boxed(*runs):
-        used = sum(len(words) for words, _, _ in runs)
-        return (("│", CLAUDE, False), *runs, (" " * (inner - used), TERM_TEXT, False), ("│", CLAUDE, False))
+    def look(path):
+        return np.asarray(Image.open(path).convert("L").reduce(4), np.int16)
 
-    rows = [
-        (("[alex@desktop ~]$ claude", TERM_TEXT, False),),
-        (("╭" + "─" * inner + "╮", CLAUDE, False),),
-        boxed((" ✻ ", CLAUDE, False), ("Welcome to Claude Code!", TERM_TEXT, True)),
-        boxed(),
-        boxed(("   /help for help, /status for your current setup", TERM_DIM, False)),
-        boxed(),
-        boxed(("   cwd: /home/alex", TERM_DIM, False)),
-        (("╰" + "─" * inner + "╯", CLAUDE, False),),
-        (),
-    ]
-    if t >= SEND:
-        rows += [(("> " + PASTED, TERM_DIM, False),), ()]
-    if t >= TOOL:
-        rows.append((("● ", GREEN, False), ("Bash", TERM_TEXT, True), ("(hanami --list)", TERM_TEXT, False)))
-        listed = [line.expandtabs(16) for line in LISTED[:3]] + [f"… +{len(LISTED) - 3} lines (ctrl+o to expand)"]
-        rows += [(("  ⎿  " if n == 0 else "     ", TERM_DIM, False), (line, TERM_DIM, False)) for n, line in enumerate(listed)]
-        rows.append(())
-    if t >= ANSWER:
-        shown = REPLY[: math.ceil(len(REPLY) * between(t, ANSWER, DONE - ANSWER))]
-        if t < DONE and " " in shown:
-            shown = shown[: shown.rindex(" ")]
-        for n, part in enumerate(shown.split("\n")):
-            hang = "    " if part.startswith("- ") else "  "
-            lines = textwrap.wrap(("● " if n == 0 else "  ") + part, cols - 1, subsequent_indent=hang) or [""]
-            rows += [((line, TERM_TEXT, False),) for line in lines]
-    if SEND <= t < DONE:
-        spin = "·✢✳✶✻✽"[int(t * 8) % 6]
-        rows += [((f"{spin} Thinking… ", CLAUDE, False), ("(esc to interrupt)", TERM_DIM, False)), ()]
-    rule = (("─" * cols, TERM_DIM, False),)
-    typed = PASTED if PASTE <= t < SEND else ""
-    rows += [rule, (("> " + typed, TERM_TEXT, False), ("█", (190, 190, 190), False)), rule,
-             (("  ? for shortcuts", TERM_DIM, False),)]
-    return rows
+    last = look(shots[-1][1])
+    return next((offset for offset, path in shots if np.abs(look(path) - last).mean() < 0.5), shots[-1][0])
 
 
-@functools.lru_cache(512)
-def term_row(row, width, cell):
-    """One row of the terminal. Lines and rounded corners are drawn, like
-    Konsole does, so boxes join up."""
-    height = TERM_LINE * DESK
-    image = Image.new("RGBA", (width, height), TERM_BG + (255,))
-    draw = ImageDraw.Draw(image)
-    col, mid, line = 0, height / 2, DESK
-    for words, colour, bold in row:
-        fill = colour + (255,)
-        for ch in words:
-            x = 2 * DESK + col * cell
-            cx, r = x + cell / 2, cell / 2
-            if ch == "─":
-                draw.line((x, mid, x + cell, mid), fill=fill, width=line)
-            elif ch == "│":
-                draw.line((cx, 0, cx, height), fill=fill, width=line)
-            elif ch in "╭╮╰╯":
-                down, right = ch in "╭╮", ch in "╭╰"
-                ox, oy = cx + (r if right else -r), mid + (r if down else -r)
-                start = {"╭": 180, "╮": 270, "╰": 90, "╯": 0}[ch]
-                draw.arc((ox - r, oy - r, ox + r, oy + r), start, start + 90, fill=fill, width=line)
-                draw.line((cx, oy, cx, height if down else 0), fill=fill, width=line)
-            elif ch == "█":
-                draw.rectangle((x, 0, x + cell - 1, height - 1), fill=fill)
-            elif ch != " ":
-                draw.text((cx, mid), ch, font=glyph_font(ch, bold), fill=fill, anchor="mm")
-            col += 1
-    return image
+def term_at(t):
+    """The terminal screenshot to show at t."""
+    if t < PASTE:
+        return TERM_IDLE
+    if t < SEND:
+        return TERM_PASTED
+    since, shown = (t - SEND) * TERM_SPEED, TERM_SHOTS[0][1]
+    for offset, path in TERM_SHOTS:
+        if offset <= since:
+            shown = path
+    return shown
 
 
-def terminal(t):
-    """Claude Code in the terminal at t, at the desktop's scale."""
-    width, height = round(TERM_BOX[2] * DESK), round(TERM_BOX[3] * DESK)
-    cell = glyph_font("M", False).getlength("M")
-    cols, count = int((width - 4 * DESK) // cell), int(height // (TERM_LINE * DESK))
-    image = Image.new("RGBA", (width, height), TERM_BG + (255,))
-    for n, row in enumerate(term_rows(t, cols)[-count:]):
-        image.paste(term_row(row, width, cell), (0, n * TERM_LINE * DESK))
-    return image
+def terminal_on(screen, t):
+    put(screen, term_shot(term_at(t)), (TERMINAL[0] * DESK, TERMINAL[1] * DESK))
 
 
-def draw_terminal(image, cam, t):
-    x, y, width, height = TERM_BOX
-    zoom = cam[2]
-    left, top = on_screen(cam, x, y)
-    put(image, terminal(t).resize((round(width * zoom), round(height * zoom)), Image.LANCZOS), (left, top))
-
-
-def draw_pointer(image, cam, t):
+def pointer_on(screen, t):
     """The mouse pointer, pressed in a little on each click."""
     sprite, (hx, hy) = POINTER
     press = max(0.0, *(1 - abs(t - at) / 0.12 for at in (ASK, AWAY)))
-    scale = cam[2] / DESK * (1 - 0.12 * press)
-    small = sprite.resize((max(1, round(sprite.width * scale)), max(1, round(sprite.height * scale))), Image.LANCZOS)
-    x, y = on_screen(cam, *mouse(t))
-    put(image, small, (x - hx * scale, y - hy * scale))
+    scale = 1 - 0.12 * press
+    if scale < 1:
+        sprite = sprite.resize((round(sprite.width * scale), round(sprite.height * scale)), Image.LANCZOS)
+    x, y = mouse(t)
+    put(screen, sprite, (x * DESK - hx * scale, y * DESK - hy * scale))
+
+
+def panel_on(screen, t, index):
+    """The real panel where Hanami opens it, over frosted wallpaper. Like the
+    app, it fades in and out over 140 ms; the click on the terminal hides it."""
+    opacity = between(t, REVEAL, 0.14) * (1 - between(t, AWAY, 0.14))
+    if opacity <= 0:
+        return
+    left, top = round(PANEL_BOX[0] * DESK), round(PANEL_BOX[1] * DESK)
+    put(screen, PANEL_SHADOW, (left - PANEL_PAD, top - PANEL_PAD + 16 * DESK), opacity)
+    # Frosted glass: the blurred desktop, seen through the panel.
+    frosted = WALL_BLUR.crop((left, top, left + PW, top + PH))
+    screen.paste(frosted, (left, top), MASK.point(lambda v: int(v * opacity)))
+    raw = (CACHE / "panel" / f"{index:05}.rgba").read_bytes()
+    put(screen, Image.frombytes("RGBa", (PW, PH), raw).convert("RGBA"), (left, top), opacity)
+
+
+def project(source, size, left, top, scale):
+    """`source` drawn `scale` times its size with its corner at a fractional
+    (left, top), cut to a frame of `size`. Resampling from a fractional box
+    keeps slow camera moves smooth, where rounding to whole pixels shakes."""
+    x0, y0 = max(0, math.floor(left)), max(0, math.floor(top))
+    x1, y1 = min(size[0], math.ceil(left + source.width * scale)), min(size[1], math.ceil(top + source.height * scale))
+    if x1 <= x0 or y1 <= y0:
+        return None, (0, 0)
+    pad = math.ceil(1 / scale) + 1
+    padded = ImageOps.expand(source, pad, (0, 0, 0, 0))
+    box = (pad + (x0 - left) / scale, pad + (y0 - top) / scale, pad + (x1 - left) / scale, pad + (y1 - top) / scale)
+    return padded.resize((x1 - x0, y1 - y0), Image.LANCZOS, box=box), (x0, y0)
 
 
 # --- The picture -------------------------------------------------------------
 
 
-def capture_desktop(out, window):
-    """Starts the throwaway Plasma session off screen and saves a screenshot
-    of the desktop and one of the terminal window."""
+def capture_desktop(out, shots):
+    """Starts the throwaway Plasma session off screen and saves a screenshot of
+    the desktop, and of Claude Code in the terminal as the scene plays."""
+    claude = os.environ.get("CLAUDE") or shutil.which("claude")
+    if not claude:
+        sys.exit("needs Claude Code: install it, or set CLAUDE=/path/to/claude")
     subprocess.run(["cargo", "build", "-q", "--release", "-p", "hanami"], cwd=ROOT, check=True)
     place = CACHE / "desktop"
     shutil.rmtree(place, ignore_errors=True)
+    shutil.rmtree(shots, ignore_errors=True)
+    shots.mkdir(parents=True)
     home, run = place / "home", place / "run"
     for folder in ("Desktop", "Documents", "Downloads", "Games", "Music", "Pictures", "Videos", ".config"):
         (home / folder).mkdir(parents=True)
     run.mkdir(mode=0o700)
+    # Konsole as it comes, with a bigger font so the words read in the video.
+    (home / ".config" / "konsolerc").write_text(
+        "[Desktop Entry]\nDefaultProfile=Video.profile\n\n[KonsoleWindow]\nEnableSecuritySensitiveDBusAPI=true\n"
+    )
+    (home / ".local" / "share" / "konsole").mkdir(parents=True)
+    (home / ".local" / "share" / "konsole" / "Video.profile").write_text(
+        "[Appearance]\nColorScheme=Breeze\nFont=Hack,24\n\n"
+        "[General]\nName=Video\nParent=FALLBACK/\n"
+    )
     (place / "minimise.js").write_text(MINIMISE)
-    # Stands in for Claude Code, so the terminal's title reads "claude".
-    (place / "claude").write_text("#!/bin/sh\nexec sleep 600\n")
-    (place / "claude").chmod(0o755)
+    start, paste = prepare_claude(Path(claude).resolve())
     session = place / "session.sh"
     session.write_text(SESSION.format(
-        tasks=TASKS, hanami=ROOT / "target" / "release" / "hanami", claude=place / "claude",
-        size=f"{TERMINAL[2] * DESK}x{TERMINAL[3] * DESK}", window=window, minimise=place / "minimise.js", out=out,
+        tasks=TASKS, hanami=ROOT / "target" / "release" / "hanami", size=f"{TERMINAL[2] * DESK}x{TERMINAL[3] * DESK}",
+        claude=start, shots=shots, paste=paste, minimise=place / "minimise.js", out=out,
     ))
     session.chmod(0o755)
     env = {
@@ -565,12 +648,17 @@ def capture_desktop(out, window):
         "PATH": "/usr/bin:/bin",
         "LANG": "en_US.UTF-8",
     }
-    subprocess.run(
-        ["dbus-run-session", "--", "kwin_wayland", "--virtual", "--width", str(SCREEN_W), "--height", str(SCREEN_H),
-         "--scale", str(DESK), "--xwayland", "--exit-with-session", str(session)],
-        env=env, cwd=home, timeout=180, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
-    )
-    if not (out.exists() and window.exists()):
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", STAND_IN_PORT), StandIn)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        subprocess.run(
+            ["dbus-run-session", "--", "kwin_wayland", "--virtual", "--width", str(SCREEN_W), "--height",
+             str(SCREEN_H), "--scale", str(DESK), "--xwayland", "--exit-with-session", str(session)],
+            env=env, cwd=home, timeout=240, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+        )
+    finally:
+        server.shutdown()
+    if not (out.exists() and (shots / "idle.png").exists()):
         sys.exit("could not capture the desktop")
 
 
@@ -592,10 +680,10 @@ def pointer(size):
 def scrim():
     """A soft shade behind the words, so they read over any wallpaper."""
     if LAYOUT["align"] == "center":
-        ramp = np.clip(np.linspace(0, 1, H)[:, None] / 0.45, 0, 1)
+        ramp = np.clip(np.linspace(0, 1, H)[:, None] / 0.52, 0, 1)
     else:
-        ramp = np.clip(np.linspace(0, 1, W)[None, :] / 0.6, 0, 1)
-    alpha = np.broadcast_to(0.6 * (1 - ramp * ramp * (3 - 2 * ramp)), (H, W))
+        ramp = np.clip(np.linspace(0, 1, W)[None, :] / 0.62, 0, 1)
+    alpha = np.broadcast_to(0.7 * (1 - ramp * ramp * (3 - 2 * ramp)), (H, W))
     layer = Image.new("RGBA", (W, H), (8, 6, 12, 0))
     layer.putalpha(Image.fromarray((alpha * 255).astype(np.uint8)))
     return layer
@@ -603,29 +691,35 @@ def scrim():
 
 def setup():
     """Things every frame shares; made once, before the workers start."""
-    global WALL, WALL_BLUR, SCREEN_MASK, BACKDROP, MASK, SCRIM, NOISE, TERM_BOX, POINTER, PASTED
+    global WALL, WALL_BLUR, SCREEN_MASK, BACKDROP, MASK, PANEL_PAD, PANEL_SHADOW, SCRIM, NOISE, POINTER
+    global TERM_FRAME, TERM_IDLE, TERM_PASTED, TERM_SHOTS, TERM_SPEED
     WALL = Image.open(CACHE / "desktop.png").convert("RGBA").resize((SCREEN_W * DESK, SCREEN_H * DESK), Image.LANCZOS)
-    window = Image.open(CACHE / "terminal.png").convert("RGBA")
-    pixels = np.asarray(window)
-    ys, xs = np.nonzero(pixels[..., 3] == 255)
-    left, top, right, bottom = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
-    WALL.alpha_composite(window, (TERMINAL[0] * DESK - left, TERMINAL[1] * DESK - top))
-    # The terminal's text area: the rows below the title bar that are all
-    # background colour.
-    plain = np.all(np.abs(pixels[top:bottom, left:right, :3].astype(int) - TERM_BG) < 4, axis=2).mean(axis=1) > 0.95
-    rows = np.nonzero(plain)[0]
-    TERM_BOX = (TERMINAL[0] + 1, TERMINAL[1] + rows.min() / DESK, (right - left) / DESK - 2, (rows.max() - rows.min()) / DESK)
+    shots = CACHE / "claude"
+    window = Image.open(shots / "idle.png").convert("RGBA")
+    ys, xs = np.nonzero(np.asarray(window)[..., 3] == 255)
+    TERM_FRAME = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    WALL.alpha_composite(window, (TERMINAL[0] * DESK - TERM_FRAME[0], TERMINAL[1] * DESK - TERM_FRAME[1]))
+    TERM_IDLE, TERM_PASTED = shots / "idle.png", shots / "pasted.png"
+    times = dict(line.split() for line in (shots / "times").read_text().splitlines())
+    enter = float(times.pop("enter"))
+    TERM_SHOTS = sorted((float(at) - enter, shots / f"{name}.png") for name, at in times.items() if name.isdigit())
+    # The reply plays at its real pace, or faster if it would run into the end.
+    TERM_SPEED = max(1.0, settled(TERM_SHOTS) / (END - 0.4 - SEND))
     POINTER = pointer(24 * DESK)
     WALL_BLUR = WALL.filter(ImageFilter.GaussianBlur(30 * DESK))
-    SCREEN_MASK = screenshot.rounded((SCREEN_W, SCREEN_H), 28)
+    SCREEN_MASK = screenshot.rounded((SCREEN_W, SCREEN_H), 28).resize(WALL.size, Image.BICUBIC)
     cover = min(WALL.width / W, WALL.height / H)
     crop = ((WALL.width - W * cover) / 2, (WALL.height - H * cover) / 2,
             (WALL.width + W * cover) / 2, (WALL.height + H * cover) / 2)
     BACKDROP = WALL_BLUR.resize((W, H), Image.BILINEAR, box=crop).point(lambda v: int(v * 0.5))
     MASK = screenshot.rounded((PW, PH), int(16 * PANEL_SCALE))
+    PANEL_PAD = 46 * DESK
+    shade = Image.new("L", (PW + 2 * PANEL_PAD, PH + 2 * PANEL_PAD), 0)
+    shade.paste(MASK, (PANEL_PAD, PANEL_PAD))
+    small = shade.resize((shade.width // 4, shade.height // 4), Image.BILINEAR).filter(ImageFilter.GaussianBlur(5 * DESK))
+    PANEL_SHADOW = Image.new("RGBA", shade.size, (0, 0, 0, 0))
+    PANEL_SHADOW.putalpha(small.resize(shade.size, Image.BILINEAR).point(lambda v: int(v * 0.55)))
     SCRIM = scrim()
-    guide = subprocess.run([ROOT / "target" / "release" / "hanami", "--guide"], capture_output=True, text=True, check=True)
-    PASTED = f"[Pasted text #1 +{guide.stdout.count(chr(10))} lines]"
     noise = np.random.default_rng(3)
     NOISE = [noise.normal(0, 1.2, (H, W, 1)).astype(np.float32) for _ in range(6)]
 
@@ -651,54 +745,30 @@ def on_screen(cam, x, y, size=None):
     return (x - cam[0]) * cam[2] + width / 2, (y - cam[1]) * cam[2] + height / 2
 
 
-def desktop(cam):
-    """The desktop as the camera sees it. Zoomed out past the screen's edges,
-    the whole screen floats over a dim copy of itself."""
+def desktop(cam, t, index):
+    """The desktop with the terminal, the panel and the mouse, drawn as one
+    picture and then seen through the camera. Zoomed out past the screen's
+    edges, the whole screen floats over a dim copy of itself."""
+    screen = WALL.copy()
+    terminal_on(screen, t)
+    panel_on(screen, t, index)
+    pointer_on(screen, t)
     zoom = cam[2]
-    fills = W / zoom <= SCREEN_W + 0.5 and H / zoom <= SCREEN_H + 0.5
-    size = (W, H) if fills else (round(SCREEN_W * zoom), round(SCREEN_H * zoom))
-    view = cam if fills else (SCREEN_W / 2, SCREEN_H / 2, zoom)
-    half_w, half_h = min(size[0] / zoom, SCREEN_W) / 2, min(size[1] / zoom, SCREEN_H) / 2
-    box = tuple(v * DESK for v in (view[0] - half_w, view[1] - half_h, view[0] + half_w, view[1] + half_h))
-    image = WALL.resize(size, Image.BILINEAR, box=box)
-    if fills:
-        return image
+    left, top = on_screen(cam, 0, 0)
+    if W / zoom <= SCREEN_W + 0.5 and H / zoom <= SCREEN_H + 0.5:
+        patch, _ = project(screen, (W, H), left, top, zoom / DESK)
+        return patch
+    screen.putalpha(SCREEN_MASK)
     frame = BACKDROP.copy()
-    left, top = (round(v) for v in on_screen(cam, 0, 0))
     shade = Image.new("L", (W // 8, H // 8), 0)
-    small = SCREEN_MASK.resize((max(1, size[0] // 8), max(1, size[1] // 8)), Image.BILINEAR)
-    shade.paste(small, (left // 8, (top + round(24 * zoom)) // 8))
+    small = SCREEN_MASK.resize((max(1, round(SCREEN_W * zoom / 8)), max(1, round(SCREEN_H * zoom / 8))), Image.BILINEAR)
+    shade.paste(small, (round(left / 8), round((top + 24 * zoom) / 8)))
     shade = shade.filter(ImageFilter.GaussianBlur(5)).resize((W, H), Image.BILINEAR).point(lambda v: int(v * 0.6))
     frame.paste((0, 0, 0, 255), (0, 0, W, H), shade)
-    frame.paste(image, (left, top), SCREEN_MASK.resize(size, Image.BILINEAR))
+    patch, at = project(screen, (W, H), left, top, zoom / DESK)
+    if patch:
+        frame.alpha_composite(patch, at)
     return frame
-
-
-def draw_panel(image, cam, t, index):
-    """The real panel where Hanami opens it, over frosted wallpaper. Like the
-    app, it fades in and out over 140 ms; the click on the terminal hides it."""
-    opacity = between(t, REVEAL, 0.14) * (1 - between(t, AWAY, 0.14))
-    if opacity <= 0:
-        return
-    x0, y0, pw, ph = PANEL_BOX
-    zoom = cam[2]
-    left, top = (round(v) for v in on_screen(cam, x0, y0))
-    w, h = round(pw * zoom), round(ph * zoom)
-    mask = MASK.resize((w, h), Image.LANCZOS)
-
-    pad = round(46 * zoom)
-    shade = Image.new("L", (w + 2 * pad, h + 2 * pad), 0)
-    shade.paste(mask, (pad, pad))
-    small = shade.resize((shade.width // 4, shade.height // 4), Image.BILINEAR).filter(ImageFilter.GaussianBlur(5 * zoom))
-    shadow = Image.new("RGBA", shade.size, (0, 0, 0, 0))
-    shadow.putalpha(small.resize(shade.size, Image.BILINEAR).point(lambda v: int(v * 0.55 * opacity)))
-    put(image, shadow, (left - pad, top - pad + 16 * zoom))
-
-    # Frosted glass: the blurred wallpaper, seen through the panel.
-    region = tuple(v * DESK for v in (x0, y0, x0 + pw, y0 + ph))
-    image.paste(WALL_BLUR.resize((w, h), Image.BILINEAR, box=region), (left, top), mask.point(lambda v: int(v * opacity)))
-    raw = (CACHE / "panel" / f"{index:05}.rgba").read_bytes()
-    put(image, Image.frombytes("RGBa", (PW, PH), raw).convert("RGBA").resize((w, h), Image.LANCZOS), (left, top), opacity)
 
 
 def draw_keycaps(image, t):
@@ -742,11 +812,33 @@ def draw_caption(image, t, start, end, title, sub):
         return
     (x, y), (title_size, sub_size), align = LAYOUT["words"], LAYOUT["word_sizes"], LAYOUT["align"]
     heading = text(title, "SemiBold", title_size, TEXT, align=align)
-    under = text(sub, "Regular", sub_size, DIM, align=align)
+    under = text(sub, "Regular", sub_size, SUB, align=align)
     put(image, bar(), (anchor(bar(), x, 4), y - 28 + 30 * (1 - first) - 16 * leave), first * (1 - leave))
-    put(image, heading, (anchor(heading, x), y + 30 * (1 - first) - 16 * leave), first * (1 - leave))
-    put(image, under, (anchor(under, x, 4), y + 30 + heading.height + 30 * (1 - second) - 16 * leave),
-        second * (1 - leave))
+    words(image, heading, (anchor(heading, x), y + 30 * (1 - first) - 16 * leave), first * (1 - leave))
+    words(image, under, (anchor(under, x, 4), y + 30 + heading.height + 30 * (1 - second) - 16 * leave),
+          second * (1 - leave))
+
+
+HALOS = {}
+
+
+def halo(sprite):
+    """A soft dark shadow under words (kept per sprite; the words come from
+    text(), which keeps its sprites), and how far it reaches past them."""
+    if id(sprite) not in HALOS:
+        pad = 24
+        alpha = ImageOps.expand(sprite.getchannel("A"), pad, 0).filter(ImageFilter.GaussianBlur(9))
+        shadow = Image.new("RGBA", alpha.size, (0, 0, 0, 0))
+        shadow.putalpha(alpha.point(lambda v: int(v * 0.6)))
+        HALOS[id(sprite)] = shadow, pad
+    return HALOS[id(sprite)]
+
+
+def words(image, sprite, xy, alpha):
+    """Words with a soft shadow, so they read over any wallpaper."""
+    shadow, pad = halo(sprite)
+    put(image, shadow, (xy[0] - pad, xy[1] - pad + 3), alpha)
+    put(image, sprite, xy, alpha)
 
 
 def draw_end_card(image, t):
@@ -754,23 +846,19 @@ def draw_end_card(image, t):
     parts = [
         seal(mark),
         text("hanami", "SemiBold", name, TEXT),
-        text("A small game launcher\nfor Linux and Windows.", "Regular", tagline, DIM, align=LAYOUT["align"]),
+        text("A small game launcher\nfor Linux and Windows.", "Regular", tagline, SUB, align=LAYOUT["align"]),
         text("hanami.lilygrove.dev", "Medium", link, ACCENT),
     ]
     for n, (sprite, (x, y)) in enumerate(zip(parts, LAYOUT["end"])):
         shown = ease(between(t, END + 0.08 * n, 0.6))
-        put(image, sprite, (anchor(sprite, x), y + 30 * (1 - shown)), shown)
+        (put if n == 0 else words)(image, sprite, (anchor(sprite, x), y + 30 * (1 - shown)), shown)
 
 
 def compose(index):
     t = index / FPS
-    cam = camera(t)
-    image = desktop(cam)
-    draw_terminal(image, cam, t)
+    image = desktop(camera(t), t, index)
     put(image, SCRIM, (0, 0), smooth(between(t, CAPTIONS[0][0] - 0.4, 0.5)))
     draw_keycaps(image, t)
-    draw_panel(image, cam, t, index)
-    draw_pointer(image, cam, t)
     for caption in captions():
         draw_caption(image, t, *caption)
     draw_end_card(image, t)
@@ -876,8 +964,9 @@ MELODY = [
     (14, (70,), 0.45, 0), (14.5, (69,), 0.45, 0), (15, (67,), 0.6, 2),
     (16, (55, 62), 0.65, 0), (16.5, (70,), 0.45, 0), (17, (69,), 0.5, 0), (17.5, (67,), 0.45, 0),
     (18, (63,), 0.45, 0), (18.5, (67,), 0.5, 0), (19, (69,), 0.55, 0), (19.5, (70,), 0.5, 0),
-    (20, (51, 63), 0.6, 0), (20.5, (74,), 0.5, 0), (21, (57, 69), 0.6, 0),
-    (21.5, (50, 57, 62, 69, 74), 0.85, 0), (22.5, (74,), 0.5, 0), (23.5, (81,), 0.4, 0),
+    (20, (55, 62), 0.55, 0), (20.5, (69,), 0.45, 0), (21, (70,), 0.5, 0), (21.5, (74,), 0.55, 0),
+    (22, (51, 63), 0.6, 0), (22.5, (74,), 0.5, 0), (23, (57, 69), 0.6, 0),
+    (23.5, (50, 57, 62, 69, 74), 0.85, 0), (24.5, (74,), 0.5, 0), (25.5, (81,), 0.4, 0),
 ]
 
 
@@ -910,7 +999,7 @@ def write_music(path):
             strum = 0.035 * k if len(notes) > 2 else 0
             place(koto(midi, 4.0 if b(beat) >= END else 3.2, bend), b(beat) + strum, 0.32 * loud,
                   pan=clamp((midi - 62) / 30, -0.4, 0.4), wet=0.3)
-    for beat, loud in ((0, 0.55), (1.5, 0.8), (8, 0.45), (15, 0.5), (21.5, 1.0)):
+    for beat, loud in ((0, 0.55), (1.5, 0.8), (8, 0.45), (15, 0.5), (23.5, 1.0)):
         place(taiko(), b(beat), 0.5 * loud, wet=0.12)
     place(pad(), 0, 0.06, wet=0.3)
     place(chime(86), END + 0.05, 0.2, pan=0.2, wet=0.4)
@@ -981,7 +1070,7 @@ def main():
     print("writing the music")
     write_music(CACHE / "music.wav")
     print("setting up the desktop")
-    capture_desktop(CACHE / "desktop.png", CACHE / "terminal.png")
+    capture_desktop(CACHE / "desktop.png", CACHE / "claude")
     print("putting it together")
     setup()
     encode(out, CACHE / "music.wav")
