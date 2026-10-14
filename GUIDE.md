@@ -334,13 +334,16 @@ only what was asked for; then say what you changed. To check the result,
 `hanami --snapshot look.png` draws the panel with the current look into a
 picture without opening it.
 
-Example `petal.svg`, a maple leaf (with `size = 2.0` and `petals = 14` in
-`[theme]`, since a leaf needs more room than a petal):
+Example `petal.svg`, a soft maple leaf (with `size = 2.0` and `petals = 14`
+in `[theme]`, since a leaf needs more room than a petal). Keep shapes soft
+and chunky like this one: pointed tips are fine, but thin lines and tiny
+teeth turn to mush at petal size, and a snowflake wants fat arms
+(`stroke-width` of 7 or so in a 100-wide box):
 
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="M 50.0 3.0 L 60.4 16.4 L 60.7 23.8 L 65.8 22.6 L 64.5 28.8 L 64.1 35.6 L 76.3 30.4 L 73.7 35.1 L 85.2 32.1 L 80.9 36.5 L 92.9 35.9 L 87.2 47.1 L 81.5 49.4 L 84.0 53.8 L 78.0 56.0 L 72.6 59.4 L 80.4 67.9 L 75.2 67.3 L 81.6 77.9 L 70.8 80.6 L 64.5 76.6 L 56.8 73.8 L 54.2 78.6 L 52.5 78.0 L 51.5 98.0 L 48.5 98.0 L 47.5 78.0 L 45.8 78.6 L 43.2 73.8 L 35.5 76.6 L 29.2 80.6 L 18.4 77.9 L 24.8 67.3 L 19.6 67.9 L 27.4 59.4 L 22.0 56.0 L 16.0 53.8 L 18.5 49.4 L 12.8 47.1 L 7.1 35.9 L 19.1 36.5 L 14.8 32.1 L 26.3 35.1 L 23.7 30.4 L 35.9 35.6 L 35.5 28.8 L 34.2 22.6 L 39.3 23.8 L 39.6 16.4 Z" fill="#d9541e"/>
-  <path d="M50 74 L50 15 M50 74 L83 40 M50 74 L17 40 M50 74 L73 71 M50 74 L27 71" stroke="#8f2d0a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M 50.0 4.0 Q 56.9 10.5 58.8 21.2 Q 63.4 34.1 75.3 32.8 Q 84.2 30.6 91.3 33.8 Q 89.6 41.5 82.3 47.1 Q 75.7 57.6 75.8 64.9 Q 80.8 70.5 80.7 76.3 Q 75.3 78.2 68.4 75.1 Q 57.9 73.5 54.3 78.6 L 52.5 78 L 51.5 96 L 48.5 96 L 47.5 78 L 45.7 78.6 Q 42.1 73.5 31.6 75.1 Q 24.7 78.2 19.3 76.3 Q 19.2 70.5 24.2 64.9 Q 24.3 57.6 17.7 47.1 Q 10.4 41.5 8.7 33.8 Q 15.8 30.6 24.7 32.8 Q 36.6 34.1 41.2 21.2 Q 43.1 10.5 50.0 4.0 Z" fill="#e0602a"/>
+  <path d="M50 74 L50 14 M50 74 L82 38 M50 74 L18 38 M50 74 L73 70 M50 74 L27 70" stroke="#9a3410" stroke-width="2.5" fill="none" stroke-linecap="round"/>
 </svg>
 ```
 
