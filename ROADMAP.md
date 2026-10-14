@@ -36,17 +36,17 @@ use it in GUIDE.md.
 
 ## Next
 
-1. **Publish the AUR package** (`packaging/README.md` has the steps; needs
+1. **Works everywhere:** the tray, opening and starting games checked on
+   GNOME, KDE Plasma, Xfce, Cinnamon and other desktops, on X11 and
+   Wayland, across the common distributions, and on Windows 10 and 11.
+2. **Publish the AUR package** (`packaging/README.md` has the steps; needs
    an AUR account).
-2. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources
+3. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources
    checked against more installs.
-3. **Controller:** more pads checked, and a way to change the open button.
+4. **Controller:** more pads checked, and a way to change the open button.
 
 ## Later
 
 - **Minecraft** through Prism Launcher instances, so Prism handles the
   Microsoft login.
-- **Desktop widget mode:** the panel pinned to the desktop, below other
-  windows, on every workspace, movable and resizable, near 0 % CPU while
-  always visible. X11 desktops and Windows first; Wayland through XWayland.
 - **Themes.**
