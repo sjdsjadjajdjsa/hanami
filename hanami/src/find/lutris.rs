@@ -55,9 +55,13 @@ fn icon(data: &Path, slug: &str) -> Option<PathBuf> {
 
 /// Installed games (id, name, slug), minus the ones in Lutris's hidden category.
 fn installed(db: &Path) -> Vec<(i64, String, String)> {
-    let Ok(conn) = Connection::open_with_flags(db, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
-    else {
-        return Vec::new();
+    let conn = match Connection::open_with_flags(db, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
+    {
+        Ok(conn) => conn,
+        Err(error) => {
+            super::report("Lutris", format!("couldn't open its database: {error}"));
+            return Vec::new();
+        }
     };
     const WITH_HIDDEN: &str = "SELECT id, name, slug FROM games WHERE installed = 1 AND id NOT IN (
         SELECT gc.game_id FROM games_categories gc JOIN categories c ON c.id = gc.category_id WHERE c.name = '.hidden')";
@@ -70,7 +74,10 @@ fn installed(db: &Path) -> Vec<(i64, String, String)> {
         rows.collect()
     };
     // Older databases have no categories tables.
-    query(WITH_HIDDEN).or_else(|_| query(PLAIN)).unwrap_or_default()
+    query(WITH_HIDDEN).or_else(|_| query(PLAIN)).unwrap_or_else(|error| {
+        super::report("Lutris", format!("couldn't read its database: {error}"));
+        Vec::new()
+    })
 }
 
 #[cfg(test)]
@@ -98,6 +105,18 @@ mod tests {
         old.execute_batch("DROP TABLE games_categories; DROP TABLE categories;").unwrap();
         drop(old);
         assert_eq!(installed(&db).len(), 2);
+        std::fs::remove_file(db).unwrap();
+    }
+
+    #[test]
+    fn a_damaged_database_is_reported_not_silent() {
+        let db = std::env::temp_dir().join(format!("hanami-lutris-bad-{}.db", std::process::id()));
+        std::fs::write(&db, "not a database").unwrap();
+        let _ = super::super::problems();
+        assert!(installed(&db).is_empty());
+        let problems = super::super::problems();
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].starts_with("Lutris: couldn't read"), "{problems:?}");
         std::fs::remove_file(db).unwrap();
     }
 

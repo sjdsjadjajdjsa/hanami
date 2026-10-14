@@ -15,10 +15,28 @@ mod lutris;
 mod ports;
 mod steam;
 
+use std::cell::RefCell;
+
 use serde::Deserialize;
 
 use crate::config::Config;
 use crate::games::Game;
+
+thread_local! {
+    static PROBLEMS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+/// A place that is there but couldn't be read: said once in the panel and in
+/// `--list`, so an empty list isn't mistaken for "no games". A place that
+/// simply isn't installed says nothing.
+pub(crate) fn report(place: &str, what: impl std::fmt::Display) {
+    PROBLEMS.with_borrow_mut(|problems| problems.push(format!("{place}: {what}")));
+}
+
+/// The problems reported since the last call.
+pub fn problems() -> Vec<String> {
+    PROBLEMS.with_borrow_mut(std::mem::take)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]

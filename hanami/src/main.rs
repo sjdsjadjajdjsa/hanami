@@ -87,6 +87,11 @@ thread_local! {
 
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
+thread_local! {
+    /// Places that are there but couldn't be read, each said once.
+    static PROBLEMS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
 fn log(what: &str) {
     if VERBOSE.load(Ordering::Relaxed) {
         eprintln!("hanami {:>8.3}s {what}", started().elapsed().as_secs_f32());
@@ -156,9 +161,13 @@ impl App {
         }
 
         self.reload();
-        // One notice at a time; the other waits for the next open.
+        // One notice at a time; the others wait for the next open.
         if let Some(problem) = self.hotkey_problem.take() {
             self.notify(problem);
+        } else if let Some(problem) =
+            PROBLEMS.with_borrow_mut(|problems| (!problems.is_empty()).then(|| problems.remove(0)))
+        {
+            self.notify(format!("Couldn't read {problem}"));
         } else if let Some(message) = self.update_notice.take() {
             self.notify(message);
         }
@@ -632,6 +641,14 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
         let started = Instant::now();
         let games = find::games(source, config);
         log(&format!("looked in {source:?}: {} games in {} ms", games.len(), started.elapsed().as_millis()));
+        for problem in find::problems() {
+            log(&problem);
+            PROBLEMS.with_borrow_mut(|problems| {
+                if !problems.contains(&problem) {
+                    problems.push(problem);
+                }
+            });
+        }
         for game in &games {
             let name = key(&game.name);
             if source != Source::Ports {
@@ -932,6 +949,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => println!("{}\t{}", game.name, game.label),
             }
         }
+        PROBLEMS.with_borrow(|problems| {
+            for problem in problems {
+                eprintln!("hanami: couldn't read {problem}");
+            }
+        });
         return Ok(());
     }
 

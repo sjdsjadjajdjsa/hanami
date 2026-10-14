@@ -103,8 +103,17 @@ fn epic_art(root: &Path, app: &str) -> Vec<String> {
     urls.into_iter().map(|(_, url)| url).collect()
 }
 
+/// A JSON file's contents; a missing file is Null, a damaged one is Null
+/// and reported.
 fn read(path: &Path) -> Value {
-    std::fs::read_to_string(path).ok().and_then(|text| serde_json::from_str(&text).ok()).unwrap_or(Value::Null)
+    let Ok(text) = std::fs::read_to_string(path) else { return Value::Null };
+    serde_json::from_str(&text).unwrap_or_else(|error| {
+        super::report(
+            "Heroic",
+            format!("{} isn't readable: {error}", path.file_name().unwrap_or_default().to_string_lossy()),
+        );
+        Value::Null
+    })
 }
 
 fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {

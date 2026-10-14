@@ -275,7 +275,7 @@ Games started by Hanami keep running when Hanami closes.
 | `hanami --hidden` | start in the tray only (what the login entry runs) |
 | `hanami --toggle` | open or close the panel |
 | `hanami --quit` | close the running Hanami (the tray menu's Quit does the same) |
-| `hanami --list` | print every game the panel would show, with its label (with `--verbose`, also its icon file) |
+| `hanami --list` | print every game the panel would show, with its label (with `--verbose`, also its icon file); a place that is there but couldn't be read is named at the end |
 | `hanami --guide` | print the AI prompt the **?** button copies |
 | `hanami --verbose` | print what happens (opening, focus, where games were found, how long the ports search took) for bug reports |
 | `hanami --snapshot picture.png` | draw the panel with sample games into a picture, without opening it |

@@ -6,11 +6,26 @@ use crate::games::{Game, Launch};
 
 pub fn find() -> Vec<Game> {
     let Ok(steam) = steamlocate::SteamDir::locate() else { return Vec::new() };
-    let Ok(libraries) = steam.libraries() else { return Vec::new() };
+    let libraries = match steam.libraries() {
+        Ok(libraries) => libraries,
+        Err(error) => {
+            super::report("Steam", format!("couldn't read the library list: {error}"));
+            return Vec::new();
+        }
+    };
     let icons = Icons::new(steam.path());
     libraries
-        .flatten()
-        .flat_map(|library| library.apps().flatten().collect::<Vec<_>>())
+        .filter_map(|library| {
+            library.map_err(|error| super::report("Steam", format!("a library folder: {error}"))).ok()
+        })
+        .flat_map(|library| {
+            library
+                .apps()
+                .filter_map(|app| {
+                    app.map_err(|error| super::report("Steam", format!("a game's manifest: {error}"))).ok()
+                })
+                .collect::<Vec<_>>()
+        })
         .filter(|app| app.state_flags.is_none_or(|flags| flags.0 & FULLY_INSTALLED != 0))
         .map(|app| (app.app_id, app.name.unwrap_or(app.install_dir)))
         .filter(|(_, name)| !is_tool(name))
