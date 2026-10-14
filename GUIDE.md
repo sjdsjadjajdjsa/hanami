@@ -305,7 +305,27 @@ accent = "#f4b6c8"    # the selected row, the petals' tint in the highlight
 petals = 18           # how many petals fall (0 to 200)
 speed = 1.0           # how fast they fall; 0.5 is half as fast
 size = 1.0            # how big they are; 1.5 is half as big again
+drift = 1.0           # how far they sway sideways; leaves tumble, snow wobbles
+spin = 1.0            # how much they turn; 0 keeps them upright
+tints = []            # colours to paint the petals in, taken in turn; empty
+                      # keeps the picture's own colours
+dots = 0              # specks of the accent colour drifting up (0 to 100):
+                      # pollen, embers, fine snow
 ```
+
+Petals come in all sizes on their own: small ones are fainter and slower,
+as if further away. Suggested settings, since the picture alone isn't
+enough for a look to feel right:
+
+| look | petals | speed | size | drift | spin | tints | dots |
+|---|---|---|---|---|---|---|---|
+| sakura (default) | 18 | 1.0 | 1.0 | 1.0 | 1.0 | none | 0 |
+| autumn leaves | 16 | 0.7 | 2.0 | 1.6 | 1.4 | `["#e0602a", "#c8401c", "#f0a040", "#9a3410"]` | 12 |
+| snow | 18 | 0.6 | 1.5 | 1.3 | 0.3 | `["#ffffff", "#dceeff", "#bfe0ff"]` | 24 |
+
+With `tints` the picture is painted flat in those colours, so its own
+colours and lines don't show; leave `tints` empty for a petal that has a
+vein or two colours of its own.
 
 Colours are `"#rrggbb"` or `"#rrggbbaa"`. Keep `panel` between `80` and
 `e0` at the end so it stays see-through but readable, and keep `text`
@@ -329,8 +349,9 @@ A file that doesn't follow this is refused ("Couldn't read petal.svg: ...")
 and the sakura petal stays.
 
 **For an AI changing the look:** edit only `[theme]` and `petal.svg`, nothing
-else in the settings file; keep the keys above and their ranges; change
-only what was asked for; then say what you changed. To check the result,
+else in the settings file; keep the keys above and their ranges; start
+from the table's settings for the kind of look asked for; change only what
+was asked for; then say what you changed. To check the result,
 `hanami --snapshot look.png` draws the panel with the current look into a
 picture without opening it.
 

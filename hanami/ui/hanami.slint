@@ -11,6 +11,8 @@ export struct Petal {
     size: float,
     alpha: float,
     phase: float,
+    // Transparent keeps the picture's own colours.
+    tint: color,
 }
 
 export struct GameRow {
@@ -56,12 +58,28 @@ component PetalView inherits Image {
     in property <float> t;
     in property <image> shape;
     source: shape;
+    colorize: p.tint;
     width: p.size * 1px;
     height: p.size * 1.2px;
     opacity: p.alpha;
     x: area-w * p.x + p.sway * 1px * Math.sin((t * p.freq + p.phase) * 1rad) - self.width / 2;
     y: Math.mod(t * p.speed + p.phase * 97, area-h / 1px + 40) * 1px - 20px;
     transform-rotation: (t * p.spin + p.phase * 57) * 1deg;
+}
+
+// A speck of the accent colour drifting up, like pollen or an ember.
+component DotView inherits Rectangle {
+    in property <Petal> p;
+    in property <length> area-w;
+    in property <length> area-h;
+    in property <float> t;
+    width: p.size * 1px;
+    height: self.width;
+    border-radius: self.width / 2;
+    background: Tokens.accent;
+    opacity: p.alpha * (0.55 + 0.45 * Math.sin((t * 2.1 + p.phase) * 1rad));
+    x: area-w * p.x + p.sway * 1px * Math.sin((t * p.freq + p.phase) * 1rad) - self.width / 2;
+    y: area-h - Math.mod(t * p.speed + p.phase * 97, area-h / 1px + 20) * 1px + 10px;
 }
 
 // A small text button: row actions and the new-games prompt.
@@ -235,6 +253,7 @@ component Row inherits Rectangle {
 
 export component Panel inherits Window {
     in property <[Petal]> petals;
+    in property <[Petal]> dots;
     // The petal's picture: the sakura petal unless the settings bring another.
     in property <image> petal: @image-url("../../assets/petal.svg");
     in property <[GameRow]> games;
@@ -401,6 +420,13 @@ export component Panel inherits Window {
             border-width: 1px;
             border-color: Tokens.edge;
             clip: true;
+
+            for p in root.dots: DotView {
+                p: p;
+                area-w: panel.width;
+                area-h: panel.height;
+                t: root.t;
+            }
 
             for p in root.petals: PetalView {
                 p: p;

@@ -25,7 +25,16 @@ pub fn apply(panel: &Panel, theme: &Theme, dir: Option<&Path>, scale: f32) -> Re
     tokens.set_text(colour(theme.text));
     tokens.set_dim(colour(theme.dim));
     tokens.set_accent(colour(theme.accent));
-    panel.set_petals(ModelRc::new(VecModel::from(petals::petals(theme.petals, theme.speed, theme.size))));
+    let motion = petals::Motion {
+        count: theme.petals,
+        speed: theme.speed,
+        size: theme.size,
+        drift: theme.drift,
+        spin: theme.spin,
+        tints: theme.tints.iter().map(|&c| colour(c)).collect(),
+    };
+    panel.set_petals(ModelRc::new(VecModel::from(petals::petals(&motion))));
+    panel.set_dots(ModelRc::new(VecModel::from(petals::dots(theme.dots))));
     let px = (PETAL_PX as f32 * scale.max(1.0)) as u32;
     let own = dir.map(|dir| dir.join("petal.svg")).filter(|path| path.exists()).map(|path| petal(&path, px));
     let sakura = || slint::Image::from_rgba8(crate::icons::svg(SAKURA, px).expect("the built-in petal draws"));

@@ -68,6 +68,10 @@ accent = "#f4b6c8"
 petals = 18
 speed = 1.0
 size = 1.0
+drift = 1.0
+spin = 1.0
+tints = []
+dots = 0
 
 # Add your own games like this (remove the # signs):
 #
@@ -117,6 +121,15 @@ pub struct Theme {
     pub speed: f32,
     /// How big they are, 1.0 being the usual.
     pub size: f32,
+    /// How far they sway sideways, 1.0 being the usual.
+    pub drift: f32,
+    /// How much they turn, 1.0 being the usual; 0 keeps them upright.
+    pub spin: f32,
+    /// Colours to paint the petals in, taken in turn; empty keeps the
+    /// picture's own colours.
+    pub tints: Vec<Colour>,
+    /// Specks of the accent colour drifting up: pollen, embers, fine snow.
+    pub dots: u32,
 }
 
 impl Default for Theme {
@@ -129,6 +142,10 @@ impl Default for Theme {
             petals: 18,
             speed: 1.0,
             size: 1.0,
+            drift: 1.0,
+            spin: 1.0,
+            tints: Vec::new(),
+            dots: 0,
         }
     }
 }

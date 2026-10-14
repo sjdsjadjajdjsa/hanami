@@ -53,7 +53,7 @@ pub fn render(path: &Path, scale: f32) -> Result<(), Box<dyn Error>> {
         .collect();
     panel.set_total(rows.len() as i32);
     panel.set_games(ModelRc::new(VecModel::from(rows)));
-    panel.set_petals(ModelRc::new(VecModel::from(petals(18, 1.0, 1.0))));
+    panel.set_petals(ModelRc::new(VecModel::from(petals(&crate::petals::Motion::default()))));
     // The user's own look, when they have settings: the AI can check its work.
     if let Some(path) = crate::config::path().filter(|path| path.exists()) {
         let config = crate::config::load(&path)?;
@@ -61,7 +61,8 @@ pub fn render(path: &Path, scale: f32) -> Result<(), Box<dyn Error>> {
             eprintln!("hanami: {problem}");
         }
     }
-    panel.set_t(14.0);
+    // HANAMI_SNAPSHOT_T picks the moment, for making a short clip from stills.
+    panel.set_t(std::env::var("HANAMI_SNAPSHOT_T").ok().and_then(|t| t.parse().ok()).unwrap_or(14.0));
     panel.set_selected(1);
     panel.show()?;
     panel.set_shown(true);

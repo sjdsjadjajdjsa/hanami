@@ -1004,7 +1004,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let panel = Panel::new()?;
     let rows = Rc::new(VecModel::default());
     panel.set_games(ModelRc::from(rows.clone()));
-    panel.set_petals(ModelRc::from(Rc::new(VecModel::from(petals(18, 1.0, 1.0)))));
+    panel.set_petals(ModelRc::from(Rc::new(VecModel::from(petals(&petals::Motion::default())))));
     connect_panel(&panel);
 
     // The ports search runs in the background; start it now so the first

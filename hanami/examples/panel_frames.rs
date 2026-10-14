@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let panel = Panel::new()?;
     let model = Rc::new(VecModel::<GameRow>::default());
     panel.set_games(model.clone().into());
-    panel.set_petals(Rc::new(VecModel::from(petals::petals(18, 1.0, 1.0))).into());
+    panel.set_petals(Rc::new(VecModel::from(petals::petals(&petals::Motion::default()))).into());
     panel.show()?;
     panel.set_shown(true);
 
