@@ -22,15 +22,16 @@ export struct GameRow {
     new: bool,
 }
 
-// Every colour, size and gap comes from here (see DESIGN.md).
-global Tokens {
-    out property <color> panel: #17141db8;
+// Every colour, size and gap comes from here (see DESIGN.md). The colours
+// are set from the settings' [theme]; the rest is fixed.
+export global Tokens {
+    in-out property <color> panel: #17141db8;
     out property <color> edge: #ffffff17;
-    out property <color> text: #ece6ee;
-    out property <color> dim: #9b93a3;
-    out property <color> accent: #f4b6c8;
-    out property <color> pick: #f4b6c824;
-    out property <color> select: #f4b6c859;
+    in-out property <color> text: #ece6ee;
+    in-out property <color> dim: #9b93a3;
+    in-out property <color> accent: #f4b6c8;
+    out property <color> pick: self.accent.with-alpha(0.14);
+    out property <color> select: self.accent.with-alpha(0.35);
     out property <color> hover: #ffffff0d;
     out property <length> pad: 20px;
     out property <length> gap: 8px;
@@ -53,7 +54,8 @@ component PetalView inherits Image {
     in property <length> area-w;
     in property <length> area-h;
     in property <float> t;
-    source: @image-url("../../assets/petal.svg");
+    in property <image> shape;
+    source: shape;
     width: p.size * 1px;
     height: p.size * 1.2px;
     opacity: p.alpha;
@@ -233,6 +235,8 @@ component Row inherits Rectangle {
 
 export component Panel inherits Window {
     in property <[Petal]> petals;
+    // The petal's picture: the sakura petal unless the settings bring another.
+    in property <image> petal: @image-url("../../assets/petal.svg");
     in property <[GameRow]> games;
     in property <int> total;
     in property <int> fresh;
@@ -400,6 +404,7 @@ export component Panel inherits Window {
 
             for p in root.petals: PetalView {
                 p: p;
+                shape: root.petal;
                 area-w: panel.width;
                 area-h: panel.height;
                 t: root.t;

@@ -183,7 +183,7 @@ fn load(path: &Path, px: u32) -> Option<DynamicImage> {
     }
     let data = std::fs::read(path).ok()?;
     if extension == "svg" || extension == "svgz" {
-        return svg(&data, px);
+        return svg_image(&data, px);
     }
     let mut reader = ImageReader::new(std::io::Cursor::new(data)).with_guessed_format().ok()?;
     let mut limits = image::Limits::default();
@@ -201,7 +201,13 @@ pub fn from_bytes(data: &[u8], px: u32) -> Option<Pixels> {
     Some(SharedPixelBuffer::clone_from_slice(rgba.as_raw(), rgba.width(), rgba.height()))
 }
 
-fn svg(data: &[u8], px: u32) -> Option<DynamicImage> {
+/// An SVG drawn to fit `px` pixels, as straight RGBA.
+pub fn svg(data: &[u8], px: u32) -> Option<Pixels> {
+    let rgba = svg_image(data, px)?.into_rgba8();
+    Some(SharedPixelBuffer::clone_from_slice(rgba.as_raw(), rgba.width(), rgba.height()))
+}
+
+fn svg_image(data: &[u8], px: u32) -> Option<DynamicImage> {
     use resvg::tiny_skia::{Pixmap, Transform};
     let tree = resvg::usvg::Tree::from_data(data, &resvg::usvg::Options::default()).ok()?;
     let size = tree.size();

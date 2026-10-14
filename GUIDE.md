@@ -290,17 +290,60 @@ Hanami then starts in the tray only, without opening the panel.
 
 ## Changing the look
 
-There is no theme setting yet. The look is built from a small set of colours,
-sizes and spacing kept in one place, so changing it means editing the source:
+Two text files decide the look, and the next time the panel opens it shows
+the change. An AI can write both, so "make it autumn with maple leaves" is a
+reasonable thing to ask it.
 
-- `hanami/ui/hanami.slint`, the `Tokens` block at the top: panel colour and
-  see-through amount, text colours, the pink highlight, sizes, spacing and
-  corner rounding.
-- The petals: count, speed and size in `petals()` in `hanami/src/main.rs`;
-  their shape in `assets/petal.svg`.
-- `DESIGN.md` explains the rules behind the look.
+**1. The `[theme]` block in the settings file** (`config.toml`):
 
-Then rebuild with `cargo build --release` (needs Rust).
+```toml
+[theme]
+panel = "#17141db8"   # the panel's colour; the last two digits are how solid
+text = "#ece6ee"      # game names and the title
+dim = "#9b93a3"       # labels and hints
+accent = "#f4b6c8"    # the selected row, the petals' tint in the highlight
+petals = 18           # how many petals fall (0 to 200)
+speed = 1.0           # how fast they fall; 0.5 is half as fast
+size = 1.0            # how big they are; 1.5 is half as big again
+```
+
+Colours are `"#rrggbb"` or `"#rrggbbaa"`. Keep `panel` between `80` and
+`e0` at the end so it stays see-through but readable, and keep `text`
+light on a dark panel (or dark on a light one). A wrong value keeps the
+old look and the panel says which line is wrong.
+
+**2. `petal.svg` next to the settings file.** When it exists, it is the
+falling shape instead of the sakura petal. Delete it to get the petal back.
+Rules for the file, which Hanami checks:
+
+- One plain SVG: a `viewBox` of `0 0 100 100`, one or a few `path`,
+  `circle` or `ellipse` elements with `fill` colours, nothing else. No text,
+  no pictures inside it, no links to other files, no scripts, no filters.
+- Under 64 KB; a petal is a few lines.
+- The shape should fill most of the box and be clear at 12 pixels: a leaf,
+  a petal, a snowflake, a star. Fine detail disappears at that size.
+
+A file that doesn't follow this is refused ("Couldn't read petal.svg: ...")
+and the sakura petal stays.
+
+**For an AI changing the look:** edit only `[theme]` and `petal.svg`, nothing
+else in the settings file; keep the keys above and their ranges; change
+only what was asked for; then say what you changed. To check the result,
+`hanami --snapshot look.png` draws the panel with the current look into a
+picture without opening it.
+
+Example `petal.svg`, a maple leaf:
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M50 4 L58 30 L82 18 L72 44 L96 52 L72 60 L82 86 L58 72 L50 98 L42 72 L18 86 L28 60 L4 52 L28 44 L18 18 L42 30 Z" fill="#d9541e"/>
+  <path d="M50 20 L50 90" stroke="#8f2d0a" stroke-width="3"/>
+</svg>
+```
+
+Sizes, spacing and corner rounding are not settings; they're in
+`hanami/ui/hanami.slint` (`Tokens`), and `DESIGN.md` explains the rules
+behind them.
 
 ## Known limits
 

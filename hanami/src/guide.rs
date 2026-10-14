@@ -21,7 +21,7 @@ Please read Hanami's guide below, then look around my computer (only reading thi
 - what Hanami does and how I open and close it,
 - which games it finds on my computer and where they come from (running `hanami --list` shows them),
 - how I add my own games or hide ones I don't want,
-- what I can customise, including how it looks.
+- what I can customise, including how it looks (the colours and the falling petals are two text files you can write for me; see the guide's part called Changing the look, and follow its rules exactly if I ask for a new look).
 
 Don't change any files or settings yet. End by asking me what I'd like to do.
 

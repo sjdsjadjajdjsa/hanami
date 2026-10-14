@@ -19,6 +19,7 @@ mod net;
 mod petals;
 mod snapshot;
 mod state;
+mod theme;
 mod update;
 
 use std::cell::{Cell, RefCell};
@@ -305,6 +306,17 @@ impl App {
             }
         }
         self.controller.set_enabled(self.config.borrow().controller);
+        let dir = self.config_path.as_deref().and_then(Path::parent);
+        if let Err(problem) =
+            theme::apply(&self.panel, &self.config.borrow().theme, dir, self.panel.window().scale_factor())
+        {
+            log(&problem);
+            PROBLEMS.with_borrow_mut(|problems| {
+                if !problems.contains(&problem) {
+                    problems.push(problem);
+                }
+            });
+        }
         let (games, fresh) = listed(&self.config.borrow(), &self.state.borrow());
         log(&format!("{} games, {} new", games.len(), fresh.len()));
         self.panel.set_total(games.len() as i32);
@@ -992,7 +1004,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let panel = Panel::new()?;
     let rows = Rc::new(VecModel::default());
     panel.set_games(ModelRc::from(rows.clone()));
-    panel.set_petals(ModelRc::from(Rc::new(VecModel::from(petals()))));
+    panel.set_petals(ModelRc::from(Rc::new(VecModel::from(petals(18, 1.0, 1.0)))));
     connect_panel(&panel);
 
     // The ports search runs in the background; start it now so the first

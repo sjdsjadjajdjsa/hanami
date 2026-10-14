@@ -79,7 +79,7 @@ the footer.
 ## Not in v1
 
 Minecraft (v2, through Prism instances), cover art, play time, store pages,
-updates, themes, a settings window, starting with the system, Wayland blur,
+updates, a settings window, starting with the system, Wayland blur,
 multiple monitors beyond "open where the mouse is".
 
 ## Quality bar

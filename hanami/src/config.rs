@@ -11,7 +11,7 @@ use crate::find::Source;
 use crate::games::key;
 
 /// Written on first run, with a comment for every setting.
-pub const DEFAULT: &str = r#"# Hanami settings. Changes show up the next time the panel opens.
+pub const DEFAULT: &str = r##"# Hanami settings. Changes show up the next time the panel opens.
 
 # Key that opens and hides the panel, like "Ctrl+Alt+H" or "Super+H".
 # Restart Hanami after changing it. On KDE Plasma 6 and GNOME under Wayland,
@@ -57,6 +57,18 @@ controller = true
 # of known ports and to check for a new version. false = never.
 online = true
 
+# The look. Colours are "#rrggbb" or "#rrggbbaa" (the last two digits are
+# how solid: 00 see-through, ff solid). A petal.svg file next to this one
+# replaces the sakura petal; see GUIDE.md, "Changing the look".
+[theme]
+panel = "#17141db8"
+text = "#ece6ee"
+dim = "#9b93a3"
+accent = "#f4b6c8"
+petals = 18
+speed = 1.0
+size = 1.0
+
 # Add your own games like this (remove the # signs):
 #
 # [[game]]
@@ -70,7 +82,7 @@ online = true
 #
 # On Windows, put paths in single quotes so the backslashes stay as they are:
 # command = 'C:\Games\My Game\game.exe'
-"#;
+"##;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -85,8 +97,65 @@ pub struct Config {
     pub projects: Vec<String>,
     pub controller: bool,
     pub online: bool,
+    pub theme: Theme,
     #[serde(rename = "game")]
     pub games: Vec<GameEntry>,
+}
+
+/// The look: colours and the petals. The petal's shape comes from a
+/// `petal.svg` next to the settings file, when there is one.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Theme {
+    pub panel: Colour,
+    pub text: Colour,
+    pub dim: Colour,
+    pub accent: Colour,
+    /// How many petals fall.
+    pub petals: u32,
+    /// How fast they fall, 1.0 being the usual.
+    pub speed: f32,
+    /// How big they are, 1.0 being the usual.
+    pub size: f32,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            panel: Colour(0x17141db8),
+            text: Colour(0xece6eeff),
+            dim: Colour(0x9b93a3ff),
+            accent: Colour(0xf4b6c8ff),
+            petals: 18,
+            speed: 1.0,
+            size: 1.0,
+        }
+    }
+}
+
+/// A colour as `0xrrggbbaa`, read from "#rrggbb" or "#rrggbbaa".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Colour(pub u32);
+
+impl Colour {
+    pub fn rgba(self) -> (u8, u8, u8, u8) {
+        ((self.0 >> 24) as u8, (self.0 >> 16) as u8, (self.0 >> 8) as u8, self.0 as u8)
+    }
+}
+
+impl<'de> Deserialize<'de> for Colour {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        let digits = text.strip_prefix('#').unwrap_or(&text);
+        let value = match digits.len() {
+            6 => u32::from_str_radix(digits, 16).ok().map(|rgb| rgb << 8 | 0xff),
+            8 => u32::from_str_radix(digits, 16).ok(),
+            _ => None,
+        };
+        value.map(Colour).ok_or_else(|| {
+            serde::de::Error::custom(format!("\"{text}\" isn't a colour like \"#rrggbb\" or \"#rrggbbaa\""))
+        })
+    }
 }
 
 impl Default for Config {
@@ -102,6 +171,7 @@ impl Default for Config {
             projects: Vec::new(),
             controller: true,
             online: true,
+            theme: Theme::default(),
             games: Vec::new(),
         }
     }
@@ -288,6 +358,18 @@ mod tests {
     #[test]
     fn default_file_parses_to_default_settings() {
         assert_eq!(parse(DEFAULT), Ok(Config::default()));
+    }
+
+    #[test]
+    fn colours_are_read_and_checked() {
+        let config = parse("[theme]\npanel = \"#102030\"\naccent = \"#ff000080\"\npetals = 4\n").unwrap();
+        assert_eq!(config.theme.panel, Colour(0x102030ff));
+        assert_eq!(config.theme.accent.rgba(), (255, 0, 0, 128));
+        assert_eq!(config.theme.petals, 4);
+        assert_eq!(config.theme.text, Theme::default().text);
+        let error = parse("[theme]\npanel = \"red\"\n").unwrap_err();
+        assert!(error.contains("line 2") && error.contains("colour"), "{error}");
+        assert!(parse("[theme]\nfont = \"x\"\n").is_err());
     }
 
     #[test]
