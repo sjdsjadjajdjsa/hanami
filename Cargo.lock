@@ -1625,7 +1625,7 @@ dependencies = [
 
 [[package]]
 name = "hanami"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arboard",
  "desktop",
