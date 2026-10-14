@@ -260,7 +260,7 @@ export component Panel inherits Window {
 
     public function focus-keys() {
         keys.focus();
-        list.viewport-y = 0;
+        list.content-y = 0;
     }
 
     title: "Hanami";
@@ -271,12 +271,22 @@ export component Panel inherits Window {
     height: 440px;
     default-font-family: "Inter";
 
-    function reveal() {
-        if (root.selected * Tokens.row-step + list.viewport-y < 0) {
-            list.viewport-y = -root.selected * Tokens.row-step;
+    // The selected row, or when the wheel has scrolled it out of view, the
+    // row at the top of what is visible: the arrows carry on from there.
+    function visible-selected() -> int {
+        if (root.selected * Tokens.row-step + list.content-y < 0
+            || (root.selected + 1) * Tokens.row-step - Tokens.gap + list.content-y > list.height) {
+            return Math.clamp(Math.ceil(-list.content-y / Tokens.row-step), 0, root.games.length - 1);
         }
-        if ((root.selected + 1) * Tokens.row-step - Tokens.gap + list.viewport-y > list.height) {
-            list.viewport-y = list.height - (root.selected + 1) * Tokens.row-step + Tokens.gap;
+        return root.selected;
+    }
+
+    function reveal() {
+        if (root.selected * Tokens.row-step + list.content-y < 0) {
+            list.content-y = -root.selected * Tokens.row-step;
+        }
+        if ((root.selected + 1) * Tokens.row-step - Tokens.gap + list.content-y > list.height) {
+            list.content-y = list.height - (root.selected + 1) * Tokens.row-step + Tokens.gap;
         }
     }
 
@@ -353,12 +363,12 @@ export component Panel inherits Window {
             }
             if (event.text == Key.DownArrow) {
                 if (root.games.length > 0) {
-                    root.selected = Math.min(root.selected + 1, root.games.length - 1);
+                    root.selected = Math.min(root.visible-selected() + 1, root.games.length - 1);
                 }
                 return accept;
             }
             if (event.text == Key.UpArrow) {
-                root.selected = Math.max(root.selected - 1, 0);
+                root.selected = Math.max(root.visible-selected() - 1, 0);
                 return accept;
             }
             if (event.text == Key.Return) {
@@ -463,7 +473,7 @@ export component Panel inherits Window {
                     list := Flickable {
                         width: parent.width;
                         height: parent.height;
-                        viewport-height: Math.max(root.games.length * Tokens.row-step - Tokens.gap, 0px);
+                        content-height: Math.max(root.games.length * Tokens.row-step - Tokens.gap, 0px);
                         for game[i] in root.games: Row {
                             x: 0;
                             y: i * Tokens.row-step;
