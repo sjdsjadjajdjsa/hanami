@@ -1,2 +1,3 @@
 target/
 notes/
+__pycache__/

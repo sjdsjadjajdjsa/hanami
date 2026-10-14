@@ -72,7 +72,8 @@ cargo build --release
 [SPEC.md](SPEC.md) says what Hanami does, [DESIGN.md](DESIGN.md) how it
 looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
 [site/](site); `hanami --snapshot panel.png` and then
-`python3 docs/screenshot.py panel.png` redraw the README pictures.
+`python3 docs/screenshot.py panel.png` redraw the README pictures, and
+`python3 docs/video.py hanami.mp4` makes the short video, music included.
 
 ## License
 

@@ -13,6 +13,7 @@ mod icons;
 mod ipc;
 mod launch;
 mod net;
+mod petals;
 mod snapshot;
 mod state;
 mod update;
@@ -37,6 +38,7 @@ use find::Source;
 use gamepad::Action;
 use games::key;
 use ipc::Request;
+use petals::petals;
 use state::State;
 
 slint::include_modules!();
@@ -44,7 +46,6 @@ slint::include_modules!();
 const WIDTH: u32 = 340;
 const HEIGHT: u32 = 440;
 const RADIUS: u32 = 16;
-const PETALS: usize = 18;
 /// Icons are 24 px in the row, decoded at twice that for sharp HiDPI.
 const ICON_PX: u32 = 48;
 const FRAME: Duration = Duration::from_millis(33);
@@ -638,29 +639,6 @@ fn with_app(f: impl FnOnce(&Rc<App>)) {
     if let Some(app) = app {
         f(&app);
     }
-}
-
-/// The same 18 petals every time, so the panel always looks the same.
-fn petals() -> Vec<Petal> {
-    let mut seed: u64 = 0x2545_f491_4f6c_dd1d;
-    let mut next = move || {
-        seed ^= seed << 13;
-        seed ^= seed >> 7;
-        seed ^= seed << 17;
-        (seed >> 11) as f32 / (1u64 << 53) as f32
-    };
-    (0..PETALS)
-        .map(|_| Petal {
-            x: next(),
-            speed: 12.0 + next() * 16.0,
-            sway: 6.0 + next() * 14.0,
-            freq: 0.4 + next() * 0.6,
-            spin: (next() - 0.5) * 70.0,
-            size: 7.0 + next() * 6.0,
-            alpha: 0.35 + next() * 0.45,
-            phase: next() * std::f32::consts::TAU,
-        })
-        .collect()
 }
 
 /// How the panel's window is created, per platform.

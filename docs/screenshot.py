@@ -86,7 +86,8 @@ def fade(distance):
     return int(255 * t * t * (3 - 2 * t))
 
 
-def backdrop(scene, rand, panel_box, size=(W, H)):
+def base(scene, rand, size=(W, H)):
+    """The gradient, glows and soft circles, without petals."""
     W, H = size
     top, bottom = (Image.new("RGBA", (W, H), c + (255,)) for c in (scene["top"], scene["bottom"]))
     image = Image.composite(bottom, top, Image.linear_gradient("L").resize((W, H)))
@@ -109,7 +110,12 @@ def backdrop(scene, rand, panel_box, size=(W, H)):
             layer = Image.new("RGBA", (W, H), colour + (0,))
             layer.putalpha(mask.filter(ImageFilter.GaussianBlur(blur)))
             image.alpha_composite(layer)
+    return image
 
+
+def backdrop(scene, rand, panel_box, size=(W, H)):
+    image = base(scene, rand, size)
+    W, H = size
     left, top_edge, right, bottom_edge = panel_box
     for i in range(30):
         size = rand.uniform(14, 34)
