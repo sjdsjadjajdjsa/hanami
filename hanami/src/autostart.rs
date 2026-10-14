@@ -110,7 +110,8 @@ mod platform {
         /// back what was there.
         #[test]
         fn the_run_key_is_set_and_cleared() {
-            let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(RUN, KEY_READ | KEY_WRITE).unwrap();
+            // A fresh account has no Run key yet.
+            let (key, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey_with_flags(RUN, KEY_READ | KEY_WRITE).unwrap();
             let before: Option<String> = key.get_value("Hanami").ok();
             set(true).unwrap();
             assert!(enabled());
