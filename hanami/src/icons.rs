@@ -152,6 +152,7 @@ fn work(receiver: Receiver<PathBuf>, px: u32, done: Done, ready: Arc<dyn Fn() + 
         if pending {
             ready();
         }
+        desktop::return_memory();
     }
 }
 

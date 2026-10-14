@@ -100,6 +100,7 @@ pub fn find(config: &Config) -> Vec<Game> {
             }
             state.running = false;
             drop(state);
+            desktop::return_memory();
             if changed && let Some(changed) = CHANGED.get() {
                 changed();
             }

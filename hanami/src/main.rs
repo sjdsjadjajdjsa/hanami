@@ -233,6 +233,7 @@ impl App {
                     // Hidden X11 windows lose their states; restore them for the next show.
                     panel.window().with_winit_window(desktop::prepare);
                 }
+                desktop::return_memory();
             })
         });
     }

@@ -77,6 +77,7 @@ pub fn refresh(online: bool) {
         {
             let _ = std::fs::write(path, text);
         }
+        desktop::return_memory();
     });
 }
 

@@ -6,3 +6,30 @@ members = ["hanami", "desktop"]
 lto = "thin"
 codegen-units = 4
 strip = true
+
+# Most dependencies run rarely (network, file scans, decoding, dialogs), so
+# they are built small: less of the program sits in memory. What draws the
+# panel every frame stays built for speed.
+[profile.release.package."*"]
+opt-level = "s"
+
+[profile.release.package.i-slint-core]
+opt-level = 3
+[profile.release.package.i-slint-renderer-software]
+opt-level = 3
+[profile.release.package.i-slint-backend-winit]
+opt-level = 3
+[profile.release.package.i-slint-renderer-femtovg]
+opt-level = 3
+[profile.release.package.femtovg]
+opt-level = 3
+[profile.release.package.tiny-skia]
+opt-level = 3
+[profile.release.package.tiny-skia-path]
+opt-level = 3
+[profile.release.package.resvg]
+opt-level = 3
+[profile.release.package.vtable]
+opt-level = 3
+[profile.release.package.slint]
+opt-level = 3

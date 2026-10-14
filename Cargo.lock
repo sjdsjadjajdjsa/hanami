@@ -825,6 +825,7 @@ dependencies = [
 name = "desktop"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "raw-window-handle",
  "windows-sys 0.61.2",
  "x11rb",

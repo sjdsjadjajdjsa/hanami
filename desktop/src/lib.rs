@@ -28,6 +28,17 @@ pub fn centre_on_pointer(width: u32, height: u32, scale: f32) -> Option<(i32, i3
     imp::centre_on_pointer(width, height, scale)
 }
 
+/// Hands memory a finished job freed back to the system. Each thread gets
+/// its own pool in glibc, and freed memory stays there otherwise, which adds
+/// up for a program that sits in the tray all day.
+pub fn return_memory() {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    // SAFETY: takes no pointers; it only releases memory that is already free.
+    unsafe {
+        libc::malloc_trim(0);
+    }
+}
+
 /// Keeps `window` out of the taskbar and pager and above other windows.
 /// Call it before every show: X11 window managers forget these states when
 /// a window is hidden.

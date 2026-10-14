@@ -40,6 +40,7 @@ pub fn check(online: bool, found: impl FnOnce(String) + Send + 'static) {
             Some(version) => found(version.to_string()),
             None => crate::log(&format!("no newer version (latest seen: {})", latest.as_deref().unwrap_or("none"))),
         }
+        desktop::return_memory();
     });
 }
 
