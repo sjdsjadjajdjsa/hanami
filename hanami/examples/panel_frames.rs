@@ -13,6 +13,8 @@
 //! Time drives the petals and the panel's own animations, so a frame
 //! sequence plays back exactly like the app.
 
+// The example only needs the petals, not the dots.
+#[allow(dead_code)]
 #[path = "../src/petals.rs"]
 mod petals;
 
