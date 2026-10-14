@@ -1,15 +1,19 @@
-"""Makes Hanami's short video for YouTube: the real panel, drawn off screen by
-the panel_frames example, over a sakura backdrop, with titles and an original
-koto piece written here (no samples, nothing borrowed).
+"""Makes Hanami's short video: a desktop where someone presses the hotkey and
+uses the real panel (drawn off screen by the panel_frames example), with
+titles and an original koto piece written here (no samples, nothing
+borrowed).
 
     python3 docs/video.py hanami.mp4
+    python3 docs/video.py --tall hanami-tall.mp4
 
-Writes the video (1920 x 1080, 60 fps, 11 seconds) and a 1280 x 720
-thumbnail next to it. Needs Rust, ffmpeg, Pillow, NumPy and SciPy, and a
-minute or two. Frames are kept in ~/.cache/hanami-video while it runs.
+Writes the video (60 fps, 11 seconds) and a thumbnail next to it: 1920 x 1080
+for YouTube, or 1080 x 1920 with --tall for Shorts, TikTok and Reels. Needs
+Rust, ffmpeg, rsvg-convert, Pillow, NumPy and SciPy, and a minute or two. Frames are kept
+in ~/.cache/hanami-video while it runs.
 """
 
 import functools
+import io
 import json
 import math
 import multiprocessing
@@ -31,7 +35,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import screenshot  # noqa: E402
 
-W, H, FPS = 1920, 1080, 60
+FPS = 60
 LENGTH = 11.0
 FRAMES = round(LENGTH * FPS)
 SR = 48000
@@ -63,6 +67,60 @@ TYPED = [(b(5.5), "h"), (b(6.0), "hk"), (b(8.0), "h"), (b(8.25), "")]
 DOWNS = [b(8.75), b(9.0), b(9.25)]
 TAB, ENTER = b(9.75), b(10.75)
 CLICKS = [at for at, _ in TYPED] + DOWNS + [TAB, ENTER]
+
+
+# The desktop the video plays on, in logical pixels, drawn at twice that so
+# the camera can move in close. Hanami opens in the middle of the screen
+# under the mouse (desktop::centre_on_pointer).
+SCREEN_W, SCREEN_H = 1920, 1080
+DESK = 2
+BAR = 44
+PANEL_BOX = ((SCREEN_W - 340) / 2, (SCREEN_H - 440) / 2, 340, 440)
+POINTER = (1540, 820)
+
+# Where everything sits, and the camera: (time, centre x, centre y, zoom) on
+# the desktop, eased from one to the next. The tall layout keeps the words
+# and the panel clear of the buttons and captions Shorts, TikTok and Reels
+# draw on top.
+LAYOUTS = {
+    "wide": dict(
+        size=(1920, 1080),
+        align="left",
+        keys=(960, 900),
+        keys_aside=(0, 40),
+        camera=[
+            (0, 960, 540, 1.0),
+            (REVEAL + 0.1, 960, 540, 1.0),
+            (REVEAL + 0.9, 790, 540, 1.7),
+            (END - 0.2, 780, 540, 1.76),
+            (END + 0.8, 960, 540, 1.0),
+        ],
+        words=(148, 400),
+        word_sizes=(72, 32),
+        end=[(150, 270), (144, 410), (152, 590), (152, 720)],
+        end_sizes=(104, 132, 36, 32),
+        thumbnail=(1280, 720),
+    ),
+    "tall": dict(
+        size=(1080, 1920),
+        align="center",
+        keys=(540, 1390),
+        keys_aside=(0, 60),
+        camera=[
+            (0, 960, 540, 0.5),
+            (REVEAL + 0.1, 960, 540, 0.5),
+            (REVEAL + 1.0, 960, 480, 2.0),
+            (LENGTH, 960, 488, 1.97),
+        ],
+        words=(540, 330),
+        word_sizes=(84, 38),
+        end=[(540, 200), (540, 318), (540, 445), (540, 555)],
+        end_sizes=(96, 120, 38, 34),
+        thumbnail=(720, 1280),
+    ),
+}
+LAYOUT = LAYOUTS["wide"]
+W, H = LAYOUT["size"]
 
 GAMES = [
     ("Hades", "epic", "hades"),
@@ -189,14 +247,21 @@ def cjk_font(size):
 
 
 @functools.lru_cache(None)
-def text(words, weight, size, colour, spacing=10):
+def text(words, weight, size, colour, spacing=10, align="left"):
     f = font(weight, size)
     left, top, right, bottom = ImageDraw.Draw(Image.new("L", (1, 1))).multiline_textbbox(
-        (0, 0), words, font=f, spacing=spacing
+        (0, 0), words, font=f, spacing=spacing, align=align
     )
-    image = Image.new("RGBA", (right - left + 4, bottom - top + 4), colour + (0,))
-    ImageDraw.Draw(image).multiline_text((2 - left, 2 - top), words, font=f, fill=colour + (255,), spacing=spacing)
+    image = Image.new("RGBA", (math.ceil(right - left) + 4, math.ceil(bottom - top) + 4), colour + (0,))
+    ImageDraw.Draw(image).multiline_text(
+        (2 - left, 2 - top), words, font=f, fill=colour + (255,), spacing=spacing, align=align
+    )
     return image
+
+
+def anchor(sprite, x, nudge=0):
+    """Where a sprite starts so it sits at x: from x, or centred on it."""
+    return x - sprite.width / 2 if LAYOUT["align"] == "center" else x + nudge
 
 
 @functools.lru_cache(None)
@@ -240,10 +305,16 @@ def keycap(label, pressed):
 
 def setup():
     """Things every frame shares; made once, before the workers start."""
-    global BG, BG_BLUR, MASK, SPRITE, PETALS, NOISE
+    global WALL, WALL_BLUR, CHROME, SCREEN_MASK, BACKDROP, MASK, SPRITE, PETALS, NOISE
     scene = screenshot.SCENES["dark"]
-    BG = screenshot.base(scene, random.Random(7), (int(W * 1.1), int(H * 1.1)))
-    BG_BLUR = BG.filter(ImageFilter.GaussianBlur(30))
+    size = (SCREEN_W * DESK, SCREEN_H * DESK)
+    WALL = screenshot.base(scene, random.Random(7), (SCREEN_W, SCREEN_H)).resize(size, Image.BICUBIC)
+    WALL_BLUR = WALL.filter(ImageFilter.GaussianBlur(30 * DESK))
+    CHROME = chrome(size)
+    SCREEN_MASK = screenshot.rounded((SCREEN_W, SCREEN_H), 28)
+    cover = min(size[0] / W, size[1] / H)
+    crop = ((size[0] - W * cover) / 2, (size[1] - H * cover) / 2, (size[0] + W * cover) / 2, (size[1] + H * cover) / 2)
+    BACKDROP = WALL_BLUR.resize((W, H), Image.BILINEAR, box=crop).point(lambda v: int(v * 0.5))
     MASK = screenshot.rounded((PW, PH), int(16 * PANEL_SCALE))
     SPRITE = screenshot.petal(64, scene["petal"], scene["vein"], 1.0, 0, 0)
     rand = random.Random(11)
@@ -253,8 +324,8 @@ def setup():
         PETALS.append(
             dict(
                 depth=depth,
-                x=rand.uniform(0, W + 400),
-                y=rand.uniform(0, H + 300),
+                x=rand.uniform(0, 1),
+                y=rand.uniform(0, 1),
                 sway=rand.uniform(10, 30) * depth,
                 freq=rand.uniform(0.5, 1.1),
                 phase=rand.uniform(0, math.tau),
@@ -267,11 +338,115 @@ def setup():
     NOISE = [noise.normal(0, 1.2, (H, W, 1)).astype(np.float32) for _ in range(6)]
 
 
-def draw_petal(image, p, t):
+def chrome(size):
+    """The desktop's own things over the wallpaper: a frosted taskbar with a
+    start button, the tray (Hanami's flower beside sound and network) and a
+    clock, and the mouse pointer. Drawn at twice the desktop's scale, then
+    halved, for smooth edges."""
+    u = DESK * 2
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    top = (SCREEN_H - BAR) * DESK
+    layer.paste(WALL_BLUR.crop((0, top, size[0], size[1])), (0, top))
+    layer.alpha_composite(Image.new("RGBA", (size[0], BAR * DESK), (14, 12, 19, 205)), (0, top))
+
+    strip = Image.new("RGBA", (SCREEN_W * u, BAR * u), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(strip)
+    ink, cy = TEXT + (225,), BAR * u / 2
+    draw.line((0, 0, strip.width, 0), fill=(255, 255, 255, 30), width=u // 2)
+    for dx in (0, 1):
+        for dy in (0, 1):
+            x, y = (16 + dx * 10) * u, cy + (dy * 10 - 9) * u
+            draw.rounded_rectangle((x, y, x + 8 * u, y + 8 * u), radius=2 * u, fill=ink)
+    clock = font("Medium", 14 * u)
+    x = (SCREEN_W - 18) * u
+    draw.text((x, cy), "21:30", font=clock, fill=ink, anchor="rm")
+    x -= draw.textlength("21:30", font=clock) + 24 * u
+    base = cy + 6 * u
+    draw.ellipse((x - 2 * u, base - 2 * u, x + 2 * u, base + 2 * u), fill=ink)
+    for r in (6, 10):
+        draw.arc((x - r * u, base - r * u, x + r * u, base + r * u), 225, 315, fill=ink, width=2 * u)
+    x -= 32 * u
+    draw.polygon([(x - 8 * u, cy - 3 * u), (x - 4 * u, cy - 3 * u), (x + 1 * u, cy - 8 * u),
+                  (x + 1 * u, cy + 8 * u), (x - 4 * u, cy + 3 * u), (x - 8 * u, cy + 3 * u)], fill=ink)
+    for r in (5, 9):
+        draw.arc((x + u - r * u, cy - r * u, x + u + r * u, cy + r * u), -45, 45, fill=ink, width=2 * u)
+    x -= 32 * u
+    flower = subprocess.run(["rsvg-convert", "-w", str(20 * u), "-h", str(20 * u), str(ROOT / "assets" / "hanami-icon.svg")],
+                            capture_output=True, check=True).stdout
+    flower = Image.open(io.BytesIO(flower)).convert("RGBA")
+    strip.alpha_composite(flower, (round(x - flower.width / 2), round(cy - flower.height / 2)))
+    layer.alpha_composite(strip.resize((size[0], BAR * DESK), Image.LANCZOS), (0, top))
+
+    arrow = [(0, 0), (0, 17), (4, 13), (7, 20), (10, 19), (7, 12), (12, 12)]
+    pointer = Image.new("RGBA", (16 * u, 24 * u), (0, 0, 0, 0))
+    ImageDraw.Draw(pointer).polygon([(u + x * u, u + y * u) for x, y in arrow], fill=(255, 255, 255, 255),
+                                     outline=(0, 0, 0, 255), width=u)
+    pointer = pointer.resize((pointer.width * DESK // u, pointer.height * DESK // u), Image.LANCZOS)
+    layer.alpha_composite(pointer, (POINTER[0] * DESK, POINTER[1] * DESK))
+    return layer
+
+
+def camera(t):
+    """Where the camera is at t: (centre x, centre y, zoom), kept on the desktop."""
+    keys = LAYOUT["camera"]
+    x, y, zoom = keys[-1][1:]
+    for (start, *a), (stop, *b) in zip(keys, keys[1:]):
+        if t < stop:
+            f = smooth(between(t, start, stop - start))
+            x, y, zoom = a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] * (b[2] / a[2]) ** f
+            break
+    half_w, half_h = W / zoom / 2, H / zoom / 2
+    x = clamp(x, half_w, SCREEN_W - half_w) if half_w < SCREEN_W / 2 else SCREEN_W / 2
+    y = clamp(y, half_h, SCREEN_H - half_h) if half_h < SCREEN_H / 2 else SCREEN_H / 2
+    return x, y, zoom
+
+
+def on_screen(cam, x, y, size=None):
+    """A point on the desktop to a point in the frame (or an image of `size`)."""
+    width, height = size or (W, H)
+    return (x - cam[0]) * cam[2] + width / 2, (y - cam[1]) * cam[2] + height / 2
+
+
+def desktop(cam, t):
+    """The wallpaper, its petals and the taskbar as the camera sees them.
+    Zoomed out past the screen's edges, the whole screen floats over a dim
+    copy of the wallpaper."""
+    zoom = cam[2]
+    fills = W / zoom <= SCREEN_W + 0.5 and H / zoom <= SCREEN_H + 0.5
+    size = (W, H) if fills else (round(SCREEN_W * zoom), round(SCREEN_H * zoom))
+    view = cam if fills else (SCREEN_W / 2, SCREEN_H / 2, zoom)
+    half_w, half_h = min(size[0] / zoom, SCREEN_W) / 2, min(size[1] / zoom, SCREEN_H) / 2
+    box = tuple(v * DESK for v in (view[0] - half_w, view[1] - half_h, view[0] + half_w, view[1] + half_h))
+    image = WALL.resize(size, Image.BILINEAR, box=box)
+    for p in PETALS:
+        if p["depth"] < 1.2:
+            draw_petal(image, p, t, view)
+    image.alpha_composite(CHROME.resize(size, Image.BILINEAR, box=box))
+    if fills:
+        return image
+    frame = BACKDROP.copy()
+    left, top = (round(v) for v in on_screen(cam, 0, 0))
+    shade = Image.new("L", (W // 8, H // 8), 0)
+    small = SCREEN_MASK.resize((max(1, size[0] // 8), max(1, size[1] // 8)), Image.BILINEAR)
+    shade.paste(small, (left // 8, (top + round(24 * zoom)) // 8))
+    shade = shade.filter(ImageFilter.GaussianBlur(5)).resize((W, H), Image.BILINEAR).point(lambda v: int(v * 0.6))
+    frame.paste((0, 0, 0, 255), (0, 0, W, H), shade)
+    frame.paste(image, (left, top), SCREEN_MASK.resize(size, Image.BILINEAR))
+    return frame
+
+
+def draw_petal(image, p, t, cam=None):
+    """A falling petal: on the wallpaper, moving with the camera, or with no
+    camera close in front of everything."""
     depth = p["depth"]
-    x = (p["x"] - (25 + 35 * depth) * t + p["sway"] * math.sin(p["freq"] * t + p["phase"])) % (W + 400) - 200
-    y = (p["y"] + (28 + 38 * depth) * t) % (H + 300) - 150
-    size = (9 + 16 * depth) / 64
+    width, height = (SCREEN_W, SCREEN_H) if cam else (W, H)
+    x = (p["x"] * (width + 400) - (25 + 35 * depth) * t + p["sway"] * math.sin(p["freq"] * t + p["phase"]))
+    x = x % (width + 400) - 200
+    y = (p["y"] * (height + 300) + (28 + 38 * depth) * t) % (height + 300) - 150
+    zoom = 1.0
+    if cam:
+        (x, y), zoom = on_screen(cam, x, y, image.size), cam[2]
+    size = (9 + 16 * depth) / 64 * zoom
     squash = 0.3 + 0.7 * abs(math.cos(p["flip"] * t + p["phase"]))
     sprite = SPRITE.resize(
         (max(2, round(SPRITE.width * size * squash)), max(2, round(SPRITE.height * size))), Image.LANCZOS
@@ -287,63 +462,31 @@ def draw_petal(image, p, t):
     put(image, sprite, (x - sprite.width / 2, y - sprite.height / 2), alpha)
 
 
-def quad(cx, cy, w, h, yaw, pitch, focal=2400):
-    """The panel's corners on screen, turned in 3D and seen in perspective."""
-    corners = []
-    for x, y in ((-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)):
-        x3, z3 = x * math.cos(yaw), x * math.sin(yaw)
-        y3, z3 = y * math.cos(pitch) - z3 * math.sin(pitch), y * math.sin(pitch) + z3 * math.cos(pitch)
-        k = focal / (focal + z3)
-        corners.append((cx + x3 * k, cy + y3 * k))
-    return corners
-
-
-def perspective(screen, source):
-    """Pillow's PERSPECTIVE data: maps screen corners back to source corners."""
-    rows, values = [], []
-    for (x, y), (u, v) in zip(screen, source):
-        rows.append([x, y, 1, 0, 0, 0, -u * x, -u * y])
-        values.append(u)
-        rows.append([0, 0, 0, x, y, 1, -v * x, -v * y])
-        values.append(v)
-    return np.linalg.solve(np.array(rows, float), np.array(values, float)).tolist()
-
-
-def draw_panel(image, box, t, index):
-    if t < REVEAL:
+def draw_panel(image, cam, t, index):
+    """The real panel where Hanami opens it, over frosted wallpaper. Like the
+    app, it fades in over 140 ms."""
+    opacity = between(t, REVEAL, 0.14)
+    if opacity <= 0:
         return
-    shown = ease(between(t, REVEAL, 0.6))
-    opacity = smooth(between(t, REVEAL, 0.3))
-    settle = smooth(between(t, END - 0.3, 1.2))
-    yaw = -20 + 13 * shown + 3 * between(t, REVEAL + 0.6, END - REVEAL - 0.6) + 9 * settle
-    pitch = -6 + 3.5 * shown
-    height = 700 * (0.9 + 0.1 * shown) * (1 + 0.04 * between(t, REVEAL, LENGTH - REVEAL)) * (1 - 0.05 * settle)
-    w, h = round(height * PW / PH), round(height)
-    corners = quad(1250, 545 + 40 * (1 - shown), w, h, math.radians(yaw), math.radians(pitch))
-    left, top = math.floor(min(x for x, _ in corners)) - 2, math.floor(min(y for _, y in corners)) - 2
-    right, bottom = math.ceil(max(x for x, _ in corners)) + 2, math.ceil(max(y for _, y in corners)) + 2
-    size = (right - left, bottom - top)
-    data = perspective([(x - left, y - top) for x, y in corners], [(0, 0), (w, 0), (w, h), (0, h)])
+    x0, y0, pw, ph = PANEL_BOX
+    zoom = cam[2]
+    left, top = (round(v) for v in on_screen(cam, x0, y0))
+    w, h = round(pw * zoom), round(ph * zoom)
+    mask = MASK.resize((w, h), Image.LANCZOS)
 
-    raw = (CACHE / "panel" / f"{index:05}.rgba").read_bytes()
-    panel = Image.frombytes("RGBa", (PW, PH), raw).convert("RGBA").resize((w, h), Image.LANCZOS)
-    panel = panel.transform(size, Image.PERSPECTIVE, data, Image.BICUBIC)
-    mask = MASK.resize((w, h), Image.BILINEAR).transform(size, Image.PERSPECTIVE, data, Image.BILINEAR)
-
-    pad = 80
-    shade = Image.new("L", (size[0] + 2 * pad, size[1] + 2 * pad), 0)
+    pad = round(46 * zoom)
+    shade = Image.new("L", (w + 2 * pad, h + 2 * pad), 0)
     shade.paste(mask, (pad, pad))
-    small = shade.resize((shade.width // 4, shade.height // 4), Image.BILINEAR).filter(ImageFilter.GaussianBlur(9))
+    small = shade.resize((shade.width // 4, shade.height // 4), Image.BILINEAR).filter(ImageFilter.GaussianBlur(5 * zoom))
     shadow = Image.new("RGBA", shade.size, (0, 0, 0, 0))
-    shadow.putalpha(small.resize(shade.size, Image.BILINEAR).point(lambda v: int(v * 0.6 * opacity)))
-    put(image, shadow, (left - pad, top - pad + 30))
+    shadow.putalpha(small.resize(shade.size, Image.BILINEAR).point(lambda v: int(v * 0.55 * opacity)))
+    put(image, shadow, (left - pad, top - pad + 16 * zoom))
 
-    # Frosted glass: the blurred backdrop, seen through the panel.
-    scale = (box[2] - box[0]) / W
-    region = (box[0] + left * scale, box[1] + top * scale, box[0] + right * scale, box[1] + bottom * scale)
-    frosted = BG_BLUR.resize(size, Image.BILINEAR, box=region)
-    image.paste(frosted, (left, top), mask.point(lambda v: int(v * opacity)))
-    put(image, panel, (left, top), opacity)
+    # Frosted glass: the blurred wallpaper, seen through the panel.
+    region = tuple(v * DESK for v in (x0, y0, x0 + pw, y0 + ph))
+    image.paste(WALL_BLUR.resize((w, h), Image.BILINEAR, box=region), (left, top), mask.point(lambda v: int(v * opacity)))
+    raw = (CACHE / "panel" / f"{index:05}.rgba").read_bytes()
+    put(image, Image.frombytes("RGBa", (PW, PH), raw).convert("RGBA").resize((w, h), Image.LANCZOS), (left, top), opacity)
 
 
 def draw_keycaps(image, t):
@@ -358,18 +501,18 @@ def draw_keycaps(image, t):
         items.append((keycap(label, False), at, label))
     gap = 26
     total = sum(item[0].width for item in items) + gap * (len(items) - 1)
-    # A little left of centre, where the panel won't be; when it opens, the
-    # keys step aside to make room for it.
-    x = W / 2 - 160 - total / 2 - 320 * gone
+    # When the panel opens, the keys step aside to make room for it.
+    (cx, cy), (dx, dy) = LAYOUT["keys"], LAYOUT["keys_aside"]
+    x, y = cx - total / 2 + dx * gone, cy + dy * gone
     for sprite, at, label in items:
         shown = ease(between(t, at - 0.15, 0.2))
         if label:
             sprite = keycap(label, t >= at)
             pop = 0.88 + 0.12 * shown
             scaled = sprite.resize((round(sprite.width * pop), round(sprite.height * pop)), Image.LANCZOS)
-            put(image, scaled, (x + (sprite.width - scaled.width) / 2, H / 2 - 52), shown * (1 - gone))
+            put(image, scaled, (x + (sprite.width - scaled.width) / 2, y - 52), shown * (1 - gone))
         else:
-            put(image, sprite, (x, H / 2 - sprite.height / 2), shown * (1 - gone))
+            put(image, sprite, (x, y - sprite.height / 2), shown * (1 - gone))
         x += sprite.width + gap
 
 
@@ -378,37 +521,34 @@ def draw_caption(image, t, start, end, title, sub):
     first, second = ease(between(t, start, 0.5)), ease(between(t, start + 0.1, 0.5))
     if first <= 0 or leave >= 1:
         return
-    heading = text(title, "SemiBold", 72, TEXT)
-    put(image, bar(), (152, 372 + 30 * (1 - first) - 16 * leave), first * (1 - leave))
-    put(image, heading, (148, 400 + 30 * (1 - first) - 16 * leave), first * (1 - leave))
-    put(image, text(sub, "Regular", 32, DIM), (152, 430 + heading.height + 30 * (1 - second) - 16 * leave),
+    (x, y), (title_size, sub_size), align = LAYOUT["words"], LAYOUT["word_sizes"], LAYOUT["align"]
+    heading = text(title, "SemiBold", title_size, TEXT, align=align)
+    under = text(sub, "Regular", sub_size, DIM, align=align)
+    put(image, bar(), (anchor(bar(), x, 4), y - 28 + 30 * (1 - first) - 16 * leave), first * (1 - leave))
+    put(image, heading, (anchor(heading, x), y + 30 * (1 - first) - 16 * leave), first * (1 - leave))
+    put(image, under, (anchor(under, x, 4), y + 30 + heading.height + 30 * (1 - second) - 16 * leave),
         second * (1 - leave))
 
 
 def draw_end_card(image, t):
+    mark, name, tagline, link = LAYOUT["end_sizes"]
     parts = [
-        (seal(), (150, 270)),
-        (text("hanami", "SemiBold", 132, TEXT), (144, 410)),
-        (text("A small game launcher\nfor Linux and Windows.", "Regular", 36, DIM), (152, 590)),
-        (text("hanami.lilygrove.dev", "Medium", 32, ACCENT), (152, 720)),
+        seal(mark),
+        text("hanami", "SemiBold", name, TEXT),
+        text("A small game launcher\nfor Linux and Windows.", "Regular", tagline, DIM, align=LAYOUT["align"]),
+        text("hanami.lilygrove.dev", "Medium", link, ACCENT),
     ]
-    for n, (sprite, (x, y)) in enumerate(parts):
+    for n, (sprite, (x, y)) in enumerate(zip(parts, LAYOUT["end"])):
         shown = ease(between(t, END + 0.08 * n, 0.6))
-        put(image, sprite, (x, y + 30 * (1 - shown)), shown)
+        put(image, sprite, (anchor(sprite, x), y + 30 * (1 - shown)), shown)
 
 
 def compose(index):
     t = index / FPS
-    zoom = 1 + 0.05 * t / LENGTH
-    width, height = W / zoom, H / zoom
-    cx, cy = BG.width / 2 - 30 * t / LENGTH, BG.height / 2
-    box = (cx - width / 2, cy - height / 2, cx + width / 2, cy + height / 2)
-    image = BG.resize((W, H), Image.BILINEAR, box=box)
-    for p in PETALS:
-        if p["depth"] < 1.2:
-            draw_petal(image, p, t)
+    cam = camera(t)
+    image = desktop(cam, t)
     draw_keycaps(image, t)
-    draw_panel(image, box, t, index)
+    draw_panel(image, cam, t, index)
     for caption in CAPTIONS:
         draw_caption(image, t, *caption)
     draw_end_card(image, t)
@@ -598,9 +738,15 @@ def encode(out, music):
 
 
 def main():
-    if len(sys.argv) != 2:
+    global LAYOUT, W, H
+    args = sys.argv[1:]
+    if "--tall" in args:
+        args.remove("--tall")
+        LAYOUT = LAYOUTS["tall"]
+    if len(args) != 1:
         sys.exit(__doc__)
-    out = Path(sys.argv[1]).resolve()
+    W, H = LAYOUT["size"]
+    out = Path(args[0]).resolve()
     CACHE.mkdir(parents=True, exist_ok=True)
     print("drawing the panel")
     render_panel(CACHE / "panel")
@@ -609,7 +755,7 @@ def main():
     print("putting it together")
     setup()
     encode(out, CACHE / "music.wav")
-    thumbnail = compose(round((END + 1.6) * FPS)).convert("RGB").resize((1280, 720), Image.LANCZOS)
+    thumbnail = compose(round((END + 1.6) * FPS)).convert("RGB").resize(LAYOUT["thumbnail"], Image.LANCZOS)
     thumbnail.save(out.with_name(out.stem + "-thumbnail.jpg"), quality=92)
     shutil.rmtree(CACHE)
     print(out)

@@ -74,7 +74,8 @@ cargo build --release
 looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
 [site/](site); `hanami --snapshot panel.png` and then
 `python3 docs/screenshot.py panel.png` redraw the README pictures, and
-`python3 docs/video.py hanami.mp4` makes the short video, music included.
+`python3 docs/video.py hanami.mp4` makes the short video, music included;
+`--tall` makes the 1080 x 1920 one for Shorts, TikTok and Reels.
 
 ## License
 
