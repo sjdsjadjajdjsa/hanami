@@ -317,11 +317,13 @@ falling shape instead of the sakura petal. Delete it to get the petal back.
 Rules for the file, which Hanami checks:
 
 - One plain SVG: a `viewBox` of `0 0 100 100`, one or a few `path`,
-  `circle` or `ellipse` elements with `fill` colours, nothing else. No text,
-  no pictures inside it, no links to other files, no scripts, no filters.
+  `circle` or `ellipse` elements with `fill` or `stroke` colours, nothing
+  else. No text, no pictures inside it, no links to other files, no scripts,
+  no filters, no gradients.
 - Under 64 KB; a petal is a few lines.
 - The shape should fill most of the box and be clear at 12 pixels: a leaf,
-  a petal, a snowflake, a star. Fine detail disappears at that size.
+  a petal, a snowflake, a star. Fine detail disappears at that size; a
+  detailed shape like a leaf wants `size = 2.0` and fewer petals.
 
 A file that doesn't follow this is refused ("Couldn't read petal.svg: ...")
 and the sakura petal stays.
@@ -332,12 +334,13 @@ only what was asked for; then say what you changed. To check the result,
 `hanami --snapshot look.png` draws the panel with the current look into a
 picture without opening it.
 
-Example `petal.svg`, a maple leaf:
+Example `petal.svg`, a maple leaf (with `size = 2.0` and `petals = 14` in
+`[theme]`, since a leaf needs more room than a petal):
 
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path d="M50 4 L58 30 L82 18 L72 44 L96 52 L72 60 L82 86 L58 72 L50 98 L42 72 L18 86 L28 60 L4 52 L28 44 L18 18 L42 30 Z" fill="#d9541e"/>
-  <path d="M50 20 L50 90" stroke="#8f2d0a" stroke-width="3"/>
+  <path d="M 50.0 3.0 L 60.4 16.4 L 60.7 23.8 L 65.8 22.6 L 64.5 28.8 L 64.1 35.6 L 76.3 30.4 L 73.7 35.1 L 85.2 32.1 L 80.9 36.5 L 92.9 35.9 L 87.2 47.1 L 81.5 49.4 L 84.0 53.8 L 78.0 56.0 L 72.6 59.4 L 80.4 67.9 L 75.2 67.3 L 81.6 77.9 L 70.8 80.6 L 64.5 76.6 L 56.8 73.8 L 54.2 78.6 L 52.5 78.0 L 51.5 98.0 L 48.5 98.0 L 47.5 78.0 L 45.8 78.6 L 43.2 73.8 L 35.5 76.6 L 29.2 80.6 L 18.4 77.9 L 24.8 67.3 L 19.6 67.9 L 27.4 59.4 L 22.0 56.0 L 16.0 53.8 L 18.5 49.4 L 12.8 47.1 L 7.1 35.9 L 19.1 36.5 L 14.8 32.1 L 26.3 35.1 L 23.7 30.4 L 35.9 35.6 L 35.5 28.8 L 34.2 22.6 L 39.3 23.8 L 39.6 16.4 Z" fill="#d9541e"/>
+  <path d="M50 74 L50 15 M50 74 L83 40 M50 74 L17 40 M50 74 L73 71 M50 74 L27 71" stroke="#8f2d0a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
 </svg>
 ```
 
