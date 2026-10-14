@@ -291,13 +291,13 @@ mod tests {
     #[test]
     fn games_and_choices_are_read() {
         let config = parse(
-            "on_launch = \"keep\"\nfind = [\"steam\"]\n[[game]]\nname = \"Skate 3\"\ncommand = \"skate3\"\nlabel = \"rust port\"\n",
+            "on_launch = \"keep\"\nfind = [\"steam\"]\n[[game]]\nname = \"Sky Racer\"\ncommand = \"sky-racer\"\nlabel = \"mine\"\n",
         )
         .unwrap();
         assert_eq!(config.on_launch, OnLaunch::Keep);
         assert_eq!(config.find, [Source::Steam]);
         assert!(parse("find = [\"origin\"]").is_err());
-        assert_eq!(config.games[0].name, "Skate 3");
+        assert_eq!(config.games[0].name, "Sky Racer");
         assert!(config.games[0].args.is_empty());
     }
 

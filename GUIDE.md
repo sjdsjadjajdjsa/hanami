@@ -191,8 +191,8 @@ set to the package's folder, like `cargo run`, so engines such as Bevy find
 their `assets` folder.
 
 The name comes from `[package.metadata.hanami] name`, else from the package
-name made readable: `skate-game` is `Skate Game`, `pixel-gun-3d-rs` is
-`Pixel Gun 3D`. The metadata table can also hold `args = [...]` and
+name made readable: `kite-game` is `Kite Game`, `paper-gun-3d-rs` is
+`Paper Gun 3D`. The metadata table can also hold `args = [...]` and
 `icon = "path/relative/to/Cargo.toml"`. Label: `rust`. Folders named
 `backup` (or containing it), `target`, `vendor`, `node_modules` and hidden
 folders are skipped.

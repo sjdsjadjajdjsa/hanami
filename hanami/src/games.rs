@@ -34,8 +34,8 @@ pub struct Game {
 }
 
 /// Games from settings first, then the found ones, each under its name from
-/// `rename`; a name seen twice (in any spelling, "Pixel Gun 3D: PC Edition"
-/// and "Pixel Gun 3D PC Edition") keeps its first entry. Names in `hide`,
+/// `rename`; a name seen twice (in any spelling, "Paper Gun 3D: PC Edition"
+/// and "Paper Gun 3D PC Edition") keeps its first entry. Names in `hide`,
 /// old or new, are left out. Sorted by name.
 pub fn collect(config: &Config, found: Vec<Game>) -> Vec<Game> {
     let own = config.games.iter().map(|entry| Game {
@@ -215,7 +215,7 @@ mod tests {
 
     fn sample() -> Vec<Game> {
         let config = Config {
-            games: ["Skate 3", "Pixel Gun 3D", "Rhythia"]
+            games: ["Sky Racer", "Paper Gun 3D", "Rhythia"]
                 .map(|name| GameEntry {
                     name: name.into(),
                     command: "x".into(),
@@ -243,7 +243,7 @@ mod tests {
     fn list_is_sorted_and_steam_games_are_labelled() {
         let games = sample();
         let all = filter(&games, "");
-        assert_eq!(names(&games, &all), ["Counter-Strike 2", "Outer Wilds", "Pixel Gun 3D", "Rhythia", "Skate 3"]);
+        assert_eq!(names(&games, &all), ["Counter-Strike 2", "Outer Wilds", "Paper Gun 3D", "Rhythia", "Sky Racer"]);
         assert_eq!(games[0].label, "steam");
         assert_eq!(games[0].launch, Launch::Open("steam://rungameid/730".into()));
     }
@@ -251,8 +251,8 @@ mod tests {
     #[test]
     fn search_ranks_starts_before_words_before_contains() {
         let games = sample();
-        assert_eq!(names(&games, &filter(&games, "s")), ["Skate 3", "Counter-Strike 2", "Outer Wilds"]);
-        assert_eq!(names(&games, &filter(&games, "GUN")), ["Pixel Gun 3D"]);
+        assert_eq!(names(&games, &filter(&games, "s")), ["Sky Racer", "Counter-Strike 2", "Outer Wilds"]);
+        assert_eq!(names(&games, &filter(&games, "GUN")), ["Paper Gun 3D"]);
         assert!(filter(&games, "zelda").is_empty());
     }
 
@@ -264,19 +264,19 @@ mod tests {
             launch: Launch::Open("x".into()),
             icon: None,
         };
-        let mut config = parse("[[game]]\nname = \"Rhythia\"\ncommand = \"rhythia\"\nlabel = \"rust port\"\n").unwrap();
+        let mut config = parse("[[game]]\nname = \"Rhythia\"\ncommand = \"rhythia\"\nlabel = \"mine\"\n").unwrap();
         config.hide = vec!["stardew valley".into()];
         let games = collect(
             &config,
             vec![
                 found("Rhythia", "steam"),
-                found("Pixel Gun 3D: PC Edition", "steam"),
-                found("Pixel Gun 3D PC Edition", "app"),
+                found("Paper Gun 3D: PC Edition", "steam"),
+                found("Paper Gun 3D PC Edition", "app"),
                 found("Stardew Valley", "steam"),
             ],
         );
         let listed: Vec<_> = games.iter().map(|g| (g.name.as_str(), g.label.as_str())).collect();
-        assert_eq!(listed, [("Pixel Gun 3D: PC Edition", "steam"), ("Rhythia", "rust port")]);
+        assert_eq!(listed, [("Paper Gun 3D: PC Edition", "steam"), ("Rhythia", "mine")]);
     }
 
     #[test]

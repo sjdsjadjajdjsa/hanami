@@ -22,7 +22,7 @@ opens a small panel that lists your installed games.
 - **Controls:** `Ctrl+Alt+H` or the tray icon opens the panel; type to
   search (first letters and small typos work too), Enter to launch, Tab or
   right-click for more. A game controller works too: hold Start and Select.
-- **Resource use:** about 30 MB of memory, no CPU use while hidden.
+- **Resource use:** about 35 MB of memory, no CPU use while hidden.
 - **AI help prompt:** the **?** button copies a prompt containing the full
   documentation, for AI assistants that can read your computer (Claude Code,
   OpenCode and similar) to answer questions about Hanami.
@@ -71,8 +71,8 @@ cargo build --release
 
 [SPEC.md](SPEC.md) says what Hanami does, [DESIGN.md](DESIGN.md) how it
 looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
-[site/](site), and `hanami --snapshot panel.png` followed by `python3 docs/screenshot.py panel.png`
-redraws the README pictures.
+[site/](site); `hanami --snapshot panel.png` and then
+`python3 docs/screenshot.py panel.png` redraw the README pictures.
 
 ## License
 

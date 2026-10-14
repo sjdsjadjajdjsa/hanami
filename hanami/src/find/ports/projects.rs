@@ -281,7 +281,7 @@ fn runnable(_path: &Path) -> bool {
     true
 }
 
-/// `skate-game` becomes `Skate Game`, `pixel-gun-3d-rs` becomes `Pixel Gun 3D`.
+/// `kite-game` becomes `Kite Game`, `paper-gun-3d-rs` becomes `Paper Gun 3D`.
 pub fn readable_name(package: &str) -> String {
     let mut words: Vec<&str> = package.split(['-', '_']).filter(|word| !word.is_empty()).collect();
     if words.len() > 1 && matches!(words.last(), Some(&"rs" | &"rust")) {
@@ -324,8 +324,8 @@ mod tests {
 
     #[test]
     fn names_become_readable() {
-        assert_eq!(readable_name("skate-game"), "Skate Game");
-        assert_eq!(readable_name("pixel-gun-3d-rs"), "Pixel Gun 3D");
+        assert_eq!(readable_name("kite-game"), "Kite Game");
+        assert_eq!(readable_name("paper-gun-3d-rs"), "Paper Gun 3D");
         assert_eq!(readable_name("my_game_rust"), "My Game");
         assert_eq!(readable_name("rs"), "Rs");
         assert_eq!(readable_name("rhythm"), "Rhythm");
@@ -346,29 +346,29 @@ mod tests {
     #[test]
     fn single_package_needs_an_engine_and_a_built_program() {
         let root = temp("single");
-        write(&root, "Cargo.toml", "[package]\nname = \"pixel-gun-3d-rs\"\n[dependencies]\nbevy = \"0.20\"\n");
+        write(&root, "Cargo.toml", "[package]\nname = \"paper-gun-3d-rs\"\n[dependencies]\nbevy = \"0.20\"\n");
         write(&root, "src/main.rs", "");
         assert!(analyse(&root).is_empty(), "not built yet");
 
-        write(&root, &format!("target/debug/{}", exe("pixel-gun-3d-rs")), "");
+        write(&root, &format!("target/debug/{}", exe("paper-gun-3d-rs")), "");
         let games = analyse(&root);
         assert_eq!(games.len(), 1);
-        assert_eq!((games[0].name.as_str(), games[0].label.as_str()), ("Pixel Gun 3D", "rust"));
+        assert_eq!((games[0].name.as_str(), games[0].label.as_str()), ("Paper Gun 3D", "rust"));
         assert_eq!(
             games[0].launch,
             Launch::Command {
-                program: root.join("target/debug").join(exe("pixel-gun-3d-rs")),
+                program: root.join("target/debug").join(exe("paper-gun-3d-rs")),
                 args: vec![],
                 dir: Some(root.clone()),
                 env: vec![("CARGO_MANIFEST_DIR".into(), root.to_string_lossy().into_owned())],
             }
         );
 
-        write(&root, &format!("target/release/{}", exe("pixel-gun-3d-rs")), "");
+        write(&root, &format!("target/release/{}", exe("paper-gun-3d-rs")), "");
         let Launch::Command { program, .. } = &analyse(&root)[0].launch else { panic!() };
-        assert_eq!(program, &root.join("target/release").join(exe("pixel-gun-3d-rs")), "release wins");
+        assert_eq!(program, &root.join("target/release").join(exe("paper-gun-3d-rs")), "release wins");
 
-        write(&root, "Cargo.toml", "[package]\nname = \"pixel-gun-3d-rs\"\n[dependencies]\nserde = \"1\"\n");
+        write(&root, "Cargo.toml", "[package]\nname = \"paper-gun-3d-rs\"\n[dependencies]\nserde = \"1\"\n");
         assert!(analyse(&root).is_empty(), "no engine");
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -379,12 +379,12 @@ mod tests {
         write(
             &root,
             "Cargo.toml",
-            "[package]\nname = \"tool\"\n[package.metadata.hanami]\nname = \"Skate 3\"\nargs = [\"--fast\"]\nicon = \"art/icon.png\"\n",
+            "[package]\nname = \"tool\"\n[package.metadata.hanami]\nname = \"Sky Racer\"\nargs = [\"--fast\"]\nicon = \"art/icon.png\"\n",
         );
         write(&root, "src/main.rs", "");
         write(&root, &format!("target/release/{}", exe("tool")), "");
         let games = analyse(&root);
-        assert_eq!(games[0].name, "Skate 3");
+        assert_eq!(games[0].name, "Sky Racer");
         assert_eq!(games[0].icon, Some(root.join("art/icon.png")));
         let Launch::Command { args, .. } = &games[0].launch else { panic!() };
         assert_eq!(args, &["--fast"]);
@@ -401,25 +401,25 @@ mod tests {
         );
         write(
             &root,
-            "crates/skate-game/Cargo.toml",
-            "[package]\nname = \"skate-game\"\ndefault-run = \"skate3rust\"\n[[bin]]\nname = \"skate3rust\"\n[[bin]]\nname = \"skate3-tools\"\n[dependencies]\nbevy = { workspace = true }\n",
+            "crates/kite-game/Cargo.toml",
+            "[package]\nname = \"kite-game\"\ndefault-run = \"kite\"\n[[bin]]\nname = \"kite\"\n[[bin]]\nname = \"kite-tools\"\n[dependencies]\nbevy = { workspace = true }\n",
         );
         write(
             &root,
-            "crates/skate-core/Cargo.toml",
-            "[package]\nname = \"skate-core\"\n[dependencies]\nserde = { workspace = true }\n",
+            "crates/kite-core/Cargo.toml",
+            "[package]\nname = \"kite-core\"\n[dependencies]\nserde = { workspace = true }\n",
         );
-        write(&root, "crates/skate-core/src/main.rs", "");
-        write(&root, &format!("target/release/{}", exe("skate-core")), "");
+        write(&root, "crates/kite-core/src/main.rs", "");
+        write(&root, &format!("target/release/{}", exe("kite-core")), "");
         assert!(analyse(&root).is_empty(), "default-run not built, core has no engine");
 
-        write(&root, &format!("target/release/{}", exe("skate3rust")), "");
-        write(&root, &format!("target/release/{}", exe("skate3-tools")), "");
+        write(&root, &format!("target/release/{}", exe("kite")), "");
+        write(&root, &format!("target/release/{}", exe("kite-tools")), "");
         let games = analyse(&root);
         assert_eq!(games.len(), 1);
-        assert_eq!(games[0].name, "Skate Game");
+        assert_eq!(games[0].name, "Kite Game");
         let Launch::Command { program, dir, .. } = &games[0].launch else { panic!() };
-        assert_eq!(program, &root.join("target/release").join(exe("skate3rust")));
+        assert_eq!(program, &root.join("target/release").join(exe("kite")));
         assert_eq!(dir.as_deref(), Some(root.as_path()), "runs from the workspace root, like cargo run");
 
         #[cfg(unix)]

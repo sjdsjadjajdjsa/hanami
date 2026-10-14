@@ -88,7 +88,7 @@ it an icon or arguments, add to its `Cargo.toml`:
 
 ```toml
 [package.metadata.hanami]
-name = "Skate 3"
+name = "Sky Racer"
 icon = "assets/icon.png"
 args = ["--windowed"]
 ```

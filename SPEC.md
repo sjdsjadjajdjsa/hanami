@@ -29,7 +29,7 @@ for Linux and Windows.
    - **epic** and **gog:** the Epic Games Launcher's and GOG's installed
      games (Windows).
    - Your own entries from the settings file come first and win when the
-     same game turns up twice ("Pixel Gun 3D: PC Edition" and "Pixel Gun 3D
+     same game turns up twice ("Paper Gun 3D: PC Edition" and "Paper Gun 3D
      PC Edition" count as one). Names in `hide` are left out.
 4. **Type to filter.** Typing narrows the list by name; Backspace widens it.
    Arrows move, Enter or click starts the highlighted game.
