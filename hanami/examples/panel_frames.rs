@@ -5,7 +5,10 @@
 //!      "games": [{"name": "Hollow Knight", "label": "gog", "icon": "site/assets/games/hollow-knight.png"}]}
 //!
 //! `pointer` is where the mouse is over the panel, in logical pixels; leave it
-//! out when the mouse is elsewhere.
+//! out when the mouse is elsewhere. `theme` is a `[theme]` block as JSON and
+//! `look` a folder with a petal picture, for frames in another look:
+//!
+//!     {"time": 9.0, "games": [], "theme": {"panel": "#24170fd0", "petals": 16}, "look": "/tmp/autumn"}
 //!
 //!     cargo run --release --example panel_frames -- FRAMES_DIR 2.0 < states.jsonl
 //!
@@ -13,10 +16,16 @@
 //! Time drives the petals and the panel's own animations, so a frame
 //! sequence plays back exactly like the app.
 
-// The example only needs the petals, not the dots.
+// The app's own look code, so frames match the app; the example uses part of it.
+#[allow(dead_code)]
+#[path = "../src/icons.rs"]
+mod icons;
 #[allow(dead_code)]
 #[path = "../src/petals.rs"]
 mod petals;
+#[allow(dead_code)]
+#[path = "../src/theme.rs"]
+mod theme;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -70,6 +79,9 @@ struct State {
     #[serde(default)]
     notice: String,
     pointer: Option<(f32, f32)>,
+    #[serde(default)]
+    theme: theme::Theme,
+    look: Option<PathBuf>,
 }
 
 fn nothing() -> i32 {
@@ -108,12 +120,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let panel = Panel::new()?;
     let model = Rc::new(VecModel::<GameRow>::default());
     panel.set_games(model.clone().into());
-    panel.set_petals(Rc::new(VecModel::from(petals::petals(&petals::Motion::default()))).into());
     panel.show()?;
     panel.set_shown(true);
 
     let mut icons: HashMap<PathBuf, Image> = HashMap::new();
     let mut shown_rows: Vec<Row> = Vec::new();
+    let mut shown_look: Option<(theme::Theme, Option<PathBuf>)> = None;
     let mut pixels = vec![PremultipliedRgbaColor::default(); (width * height) as usize];
     let mut count = 0;
     for line in std::io::stdin().lock().lines() {
@@ -150,6 +162,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             model.set_vec(rows);
             shown_rows = state.games;
+        }
+        if shown_look.as_ref() != Some(&(state.theme.clone(), state.look.clone())) {
+            theme::apply(&panel, &state.theme, state.look.as_deref(), scale)?;
+            shown_look = Some((state.theme.clone(), state.look.clone()));
         }
         panel.set_total(state.total.unwrap_or(shown_rows.len() as i32));
         panel.set_query(state.query.as_str().into());

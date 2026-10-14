@@ -7,8 +7,78 @@ use std::path::Path;
 
 use slint::{Color, ComponentHandle, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecModel};
 
-use crate::config::Theme;
+use serde::Deserialize;
+
 use crate::{Panel, Tokens, petals};
+
+/// The look: colours and the petals. The petal's shape comes from a
+/// `petal.svg` next to the settings file, when there is one.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Theme {
+    pub panel: Colour,
+    pub text: Colour,
+    pub dim: Colour,
+    pub accent: Colour,
+    /// How many petals fall.
+    pub petals: u32,
+    /// How fast they fall, 1.0 being the usual.
+    pub speed: f32,
+    /// How big they are, 1.0 being the usual.
+    pub size: f32,
+    /// How far they sway sideways, 1.0 being the usual.
+    pub drift: f32,
+    /// How much they turn, 1.0 being the usual; 0 keeps them upright.
+    pub spin: f32,
+    /// Colours to paint the petals in, taken in turn; empty keeps the
+    /// picture's own colours.
+    pub tints: Vec<Colour>,
+    /// Specks of the accent colour drifting up: pollen, embers, fine snow.
+    pub dots: u32,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            panel: Colour(0x17141db8),
+            text: Colour(0xece6eeff),
+            dim: Colour(0x9b93a3ff),
+            accent: Colour(0xf4b6c8ff),
+            petals: 24,
+            speed: 1.0,
+            size: 1.0,
+            drift: 1.0,
+            spin: 1.0,
+            tints: Vec::new(),
+            dots: 0,
+        }
+    }
+}
+
+/// A colour as `0xrrggbbaa`, read from "#rrggbb" or "#rrggbbaa".
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Colour(pub u32);
+
+impl Colour {
+    pub fn rgba(self) -> (u8, u8, u8, u8) {
+        ((self.0 >> 24) as u8, (self.0 >> 16) as u8, (self.0 >> 8) as u8, self.0 as u8)
+    }
+}
+
+impl<'de> Deserialize<'de> for Colour {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        let digits = text.strip_prefix('#').unwrap_or(&text);
+        let value = match digits.len() {
+            6 => u32::from_str_radix(digits, 16).ok().map(|rgb| rgb << 8 | 0xff),
+            8 => u32::from_str_radix(digits, 16).ok(),
+            _ => None,
+        };
+        value.map(Colour).ok_or_else(|| {
+            serde::de::Error::custom(format!("\"{text}\" isn't a colour like \"#rrggbb\" or \"#rrggbbaa\""))
+        })
+    }
+}
 
 /// Petal pictures bigger than this are refused: a petal is a few lines of
 /// SVG or a small png.
@@ -83,7 +153,7 @@ fn tinted(pixels: &SharedPixelBuffer<Rgba8Pixel>, tint: Color) -> SharedPixelBuf
     out
 }
 
-fn colour(c: crate::config::Colour) -> Color {
+fn colour(c: Colour) -> Color {
     let (r, g, b, a) = c.rgba();
     Color::from_argb_u8(a, r, g, b)
 }
