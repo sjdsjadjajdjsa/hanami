@@ -9,7 +9,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -30,8 +30,12 @@ jobs:
       TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: System libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev libudev-dev
@@ -67,14 +71,29 @@ jobs:
           name: ${{ matrix.os }}
           path: ${{ matrix.assets }}
 
+  # Checksums let anyone confirm a download arrived whole; the signed build
+  # record proves the files were built here from this tag:
+  #   gh attestation verify hanami-x86_64.AppImage -R sjdsjadjajdjsa/hanami
   publish:
     needs: build
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
+      - name: Checksums
+        run: sha256sum hanami-* | tee SHA256SUMS
+      - uses: actions/attest@v4
+        with:
+          subject-checksums: SHA256SUMS
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" hanami-* --repo "${{ github.repository }}" --title "Hanami ${{ github.ref_name }}" --generate-notes
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: gh release create "$TAG" hanami-* SHA256SUMS --repo "$REPO" --title "Hanami $TAG" --generate-notes

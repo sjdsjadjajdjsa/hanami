@@ -1,0 +1,28 @@
+name: audit
+
+# Checks every dependency against the RustSec list of known security
+# problems: whenever the dependencies change, and once a week for new reports.
+on:
+  push:
+    branches: [main]
+    paths: [Cargo.lock, "**/Cargo.toml"]
+  pull_request:
+    paths: [Cargo.lock, "**/Cargo.toml"]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-audit
+      - run: cargo audit
