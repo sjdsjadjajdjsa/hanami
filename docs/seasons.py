@@ -8,11 +8,14 @@ The music is an original koto piece (docs/seasons_music.py) or a song.
     python3 docs/seasons.py seasons.mp4
     python3 docs/seasons.py --tall seasons-tall.mp4
     python3 docs/seasons.py --music song.mp3 --bpm 107.5 --hit 31.2 seasons.mp4
+    python3 docs/seasons.py --no-grain seasons.mp4
 
 Writes the video (60 fps, about 24 seconds) and a thumbnail next to it:
 1920 x 1080, or 1080 x 1920 with --tall. --music plays a song instead:
 --bpm is its tempo and --hit the second in it the panel should turn to autumn
 on, a downbeat where the song kicks in; the whole edit follows that beat.
+--no-grain leaves out the faint film grain, for places like Discord that
+re-encode uploads so roughly that grain turns into blotches.
 Needs Rust, ffmpeg, Pillow, NumPy and SciPy; KDE Plasma with Konsole and
 Spectacle; Claude Code (`claude` on PATH, or CLAUDE=/path/to/claude; no
 account needed); and a few minutes. Frames are kept in ~/.cache/hanami-seasons
@@ -56,6 +59,7 @@ def option(name):
 
 
 MUSIC, BPM, HIT = option("--music"), option("--bpm"), option("--hit")
+GRAIN = 0.0 if "--no-grain" in sys.argv and not sys.argv.remove("--no-grain") else 1.2
 if MUSIC and not (BPM and HIT):
     sys.exit("--music needs --bpm and --hit too")
 FPS = 60
@@ -639,7 +643,7 @@ def setup():
     PANEL_SHADOW.putalpha(small.resize(shade.size, Image.BILINEAR).point(lambda v: int(v * 0.55)))
     SCRIM = scrim()
     noise = np.random.default_rng(3)
-    NOISE = [noise.normal(0, 1.2, (H, W, 1)).astype(np.float32) for _ in range(6)]
+    NOISE = [noise.normal(0, GRAIN, (H, W, 1)).astype(np.float32) for _ in range(6)]
 
 
 def camera(t):
