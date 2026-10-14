@@ -8,9 +8,14 @@ use crate::games::Launch;
 pub fn start(launch: &Launch) -> Result<(), String> {
     match launch {
         Launch::Open(link) => open::that_detached(link).map_err(describe),
-        Launch::Command { program, args, dir } => {
+        Launch::Command { program, args, dir, env } => {
             let mut command = Command::new(program);
-            command.args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+            command
+                .args(args)
+                .envs(env.iter().cloned())
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
             if let Some(dir) = dir {
                 command.current_dir(dir);
             }
@@ -136,19 +141,25 @@ mod tests {
 
     #[test]
     fn missing_program_says_so() {
-        let launch = Launch::Command { program: PathBuf::from("/nonexistent/hanami-test"), args: vec![], dir: None };
+        let launch = Launch::Command {
+            program: PathBuf::from("/nonexistent/hanami-test"),
+            args: vec![],
+            dir: None,
+            env: Vec::new(),
+        };
         assert_eq!(start(&launch), Err("program or folder not found".into()));
     }
 
     #[cfg(unix)]
     #[test]
-    fn started_program_runs_in_its_folder() {
+    fn started_program_runs_in_its_folder_with_its_environment() {
         let dir = std::env::temp_dir().join(format!("hanami-launch-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let launch = Launch::Command {
             program: PathBuf::from("/bin/sh"),
-            args: vec!["-c".into(), "pwd > started".into()],
+            args: vec!["-c".into(), "echo \"$(pwd) $HANAMI_TEST\" > started".into()],
             dir: Some(dir.clone()),
+            env: vec![("HANAMI_TEST".into(), "set".into())],
         };
         start(&launch).unwrap();
         let marker = dir.join("started");
@@ -159,7 +170,9 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
         let written = std::fs::read_to_string(&marker).unwrap();
-        assert_eq!(PathBuf::from(written.trim()).canonicalize().unwrap(), dir.canonicalize().unwrap());
+        let (folder, value) = written.trim().rsplit_once(' ').unwrap();
+        assert_eq!(PathBuf::from(folder).canonicalize().unwrap(), dir.canonicalize().unwrap());
+        assert_eq!(value, "set");
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

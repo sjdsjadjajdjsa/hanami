@@ -39,6 +39,7 @@ pub fn find() -> Vec<Game> {
                     program: PathBuf::from(exe),
                     args,
                     dir: value("workingDir").map(PathBuf::from),
+                    env: Vec::new(),
                 },
                 icon,
             });

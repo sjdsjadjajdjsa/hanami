@@ -64,6 +64,7 @@ online = true
 # dir = "~/Games/my-game"
 # label = "my label"
 # icon = "~/Games/my-game/icon.png"
+# env = { MANGOHUD = "1" }
 #
 # On Windows, put paths in single quotes so the backslashes stay as they are:
 # command = 'C:\Games\My Game\game.exe'
@@ -123,6 +124,8 @@ pub struct GameEntry {
     pub dir: Option<String>,
     pub label: Option<String>,
     pub icon: Option<String>,
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
 }
 
 pub fn path() -> Option<PathBuf> {

@@ -186,7 +186,9 @@ Only built games are offered: the package's program must exist in
 one named like the package, else the only one; several programs without a
 default are all offered. A `play.sh` (Linux) or `play.bat` (Windows) next
 to the project's `Cargo.toml` is started instead of the program when there
-is one. Games run from the project's root folder, like `cargo run`.
+is one. Games run from the project's root folder with `CARGO_MANIFEST_DIR`
+set to the package's folder, like `cargo run`, so engines such as Bevy find
+their `assets` folder.
 
 The name comes from `[package.metadata.hanami] name`, else from the package
 name made readable: `skate-game` is `Skate Game`, `pixel-gun-3d-rs` is
@@ -252,6 +254,7 @@ args = ["--fullscreen"]               # optional
 dir = "~/Games/my-game"               # optional: folder it runs in
 label = "my label"                    # optional: the label shown in the list
 icon = "~/Games/my-game/icon.png"     # optional: png, jpeg, ico or svg
+env = { MANGOHUD = "1" }              # optional: extra environment variables
 ```
 
 Games started by Hanami keep running when Hanami closes.

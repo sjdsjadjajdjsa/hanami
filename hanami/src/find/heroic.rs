@@ -46,7 +46,12 @@ impl Found {
     fn into_game(self, flatpak: bool) -> Game {
         let url = format!("heroic://launch?appName={}&runner={}", super::encode(&self.app), self.runner);
         let launch = if flatpak {
-            Launch::Command { program: "flatpak".into(), args: vec!["run".into(), FLATPAK_ID.into(), url], dir: None }
+            Launch::Command {
+                program: "flatpak".into(),
+                args: vec!["run".into(), FLATPAK_ID.into(), url],
+                dir: None,
+                env: Vec::new(),
+            }
         } else {
             Launch::Open(url)
         };

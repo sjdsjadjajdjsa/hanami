@@ -33,7 +33,12 @@ fn game(id: i64, name: String, flatpak: bool) -> Game {
     } else {
         (PathBuf::from("lutris"), vec![target])
     };
-    Game { name, label: "lutris".into(), launch: Launch::Command { program, args, dir: None }, icon: None }
+    Game {
+        name,
+        label: "lutris".into(),
+        launch: Launch::Command { program, args, dir: None, env: Vec::new() },
+        icon: None,
+    }
 }
 
 /// Lutris's icon for a game (in the hicolor theme next to its data folder),

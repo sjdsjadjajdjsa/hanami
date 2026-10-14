@@ -138,10 +138,20 @@ pub fn analyse(root: &Path) -> Vec<Game> {
                 .unwrap_or_default();
             let icon = metadata.and_then(|meta| meta.get("icon")).and_then(Value::as_str).map(|icon| dir.join(icon));
             let launch = match &script {
-                Some(script) if bins.len() == 1 => {
-                    Launch::Command { program: script.clone(), args: vec![], dir: Some(root.to_path_buf()) }
-                }
-                _ => Launch::Command { program, args, dir: Some(root.to_path_buf()) },
+                Some(script) if bins.len() == 1 => Launch::Command {
+                    program: script.clone(),
+                    args: vec![],
+                    dir: Some(root.to_path_buf()),
+                    env: Vec::new(),
+                },
+                // Like `cargo run`: engines such as Bevy find their assets
+                // through CARGO_MANIFEST_DIR, not next to the program.
+                _ => Launch::Command {
+                    program,
+                    args,
+                    dir: Some(root.to_path_buf()),
+                    env: vec![("CARGO_MANIFEST_DIR".into(), dir.to_string_lossy().into_owned())],
+                },
             };
             games.push(Game { name: shown.map(String::from).unwrap_or(readable), label: "rust".into(), launch, icon });
         }
@@ -349,7 +359,8 @@ mod tests {
             Launch::Command {
                 program: root.join("target/debug").join(exe("pixel-gun-3d-rs")),
                 args: vec![],
-                dir: Some(root.clone())
+                dir: Some(root.clone()),
+                env: vec![("CARGO_MANIFEST_DIR".into(), root.to_string_lossy().into_owned())],
             }
         );
 

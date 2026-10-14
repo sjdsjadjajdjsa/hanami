@@ -142,6 +142,7 @@ impl Entry {
                 program: PathBuf::from(program),
                 args: args.to_vec(),
                 dir: self.path.map(PathBuf::from),
+                env: Vec::new(),
             },
             icon,
         })
@@ -304,7 +305,10 @@ mod tests {
         assert_eq!(found.name, "Rhythia");
         assert_eq!(found.label, "app");
         assert_eq!(found.icon, None);
-        assert_eq!(found.launch, Launch::Command { program: "rhythia".into(), args: vec![], dir: None });
+        assert_eq!(
+            found.launch,
+            Launch::Command { program: "rhythia".into(), args: vec![], dir: None, env: Vec::new() }
+        );
 
         let not_game = "[Desktop Entry]\nType=Application\nName=Editor\nExec=ed\nCategories=Utility;\n";
         assert!(parse(not_game).unwrap().into_game("ed.desktop", Path::new("x")).is_none());

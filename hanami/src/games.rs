@@ -16,6 +16,8 @@ pub enum Launch {
         program: PathBuf,
         args: Vec<String>,
         dir: Option<PathBuf>,
+        /// Set for the game on top of Hanami's own environment.
+        env: Vec<(String, String)>,
     },
     /// A link a store app handles, like `steam://rungameid/730`.
     Open(String),
@@ -43,6 +45,7 @@ pub fn collect(config: &Config, found: Vec<Game>) -> Vec<Game> {
             program: expand_home(&entry.command),
             args: entry.args.clone(),
             dir: entry.dir.as_deref().map(expand_home),
+            env: entry.env.iter().map(|(name, value)| (name.clone(), value.clone())).collect(),
         },
         icon: entry.icon.as_deref().map(expand_home),
     });
@@ -220,6 +223,7 @@ mod tests {
                     dir: None,
                     label: None,
                     icon: None,
+                    env: BTreeMap::new(),
                 })
                 .to_vec(),
             ..parse("").unwrap()
@@ -334,6 +338,7 @@ mod tests {
             program: program.into(),
             args: vec![],
             dir: dir.map(PathBuf::from),
+            env: Vec::new(),
         };
         let expected = cfg!(windows).then(|| PathBuf::from(r"C:\Games\a.exe"));
         assert_eq!(exe_icon(&command(r"C:\Games\a.exe", None)), expected);
@@ -346,12 +351,18 @@ mod tests {
 
     #[test]
     fn home_in_commands_is_expanded() {
-        let config = parse("[[game]]\nname = \"a\"\ncommand = \"~/bin/a\"\ndir = \"~/bin\"\n").unwrap();
+        let config =
+            parse("[[game]]\nname = \"a\"\ncommand = \"~/bin/a\"\ndir = \"~/bin\"\nenv = { A = \"1\" }\n").unwrap();
         let home = dirs::home_dir().unwrap();
         let games = collect(&config, vec![]);
         assert_eq!(
             games[0].launch,
-            Launch::Command { program: home.join("bin/a"), args: vec![], dir: Some(home.join("bin")) }
+            Launch::Command {
+                program: home.join("bin/a"),
+                args: vec![],
+                dir: Some(home.join("bin")),
+                env: vec![("A".into(), "1".into())]
+            }
         );
     }
 }

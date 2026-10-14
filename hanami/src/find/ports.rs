@@ -186,6 +186,7 @@ fn walk(root: &Path, depth: usize, list: &list::List, shipped: &mut Vec<Game>, k
                     program: path.to_path_buf(),
                     args: vec![],
                     dir: path.parent().map(Path::to_path_buf),
+                    env: Vec::new(),
                 },
                 icon: None,
             });
@@ -224,7 +225,12 @@ fn flatpaks(list: &list::List) -> Vec<Game> {
                 games.push(Game {
                     name: port.name.clone(),
                     label: "port".into(),
-                    launch: Launch::Command { program: "flatpak".into(), args: vec!["run".into(), id], dir: None },
+                    launch: Launch::Command {
+                        program: "flatpak".into(),
+                        args: vec!["run".into(), id],
+                        dir: None,
+                        env: Vec::new(),
+                    },
                     icon: None,
                 });
             }
@@ -276,6 +282,7 @@ fn parse_shipped(text: &str, dir: &Path) -> Option<Game> {
             program: dir.join(command),
             args: own.args.unwrap_or(shipped.args),
             dir: Some(dir.to_path_buf()),
+            env: Vec::new(),
         },
         icon: own.icon.or(shipped.icon).map(|icon| dir.join(icon)),
     })
@@ -309,7 +316,12 @@ mod tests {
         assert_eq!((game.name.as_str(), game.label.as_str()), ("Ship of Harkinian", "port"));
         assert_eq!(
             game.launch,
-            Launch::Command { program: dir.join("soh.elf"), args: vec!["--fast".into()], dir: Some(dir.to_path_buf()) }
+            Launch::Command {
+                program: dir.join("soh.elf"),
+                args: vec!["--fast".into()],
+                dir: Some(dir.to_path_buf()),
+                env: Vec::new()
+            }
         );
         assert_eq!(game.icon, Some(dir.join("icon.png")));
 
