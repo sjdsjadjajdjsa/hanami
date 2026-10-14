@@ -105,7 +105,8 @@ struct App {
     query: RefCell<String>,
     config: RefCell<Config>,
     config_path: Option<PathBuf>,
-    hotkey_problem: Option<String>,
+    /// Why the hotkey can't work; said once, the first time the panel is open.
+    hotkey_problem: RefCell<Option<String>>,
     /// The panel is open or opening (it may still be fading).
     open: Cell<bool>,
     /// The window is on screen (true during the fade-out too).
@@ -151,8 +152,8 @@ impl App {
         }
 
         self.reload();
-        if let Some(problem) = &self.hotkey_problem {
-            self.notify(problem.clone());
+        if let Some(problem) = self.hotkey_problem.take() {
+            self.notify(problem);
         }
         if let Some(message) = self.update_notice.take() {
             self.notify(message);
@@ -172,6 +173,9 @@ impl App {
             return;
         }
         self.mapped.set(true);
+        // A window that started hidden has never drawn, so nothing marks it
+        // dirty; on Wayland a surface without a first frame is never mapped.
+        self.panel.window().request_redraw();
         self.panel.invoke_focus_keys();
 
         let app = Rc::downgrade(self);
@@ -754,6 +758,11 @@ fn edit(path: &Path) -> std::io::Result<()> {
 /// The manager must stay alive for the hotkey to keep working.
 fn register_hotkey(text: &str) -> Result<GlobalHotKeyManager, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
+    // Wayland gives no app a global key. Registering through Xwayland would
+    // succeed and then never fire, so say so instead.
+    if cfg!(all(unix, not(target_vendor = "apple"))) && std::env::var_os("WAYLAND_DISPLAY").is_some() {
+        return Err("Wayland has no hotkey: bind hanami --toggle to a key".into());
+    }
     let manager = GlobalHotKeyManager::new().map_err(|_| {
         "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string()
     })?;
@@ -918,7 +927,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         query: RefCell::default(),
         config: RefCell::new(config),
         config_path,
-        hotkey_problem,
+        hotkey_problem: RefCell::new(hotkey_problem),
         cut_corners: cfg!(windows) && !gpu,
         open: Cell::new(false),
         mapped: Cell::new(false),
