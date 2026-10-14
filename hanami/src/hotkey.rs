@@ -5,6 +5,7 @@
 /// The keys of a hotkey like "Ctrl+Alt+H", pulled apart.
 #[derive(Debug, PartialEq)]
 struct Keys {
+    text: String,
     ctrl: bool,
     alt: bool,
     shift: bool,
@@ -21,7 +22,8 @@ enum Key {
 }
 
 fn parse(text: &str) -> Result<Keys, String> {
-    let mut keys = Keys { ctrl: false, alt: false, shift: false, meta: false, key: Key::Space };
+    let mut keys =
+        Keys { text: text.trim().into(), ctrl: false, alt: false, shift: false, meta: false, key: Key::Space };
     let mut key = None;
     for part in text.split('+').map(str::trim).filter(|p| !p.is_empty()) {
         match part.to_ascii_lowercase().as_str() {
@@ -94,19 +96,33 @@ mod platform {
     const GNOME_PATH: &str = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/hanami/";
     const GNOME_SCHEMA: &str = "org.gnome.settings-daemon.plugins.media-keys";
 
-    /// Asks the desktop to run `hanami --toggle` on `text`. Ok(desktop name)
-    /// when it took; Err with a reason the panel can show otherwise.
-    pub fn bind(text: &str) -> Result<&'static str, String> {
+    /// Asks the desktop to run `hanami --toggle` on `text`. Ok says what was
+    /// done, for the log; Err carries a reason the panel can show.
+    pub fn bind(text: &str) -> Result<String, String> {
         let keys = parse(text)?;
         let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_ascii_uppercase();
         let command = crate::autostart::program()?;
         let command = command.to_string_lossy();
         if desktop.split(':').any(|d| d == "KDE") {
-            kde(&keys, &command).map(|()| "KDE")
+            kde(&keys, &command).map(|done| done.message("KDE"))
         } else if desktop.split(':').any(|d| d == "GNOME" || d == "UBUNTU") {
-            gnome(&keys, &command).map(|()| "GNOME")
+            gnome(&keys, &command).map(|done| done.message("GNOME"))
         } else {
             Err("No built-in hotkey on this Wayland desktop: bind hanami --toggle to a key".into())
+        }
+    }
+
+    enum Done {
+        Added,
+        Kept,
+    }
+
+    impl Done {
+        fn message(self, desktop: &str) -> String {
+            match self {
+                Done::Added => format!("hotkey added to {desktop}'s shortcuts"),
+                Done::Kept => format!("hotkey is whatever {desktop}'s shortcuts say"),
+            }
         }
     }
 
@@ -121,9 +137,12 @@ mod platform {
 
     /// KDE keeps command shortcuts as desktop entries; the shortcut service
     /// is asked the way System Settings asks it, and remembers the key in
-    /// kglobalshortcutsrc for the next login.
-    fn kde(keys: &Keys, command: &str) -> Result<(), String> {
-        let dir = dirs::data_dir().ok_or("no data folder")?.join("applications");
+    /// kglobalshortcutsrc for the next login. The entry lives in the
+    /// service's own folder, which it reads directly: the app menu's folder
+    /// goes through a cache that lags behind a new file.
+    fn kde(keys: &Keys, command: &str) -> Result<Done, String> {
+        let data = dirs::data_dir().ok_or("no data folder")?;
+        let dir = data.join("kglobalaccel");
         let path = dir.join(KDE_ENTRY);
         let text = format!(
             "[Desktop Entry]\nType=Application\nName=Hanami\nExec={} --toggle\nIcon=hanami\nNoDisplay=true\nX-KDE-GlobalAccel-CommandShortcut=true\n",
@@ -132,9 +151,10 @@ mod platform {
         if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
             std::fs::create_dir_all(&dir).map_err(|e| format!("Couldn't create {}: {e}", dir.display()))?;
             crate::config::write_atomic(&path, &text)?;
-            // The shortcut service finds entries through KDE's cache.
-            let _ = Command::new("kbuildsycoca6").output();
         }
+        // 0.2.6 put the entry in the app menu's folder, where it took
+        // precedence; its path could go stale.
+        let _ = std::fs::remove_file(data.join("applications").join(KDE_ENTRY));
         let call = |method: &str, args: &[&str]| {
             let mut all = vec![
                 "call",
@@ -152,41 +172,65 @@ mod platform {
         };
         let id = format!("['{KDE_ENTRY}','_launch','Hanami','Hanami']");
         let code = keys.qt();
-        // Register the entry (System Settings does the same), then set the key:
-        // 2 = make it live now, 4 = don't take an older key from the settings.
+        // Register the entry, as System Settings does. That also loads a key
+        // the user gave it there; that key stays theirs.
         call("doRegister", &[&format!("['{KDE_ENTRY}','','Hanami','']")])?;
         call("unregister", &[KDE_ENTRY, ""])?;
+        // An empty reply looks like `(@a(ai) [],)`; a key like `([([201326664, 0, 0, 0],)],)`.
+        let current = call("shortcutKeys", &[&id])?;
+        if current.contains("[(") {
+            return Ok(Done::Kept);
+        }
+        let holder = call("globalShortcutsByKey", &[&format!("([{code},0,0,0],)"), "(0,)"])?;
+        if let Some(other) = holder.split('\'').nth(3).filter(|_| !holder.contains(KDE_ENTRY)) {
+            return Err(format!("{} is {other}'s key in KDE. Pick another hotkey in settings.", keys.text));
+        }
+        // 2 = make it live now, 4 = this key, not one from the settings file.
         let reply = call("setShortcutKeys", &[&id, &format!("[([{code},0,0,0],)]"), "6"])?;
         if reply.contains(&format!("[{code}, 0, 0, 0]")) {
-            Ok(())
+            Ok(Done::Added)
         } else {
-            Err("KDE wouldn't give Hanami this key; another shortcut may have it. Pick another hotkey in settings."
-                .into())
+            Err("KDE wouldn't give Hanami this key. Pick another hotkey in settings.".into())
         }
     }
 
     /// GNOME keeps custom shortcuts in gsettings, as a list of paths each
     /// with a name, command and key.
-    fn gnome(keys: &Keys, command: &str) -> Result<(), String> {
+    fn gnome(keys: &Keys, command: &str) -> Result<Done, String> {
         let list = run("gsettings", &["get", GNOME_SCHEMA, "custom-keybindings"])?;
-        if !list.contains(GNOME_PATH) {
-            let mut paths: Vec<String> = list
-                .trim()
-                .trim_start_matches("@as ")
-                .trim_matches(['[', ']'])
-                .split(',')
-                .map(|p| p.trim().trim_matches('\'').to_string())
-                .filter(|p| !p.is_empty())
-                .collect();
-            paths.push(GNOME_PATH.into());
-            let value = format!("[{}]", paths.iter().map(|p| format!("'{p}'")).collect::<Vec<_>>().join(", "));
-            run("gsettings", &["set", GNOME_SCHEMA, "custom-keybindings", &value])?;
+        let mut paths: Vec<String> = list
+            .trim()
+            .trim_start_matches("@as ")
+            .trim_matches(['[', ']'])
+            .split(',')
+            .map(|p| p.trim().trim_matches('\'').to_string())
+            .filter(|p| !p.is_empty())
+            .collect();
+        let schema = |path: &str| format!("{GNOME_SCHEMA}.custom-keybinding:{path}");
+        let command = literal(&format!("{} --toggle", quote(command)));
+        if paths.iter().any(|p| p == GNOME_PATH) {
+            // Already there: the key is the user's to change; only the
+            // program's path is kept fresh.
+            if run("gsettings", &["get", &schema(GNOME_PATH), "command"])?.trim() != command {
+                run("gsettings", &["set", &schema(GNOME_PATH), "command", &command])?;
+            }
+            return Ok(Done::Kept);
         }
-        let schema = format!("{GNOME_SCHEMA}.custom-keybinding:{GNOME_PATH}");
-        run("gsettings", &["set", &schema, "name", &literal("Hanami")])?;
-        run("gsettings", &["set", &schema, "command", &literal(&format!("{} --toggle", quote(command)))])?;
-        run("gsettings", &["set", &schema, "binding", &literal(&keys.gtk())])?;
-        Ok(())
+        let binding = literal(&keys.gtk());
+        for path in &paths {
+            if run("gsettings", &["get", &schema(path), "binding"]).is_ok_and(|taken| taken.trim() == binding) {
+                let name = run("gsettings", &["get", &schema(path), "name"]).unwrap_or_default();
+                let name = name.trim().trim_matches('\'').to_owned();
+                return Err(format!("{} is {name}'s key in GNOME. Pick another hotkey in settings.", keys.text));
+            }
+        }
+        paths.push(GNOME_PATH.into());
+        let value = format!("[{}]", paths.iter().map(|p| format!("'{p}'")).collect::<Vec<_>>().join(", "));
+        run("gsettings", &["set", &schema(GNOME_PATH), "name", &literal("Hanami")])?;
+        run("gsettings", &["set", &schema(GNOME_PATH), "command", &command])?;
+        run("gsettings", &["set", &schema(GNOME_PATH), "binding", &binding])?;
+        run("gsettings", &["set", GNOME_SCHEMA, "custom-keybindings", &value])?;
+        Ok(Done::Added)
     }
 
     /// A string as gsettings reads values: in single quotes.

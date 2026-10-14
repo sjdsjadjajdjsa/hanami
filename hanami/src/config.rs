@@ -14,9 +14,10 @@ use crate::games::key;
 pub const DEFAULT: &str = r#"# Hanami settings. Changes show up the next time the panel opens.
 
 # Key that opens and hides the panel, like "Ctrl+Alt+H" or "Super+H".
-# Restart Hanami after changing it. On KDE Plasma and GNOME under Wayland,
-# Hanami adds this key to the desktop's own shortcuts (apps can't grab keys
-# there); on other Wayland desktops bind `hanami --toggle` to a key yourself.
+# Restart Hanami after changing it. On KDE Plasma 6 and GNOME under Wayland,
+# Hanami adds this key to the desktop's own shortcuts once (apps can't grab
+# keys there); change it there afterwards. On other Wayland desktops bind
+# `hanami --toggle` to a key yourself.
 hotkey = "Ctrl+Alt+H"
 
 # What happens after a game starts: "hide", "keep" or "quit".

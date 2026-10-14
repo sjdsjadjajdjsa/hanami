@@ -10,11 +10,15 @@ games. Picking a game starts it and hides the panel.
 Downloads are at <https://github.com/sjdsjadjajdjsa/hanami/releases/latest>.
 
 - **Linux, AppImage:** `hanami-x86_64.AppImage`. Mark it executable
-  (`chmod +x`) and run it. It needs FUSE, which every common desktop Linux
-  has; without it, run `./hanami-x86_64.AppImage --appimage-extract-and-run`.
+  (right-click, Properties, "Allow executing" or `chmod +x`) and run it. It
+  needs a distribution from 2024 or newer (glibc 2.39: Ubuntu 24.04, Fedora
+  40, Mint 22, Debian 13, Arch) and FUSE, which every common desktop Linux
+  has; without FUSE, run `./hanami-x86_64.AppImage --appimage-extract-and-run`.
 - **Linux, plain binary:** `hanami-linux-x86_64.tar.gz` holds `hanami`,
   README.md, GUIDE.md and LICENSE. Put `hanami` anywhere in your PATH.
-- **Windows, installer:** `hanami-setup-x86_64.exe`. It installs for the
+- **Windows, installer:** `hanami-setup-x86_64.exe`. Windows SmartScreen
+  says the publisher is unknown, because the installer isn't signed; click
+  "More info", then "Run anyway". It installs for the
   current user only (no admin rights) into `%LOCALAPPDATA%\Programs\Hanami`,
   adds Hanami to the Start menu and offers a box "Start Hanami when Windows
   starts" (off unless you tick it; it runs `hanami.exe --hidden` after sign-in).
@@ -39,9 +43,11 @@ version it saw in `~/.cache/hanami/latest` (Windows:
   settings, Open at login, Quit, and "Get Hanami X.Y.Z" when a newer
   version is out.
 - **Command:** `hanami --toggle` opens or closes it. On Wayland, apps can't
-  grab keys themselves: on KDE Plasma and GNOME, Hanami adds its hotkey to
-  the desktop's own keyboard shortcuts for you (it shows up there as
-  "Hanami"); on other Wayland desktops bind this command to a key yourself.
+  grab keys themselves: on KDE Plasma 6 and GNOME, Hanami adds its hotkey to
+  the desktop's own keyboard shortcuts the first time it runs (it shows up
+  there as "Hanami"), and from then on that entry is yours: change the key
+  there, not in Hanami's settings. On other Wayland desktops bind this
+  command to a key yourself.
 - **Game controller:** hold Start and Select (the two small middle buttons;
   Menu and View on an Xbox pad, Options and Share or Create on a PlayStation
   pad) together for half a second. The same hold closes it again. See

@@ -156,10 +156,10 @@ impl App {
         }
 
         self.reload();
+        // One notice at a time; the other waits for the next open.
         if let Some(problem) = self.hotkey_problem.take() {
             self.notify(problem);
-        }
-        if let Some(message) = self.update_notice.take() {
+        } else if let Some(message) = self.update_notice.take() {
             self.notify(message);
         }
         self.query.borrow_mut().clear();
@@ -169,7 +169,7 @@ impl App {
         if let Some((x, y)) = desktop::centre_on_pointer(WIDTH, HEIGHT, scale) {
             self.panel.window().set_position(PhysicalPosition::new(x, y));
         }
-        self.panel.window().with_winit_window(desktop::prepare);
+        self.panel.window().with_winit_window(|window| desktop::prepare(window, u64::from(window.id())));
         self.panel.set_shown(false);
         if let Err(error) = self.panel.show() {
             eprintln!("hanami: couldn't show the panel: {error}");
@@ -213,8 +213,9 @@ impl App {
                 if cut_corners {
                     desktop::cut_corners(&*window, width, height, radius);
                 }
-                desktop::prepare(&*window);
-                desktop::blur_behind(&*window, WIDTH, HEIGHT, RADIUS, scale);
+                let id = u64::from(window.id());
+                desktop::prepare(&*window, id);
+                desktop::blur_behind(&*window, id, WIDTH, HEIGHT, RADIUS, scale);
                 if !desktop::activate(&*window) {
                     window.focus_window();
                 }
@@ -242,7 +243,7 @@ impl App {
                 if let Some(panel) = panel.upgrade() {
                     let _ = panel.hide();
                     // Hidden X11 windows lose their states; restore them for the next show.
-                    panel.window().with_winit_window(desktop::prepare);
+                    panel.window().with_winit_window(|window| desktop::prepare(window, u64::from(window.id())));
                 }
                 desktop::return_memory();
             })
@@ -630,7 +631,7 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
         sources.push(source);
         let started = Instant::now();
         let games = find::games(source, config);
-        log(&format!("looked in {source:?} in {} ms", started.elapsed().as_millis()));
+        log(&format!("looked in {source:?}: {} games in {} ms", games.len(), started.elapsed().as_millis()));
         for game in &games {
             let name = key(&game.name);
             if source != Source::Ports {
@@ -733,15 +734,19 @@ impl CustomApplicationHandler for PrepareWindows {
     fn window_event(
         &mut self,
         _: &ActiveEventLoop,
-        _: WindowId,
+        id: WindowId,
         window: Option<&slint::winit_030::winit::window::Window>,
         _: Option<&slint::Window>,
         event: &WindowEvent,
     ) -> EventResult {
         // The first configure of a window arrives as a resize; the panel never
         // resizes otherwise.
-        if let (Some(window), WindowEvent::Resized(_)) = (window, event) {
-            desktop::prepare(window);
+        match (window, event) {
+            (Some(window), WindowEvent::Resized(_)) => {
+                desktop::prepare(window, u64::from(id));
+            }
+            (_, WindowEvent::Destroyed) => desktop::forget(u64::from(id)),
+            _ => {}
         }
         EventResult::Propagate
     }
@@ -758,6 +763,9 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
             eprintln!("hanami: couldn't open {}: {error}", path.display());
         }
     });
+    if let Err(error) = autostart::refresh() {
+        eprintln!("hanami: {error}");
+    }
     tray.set_at_login(autostart::enabled());
     let weak = tray.as_weak();
     tray.on_toggle_at_login(move || {
@@ -819,7 +827,7 @@ fn register_hotkey(text: &str) -> Result<Option<GlobalHotKeyManager>, String> {
         std::thread::spawn(move || {
             let result = hotkey::bind(&text);
             let _ = slint::invoke_from_event_loop(move || match result {
-                Ok(desktop) => log(&format!("{text} set up through {desktop}")),
+                Ok(done) => log(&done),
                 Err(problem) => {
                     log(&problem);
                     with_app(|app| *app.hotkey_problem.borrow_mut() = Some(problem));

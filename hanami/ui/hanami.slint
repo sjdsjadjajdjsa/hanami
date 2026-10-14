@@ -276,7 +276,7 @@ export component Panel inherits Window {
     function visible-selected() -> int {
         if (root.selected * Tokens.row-step + list.content-y < 0
             || (root.selected + 1) * Tokens.row-step - Tokens.gap + list.content-y > list.height) {
-            return Math.clamp(Math.ceil(-list.content-y / Tokens.row-step), 0, root.games.length - 1);
+            return Math.clamp(Math.floor(-list.content-y / Tokens.row-step), 0, root.games.length - 1);
         }
         return root.selected;
     }

@@ -141,3 +141,9 @@ mod platform {
 }
 
 pub use platform::{enabled, set};
+
+/// Points a login entry at the program running now: an AppImage or a
+/// portable folder may have moved since the entry was made.
+pub fn refresh() -> Result<(), String> {
+    if enabled() { set(true) } else { Ok(()) }
+}
