@@ -27,8 +27,8 @@ SCENES = {
         glows=[((0.80, 0.16), (244, 182, 200), 0.30, 640), ((0.14, 0.88), (126, 96, 196), 0.24, 580)],
         bokeh=[(244, 182, 200), (214, 150, 190), (160, 130, 220)],
         bokeh_alpha=(0.05, 0.24),
-        petal=(247, 196, 211),
-        vein=(233, 163, 184),
+        petal=(255, 214, 226),
+        vein=(232, 128, 159),
         petal_alpha=(0.45, 0.85),
         shadow=(0, 0, 0),
         shadow_alpha=0.6,
@@ -39,8 +39,8 @@ SCENES = {
         glows=[((0.80, 0.14), (247, 186, 206), 0.60, 640), ((0.14, 0.88), (190, 210, 248), 0.55, 580)],
         bokeh=[(255, 255, 255), (247, 196, 211), (220, 204, 246)],
         bokeh_alpha=(0.20, 0.55),
-        petal=(240, 158, 184),
-        vein=(220, 124, 156),
+        petal=(250, 200, 216),
+        vein=(226, 120, 160),
         petal_alpha=(0.55, 0.95),
         shadow=(70, 30, 55),
         shadow_alpha=0.32,
@@ -56,19 +56,24 @@ def cubic(p0, p1, p2, p3, steps=24):
 
 
 def petal(size, colour, vein, alpha, angle, blur):
-    """assets/petal.svg, drawn `size` pixels wide (the same curves, tilted the same 18 degrees)."""
+    """assets/petal.svg, drawn `size` pixels wide (the same curves)."""
     zoom = 8
-    k = size * zoom / 20
-    outline = [((0, 11), (-6, 6.5), (-8.2, 1), (-7.4, -4.2)), ((-7.4, -4.2), (-6.5, -9), (-3.6, -11), (0, -11)),
-               ((0, -11), (3.6, -11), (6.5, -9), (7.4, -4.2)), ((7.4, -4.2), (8.2, 1), (6, 6.5), (0, 11))]
+    k = size * zoom / 15
+    outline = [((0, 11), (-5.2, 8), (-7.2, 2.5), (-6.2, -3.4)), ((-6.2, -3.4), (-5.5, -7.6), (-4, -10.4), (-2.1, -10.5)),
+               ((-2.1, -10.5), (-1.1, -10.5), (-0.3, -10), (0.2, -9.4)), ((0.2, -9.4), (0.7, -10.1), (1.6, -10.5), (2.5, -10.4)),
+               ((2.5, -10.4), (4.5, -10.2), (6, -7.8), (6, -3.6)), ((6, -3.6), (6, 1.2), (3.8, 6.4), (0, 11))]
     side = int(size * 1.6 * zoom)
     to_px = lambda p: (side / 2 + p[0] * k, side / 2 + p[1] * k)
-    big = Image.new("RGBA", (side, side), colour + (0,))
+    # Pale at the wide end, deeper at the base, like the SVG's gradient.
+    mask = Image.new("L", (side, side), 0)
+    ImageDraw.Draw(mask).polygon([to_px(p) for seg in outline for p in cubic(*seg)], fill=255)
+    pale, deep = (Image.new("RGBA", (side, side), c + (255,)) for c in (colour, vein))
+    big = Image.composite(deep, pale, Image.linear_gradient("L").resize((side, side)))
+    big.putalpha(mask)
     draw = ImageDraw.Draw(big)
-    draw.polygon([to_px(p) for seg in outline for p in cubic(*seg)], fill=colour + (255,))
-    draw.line([to_px(p) for p in cubic((0.5, -6.5), (1.1, -3), (1, 1), (0.3, 5))] + [to_px((0.3, 5))],
-              fill=vein + (200,), width=max(1, int(1.3 * k)))
-    small = big.rotate(angle + 18, resample=Image.BICUBIC).resize((side // zoom, side // zoom), Image.LANCZOS)
+    draw.line([to_px(p) for p in cubic((-1, -7.4), (-2.4, -4.8), (-2.9, -1), (-2.2, 3))] + [to_px((-2.2, 3))],
+              fill=(255, 255, 255, 115), width=max(1, int(1.0 * k)))
+    small = big.rotate(angle, resample=Image.BICUBIC).resize((side // zoom, side // zoom), Image.LANCZOS)
     small.putalpha(small.getchannel("A").point(lambda a: int(a * alpha)))
     return small.filter(ImageFilter.GaussianBlur(blur)) if blur else small
 

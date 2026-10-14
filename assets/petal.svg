@@ -1,7 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -12 20 24" width="20" height="24">
-  <g transform="rotate(-18)">
-    <path d="M0 11 C -6 6.5 -8.2 1 -7.4 -4.2 C -6.5 -9 -3.6 -11 0 -11 C 3.6 -11 6.5 -9 7.4 -4.2 C 8.2 1 6 6.5 0 11 Z" fill="#f7c4d3"/>
-    <path d="M0 11 C -6 6.5 -8.2 1 -7.4 -4.2 C -4 -1.5 -1.6 3.5 0 11 Z" fill="#e9a3b8"/>
-    <path d="M0.5 -6.5 C 1.1 -3 1 1 0.3 5" stroke="#e9a3b8" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.8"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-7.5 -11.5 15 23" width="15" height="23">
+  <defs>
+    <linearGradient id="g" x1="-4" y1="-10" x2="3" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd6e2"/>
+      <stop offset="0.5" stop-color="#f7b3ca"/>
+      <stop offset="1" stop-color="#e8809f"/>
+    </linearGradient>
+  </defs>
+  <path d="M0 11 C -5.2 8 -7.2 2.5 -6.2 -3.4 C -5.5 -7.6 -4 -10.4 -2.1 -10.5 C -1.1 -10.5 -0.3 -10 0.2 -9.4 C 0.7 -10.1 1.6 -10.5 2.5 -10.4 C 4.5 -10.2 6 -7.8 6 -3.6 C 6 1.2 3.8 6.4 0 11 Z" fill="url(#g)"/>
+  <path d="M-1 -7.4 C -2.4 -4.8 -2.9 -1 -2.2 3" stroke="#ffffff" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
 </svg>

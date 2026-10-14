@@ -11,8 +11,14 @@ export struct Petal {
     size: float,
     alpha: float,
     phase: float,
+    // Where in its fall it starts, 0 to 1; spread out so petals don't bunch.
+    drop: float,
+    // How fast it turns over, showing its edge.
+    flip: float,
     // Transparent keeps the picture's own colours.
     tint: color,
+    // The picture painted in the tint; empty means the panel's own petal.
+    image: image,
 }
 
 export struct GameRow {
@@ -57,13 +63,15 @@ component PetalView inherits Image {
     in property <length> area-h;
     in property <float> t;
     in property <image> shape;
-    source: shape;
-    colorize: p.tint;
-    width: p.size * 1px;
+    source: p.image.width > 0 ? p.image : shape;
+    // Its own shape, squeezed sideways as it turns over.
+    image-fit: fill;
     height: p.size * 1.2px;
+    width: self.height * self.source.width / Math.max(1, self.source.height)
+        * (0.65 + 0.35 * Math.abs(Math.cos((t * p.flip + p.phase * 31) * 1rad)));
     opacity: p.alpha;
     x: area-w * p.x + p.sway * 1px * Math.sin((t * p.freq + p.phase) * 1rad) - self.width / 2;
-    y: Math.mod(t * p.speed + p.phase * 97, area-h / 1px + 40) * 1px - 20px;
+    y: Math.mod(t * p.speed + p.drop * (area-h / 1px + 40), area-h / 1px + 40) * 1px - 20px;
     transform-rotation: (t * p.spin + p.phase * 57) * 1deg;
 }
 

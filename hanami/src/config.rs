@@ -65,7 +65,7 @@ panel = "#17141db8"
 text = "#ece6ee"
 dim = "#9b93a3"
 accent = "#f4b6c8"
-petals = 18
+petals = 24
 speed = 1.0
 size = 1.0
 drift = 1.0
@@ -139,7 +139,7 @@ impl Default for Theme {
             text: Colour(0xece6eeff),
             dim: Colour(0x9b93a3ff),
             accent: Colour(0xf4b6c8ff),
-            petals: 18,
+            petals: 24,
             speed: 1.0,
             size: 1.0,
             drift: 1.0,

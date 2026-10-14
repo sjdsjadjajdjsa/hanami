@@ -5,7 +5,7 @@
 
 use std::path::Path;
 
-use slint::{Color, ComponentHandle, ModelRc, VecModel};
+use slint::{Color, ComponentHandle, ModelRc, Rgba8Pixel, SharedPixelBuffer, VecModel};
 
 use crate::config::Theme;
 use crate::{Panel, Tokens, petals};
@@ -37,25 +37,50 @@ pub fn apply(panel: &Panel, theme: &Theme, dir: Option<&Path>, scale: f32) -> Re
         spin: theme.spin,
         tints: theme.tints.iter().map(|&c| colour(c)).collect(),
     };
-    panel.set_petals(ModelRc::new(VecModel::from(petals::petals(&motion))));
     panel.set_dots(ModelRc::new(VecModel::from(petals::dots(theme.dots))));
     let px = (PETAL_PX as f32 * scale.max(1.0)) as u32;
-    let own = dir.and_then(petal_file).map(|path| petal(&path, px));
-    let sakura = || slint::Image::from_rgba8(crate::icons::svg(SAKURA, px).expect("the built-in petal draws"));
-    match own {
-        Some(Ok(image)) => {
-            panel.set_petal(image);
-            Ok(())
+    let sakura = || crate::icons::svg(SAKURA, px).expect("the built-in petal draws");
+    let (pixels, problem) = match dir.and_then(petal_file).map(|path| petal(&path, px)) {
+        Some(Ok(pixels)) => (pixels, None),
+        Some(Err(problem)) => (sakura(), Some(problem)),
+        None => (sakura(), None),
+    };
+    let mut petals = petals::petals(&motion);
+    let mut painted: Vec<(Color, slint::Image)> = Vec::new();
+    for petal in &mut petals {
+        if petal.tint.alpha() == 0 {
+            continue;
         }
-        Some(Err(problem)) => {
-            panel.set_petal(sakura());
-            Err(problem)
-        }
-        None => {
-            panel.set_petal(sakura());
-            Ok(())
-        }
+        let image = match painted.iter().find(|(tint, _)| *tint == petal.tint) {
+            Some((_, image)) => image.clone(),
+            None => {
+                let image = slint::Image::from_rgba8(tinted(&pixels, petal.tint));
+                painted.push((petal.tint, image.clone()));
+                image
+            }
+        };
+        petal.image = image;
     }
+    panel.set_petals(ModelRc::new(VecModel::from(petals)));
+    panel.set_petal(slint::Image::from_rgba8(pixels));
+    problem.map_or(Ok(()), Err)
+}
+
+/// The picture painted in `tint`: its brightest part gets the tint as it
+/// is, darker parts (a vein, a shadow) a darker tint, so shading and lines
+/// stay while the colour changes.
+fn tinted(pixels: &SharedPixelBuffer<Rgba8Pixel>, tint: Color) -> SharedPixelBuffer<Rgba8Pixel> {
+    let light = |p: &Rgba8Pixel| p.r as u32 * 299 + p.g as u32 * 587 + p.b as u32 * 114;
+    let brightest = pixels.as_slice().iter().filter(|p| p.a == 255).map(light).max().unwrap_or(0).max(1);
+    let (r, g, b) = (tint.red() as u32, tint.green() as u32, tint.blue() as u32);
+    let mut out = pixels.clone();
+    for p in out.make_mut_slice() {
+        let l = light(p);
+        p.r = (r * l / brightest).min(255) as u8;
+        p.g = (g * l / brightest).min(255) as u8;
+        p.b = (b * l / brightest).min(255) as u8;
+    }
+    out
 }
 
 fn colour(c: crate::config::Colour) -> Color {
@@ -69,14 +94,13 @@ fn petal_file(dir: &Path) -> Option<std::path::PathBuf> {
 }
 
 /// `path` drawn as a petal `px` wide, or why it couldn't be.
-fn petal(path: &Path, px: u32) -> Result<slint::Image, String> {
+fn petal(path: &Path, px: u32) -> Result<SharedPixelBuffer<Rgba8Pixel>, String> {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("petal").to_owned();
     let size = std::fs::metadata(path).map_err(|e| format!("{name}: {e}"))?.len();
     if size > MAX_PETAL_BYTES {
         return Err(format!("{name}: {} KB is too big for a petal (keep it under 512 KB)", size / 1024));
     }
-    let pixels = crate::icons::decode(path, px).ok_or(format!("{name}: not a picture Hanami can draw"))?;
-    Ok(slint::Image::from_rgba8(pixels))
+    crate::icons::decode(path, px).ok_or(format!("{name}: not a picture Hanami can draw"))
 }
 
 #[cfg(test)]
@@ -85,12 +109,15 @@ mod tests {
 
     #[test]
     fn a_petal_file_is_drawn_or_refused() {
-        let dir = std::env::temp_dir().join(format!("hanami-theme-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("hanami-look-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("petal.svg");
         std::fs::write(&path, "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><circle cx='5' cy='5' r='4' fill='#c40'/></svg>").unwrap();
-        let image = petal(&path, PETAL_PX).unwrap();
-        assert_eq!(image.size().width, PETAL_PX);
+        let pixels = petal(&path, PETAL_PX).unwrap();
+        assert_eq!(pixels.width(), PETAL_PX);
+        let blue = tinted(&pixels, Color::from_rgb_u8(0, 0, 255));
+        let middle = blue.as_slice()[(PETAL_PX * PETAL_PX / 2 + PETAL_PX / 2) as usize];
+        assert_eq!((middle.r, middle.g, middle.b, middle.a), (0, 0, 255, 255), "{middle:?}");
         std::fs::write(&path, "not svg at all").unwrap();
         assert!(petal(&path, PETAL_PX).unwrap_err().contains("not a picture"));
         std::fs::write(&path, vec![b' '; 600 * 1024]).unwrap();
@@ -101,7 +128,7 @@ mod tests {
         image::RgbaImage::from_pixel(8, 8, image::Rgba([255, 0, 0, 255])).save(&png).unwrap();
         std::fs::remove_file(&path).unwrap();
         assert_eq!(petal_file(&dir).unwrap(), png);
-        assert_eq!(petal(&png, PETAL_PX).unwrap().size().width, PETAL_PX);
+        assert_eq!(petal(&png, PETAL_PX).unwrap().width(), PETAL_PX);
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

@@ -302,7 +302,7 @@ panel = "#17141db8"   # the panel's colour; the last two digits are how solid
 text = "#ece6ee"      # game names and the title
 dim = "#9b93a3"       # labels and hints
 accent = "#f4b6c8"    # the selected row, the petals' tint in the highlight
-petals = 18           # how many petals fall (0 to 200)
+petals = 24           # how many petals fall (0 to 200)
 speed = 1.0           # how fast they fall; 0.5 is half as fast
 size = 1.0            # how big they are; 1.5 is half as big again
 drift = 1.0           # how far they sway sideways; leaves tumble, snow wobbles
@@ -319,9 +319,9 @@ enough for a look to feel right:
 
 | look | petals | speed | size | drift | spin | tints | dots |
 |---|---|---|---|---|---|---|---|
-| sakura (default) | 18 | 1.0 | 1.0 | 1.0 | 1.0 | none | 0 |
-| autumn leaves | 16 | 0.7 | 2.0 | 1.6 | 1.4 | `["#e0602a", "#c8401c", "#f0a040", "#9a3410"]` | 12 |
-| snow | 18 | 0.6 | 1.5 | 1.3 | 0.3 | `["#ffffff", "#dceeff", "#bfe0ff"]` | 24 |
+| sakura (default) | 24 | 1.0 | 1.0 | 1.0 | 1.0 | none | 0 |
+| autumn leaves | 16 | 0.7 | 1.8 | 1.6 | 1.4 | `["#e0602a", "#c8401c", "#f0a040", "#9a3410"]` | 12 |
+| snow | 18 | 0.6 | 1.3 | 1.3 | 0.3 | `["#ffffff", "#dceeff", "#bfe0ff"]` | 24 |
 
 With `tints` the picture is painted flat in those colours, so its own
 colours and lines don't show; leave `tints` empty for a petal that has a
@@ -345,7 +345,7 @@ else (an emoji picture, say). Rules, which Hanami checks:
 - Under 512 KB; a petal is a few lines, or a png of 64 to 256 pixels.
 - The shape should fill most of the box and be clear at 12 pixels: a leaf,
   a petal, a snowflake, a star. Fine detail disappears at that size; a
-  detailed shape like a leaf wants `size = 2.0` and fewer petals.
+  detailed shape like a leaf wants `size = 1.8` and fewer petals.
 
 A file that doesn't follow this is refused ("Couldn't read petal.svg: ...")
 and the sakura petal stays.
