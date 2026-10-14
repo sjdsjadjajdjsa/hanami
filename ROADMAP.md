@@ -30,7 +30,7 @@ use it in GUIDE.md.
   panel. No CPU while idle.
 - **Packages and updates (0.2):** AppImage, a per-user Windows installer, an
   AUR package ready to publish, and a tray item when a new version is out.
-- **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 30 MB; open with
+- **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 35 MB; open with
   petals 0-1 % CPU; looking through every game source takes a few
   milliseconds, the ports scan runs in the background.
 
@@ -38,12 +38,9 @@ use it in GUIDE.md.
 
 1. **Publish the AUR package** (`packaging/README.md` has the steps; needs
    an AUR account).
-2. **Windows check on a real PC:** the see-through panel, focus from the
-   hotkey, centring across monitors, and the Epic and GOG sources on real
-   installs. Already checked: Windows builds and tests pass on GitHub, and in
-   Wine one copy at a time, `--toggle` and both renderers work (0.1.2).
-   Acrylic blur comes after that.
-3. **Controller on real pads:** checked with a virtual Xbox pad so far.
+2. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources
+   checked against more installs.
+3. **Controller:** more pads checked, and a way to change the open button.
 
 ## Later
 
