@@ -34,7 +34,7 @@
       const now = performance.now();
       clock += ((now - last) / 1000) * (motion.matches ? 0.4 : 1);
       last = now;
-      const shown = motion.matches ? petals.slice(0, Math.ceil(count / 2)) : petals;
+      const shown = motion.matches ? petals.filter((_, i) => i % 2 === 0) : petals;
       // Scrolling lifts the petals a little, the faster (nearer) ones more.
       const lift = scroll && !motion.matches ? window.scrollY * 0.12 : 0;
       const travel = height + 40;
