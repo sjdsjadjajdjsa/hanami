@@ -645,6 +645,13 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
     (games, fresh)
 }
 
+/// What a key press adds to the search: letters, digits, spaces and the
+/// like. Keys that aren't text (Home, End, F5, ...) arrive as private-use
+/// characters and would sit in the search as blanks nothing matches.
+fn searchable(text: &str) -> String {
+    text.chars().filter(|c| !c.is_control() && !('\u{e000}'..='\u{f8ff}').contains(c)).collect()
+}
+
 fn with_app(f: impl FnOnce(&Rc<App>)) {
     let app = APP.with_borrow(|app| app.clone());
     if let Some(app) = app {
@@ -686,7 +693,7 @@ fn connect_panel(panel: &Panel) {
     panel.on_keep_new(|| with_app(|app| app.keep_new()));
     panel.on_hide_new(|| with_app(|app| app.hide_new()));
     panel.on_typed(|text| {
-        let typed: String = text.chars().filter(|c| !c.is_control()).collect();
+        let typed = searchable(&text);
         if !typed.is_empty() {
             with_app(|app| {
                 app.query.borrow_mut().push_str(&typed);
@@ -1003,4 +1010,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     APP.with_borrow_mut(|slot| slot.take());
     drop((tray, hotkeys));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::searchable;
+
+    #[test]
+    fn only_text_keys_go_into_the_search() {
+        assert_eq!(searchable("h"), "h");
+        assert_eq!(searchable(" "), " ");
+        assert_eq!(searchable("ł"), "ł");
+        for key in ["\u{f700}", "\u{f729}", "\u{f704}", "\t", "\u{1b}"] {
+            assert_eq!(searchable(key), "", "{key:?}");
+        }
+    }
 }
