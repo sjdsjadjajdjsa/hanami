@@ -1,8 +1,11 @@
 //! Draws the panel off screen, one frame per line of JSON on stdin, for the
 //! video docs/video.py makes. A line says what the panel shows at that moment:
 //!
-//!     {"time": 4.0, "query": "hk", "selected": 0,
+//!     {"time": 4.0, "query": "hk", "selected": 0, "pointer": [300, 20], "notice": "",
 //!      "games": [{"name": "Hollow Knight", "label": "gog", "icon": "site/assets/games/hollow-knight.png"}]}
+//!
+//! `pointer` is where the mouse is over the panel, in logical pixels; leave it
+//! out when the mouse is elsewhere.
 //!
 //!     cargo run --release --example panel_frames -- FRAMES_DIR 2.0 < states.jsonl
 //!
@@ -24,7 +27,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType};
 use slint::platform::{Platform, WindowAdapter, WindowEvent};
-use slint::{ComponentHandle, Image, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, VecModel};
+use slint::{ComponentHandle, Image, LogicalPosition, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, VecModel};
 
 slint::include_modules!();
 
@@ -62,6 +65,9 @@ struct State {
     acting: i32,
     #[serde(default)]
     action: i32,
+    #[serde(default)]
+    notice: String,
+    pointer: Option<(f32, f32)>,
 }
 
 fn nothing() -> i32 {
@@ -148,6 +154,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         panel.set_selected(state.selected);
         panel.set_acting(state.acting);
         panel.set_action(state.action);
+        panel.set_notice(state.notice.as_str().into());
+        window.dispatch_event(match state.pointer {
+            Some((x, y)) => WindowEvent::PointerMoved { position: LogicalPosition::new(x, y) },
+            None => WindowEvent::PointerExited,
+        });
         panel.set_t(PETAL_TIME + state.time);
         slint::platform::update_timers_and_animations();
 
