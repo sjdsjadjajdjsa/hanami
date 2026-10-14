@@ -5,9 +5,13 @@ nothing borrowed).
 
     python3 docs/video.py hanami.mp4
     python3 docs/video.py --tall hanami-tall.mp4
+    python3 docs/video.py --music song.mp3 --bpm 96.46 --hit 19.92 hanami.mp4
 
-Writes the video (60 fps, 18 seconds) and a thumbnail next to it: 1920 x 1080
-for YouTube, or 1080 x 1920 with --tall for Shorts, TikTok and Reels. Needs
+Writes the video (60 fps, about 18 seconds) and a thumbnail next to it:
+1920 x 1080 for YouTube, or 1080 x 1920 with --tall for Shorts, TikTok and
+Reels. --music plays a song instead: --bpm is its tempo and --hit the second
+in it the panel should open on, a downbeat where the song kicks in; the whole
+edit follows that beat. Needs
 Rust, ffmpeg, Pillow, NumPy and SciPy; KDE Plasma with Konsole and Spectacle
 for the desktop; Claude Code for the terminal (`claude` on PATH, or
 CLAUDE=/path/to/claude; no account needed); and a few minutes. Frames are kept
@@ -40,9 +44,24 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import screenshot  # noqa: E402
 
+def option(name):
+    """Takes `name value` out of the command line; None when it isn't there."""
+    if name not in sys.argv[1:]:
+        return None
+    at = sys.argv.index(name)
+    if at + 1 >= len(sys.argv):
+        sys.exit(f"{name} needs a value")
+    value = sys.argv[at + 1]
+    del sys.argv[at : at + 2]
+    return value
+
+
+MUSIC, BPM, HIT = option("--music"), option("--bpm"), option("--hit")
+if MUSIC and not (BPM and HIT):
+    sys.exit("--music needs --bpm and --hit too")
 FPS = 60
 SR = 48000
-BEAT = 60 / 90
+BEAT = 60 / float(BPM or 90)
 PANEL_SCALE = 2.0
 PW, PH = int(340 * PANEL_SCALE), int(440 * PANEL_SCALE)
 CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "hanami-video"
@@ -80,7 +99,8 @@ CLICKS = [at for at, _ in TYPED] + DOWNS + [TAB, ENTER]
 # the panel; the prompt is pasted into Claude Code there and sent.
 ASK, AWAY = b(13.5), b(15.0)
 PASTE, SEND = b(16.0), b(16.75)
-END = b(23.5)
+# On a song the end card lands on the downbeat six bars after the panel opens.
+END = b(25.5) if MUSIC else b(23.5)
 LENGTH = END + 2.65
 FRAMES = round(LENGTH * FPS)
 
@@ -987,6 +1007,21 @@ def loudness(path):
     return float(data["input_i"])
 
 
+def song(n):
+    """`n` samples of the song, starting so its hit lands as the panel opens;
+    a quick fade in, and out after the end card."""
+    start = float(HIT) - REVEAL
+    trim = f"atrim=start={max(0.0, start):.5f}:duration={LENGTH:.5f},asetpts=PTS-STARTPTS"
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", MUSIC, "-af", trim, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"],
+        capture_output=True, check=True,
+    ).stdout
+    audio = np.concatenate([np.zeros((round(max(0.0, -start) * SR), 2)), np.frombuffer(raw, np.float32).reshape(-1, 2)])
+    audio = np.pad(audio, ((0, max(0, n - len(audio))), (0, 0)))[:n]
+    t = np.arange(n) / SR
+    return audio * (np.clip(t / 0.25, 0, 1) * np.clip((LENGTH - t) / (LENGTH - END - 0.6), 0, 1))[:, None]
+
+
 def write_music(path):
     n = int(LENGTH * SR)
     dry, send = np.zeros((n, 2)), np.zeros((n, 2))
@@ -1000,19 +1035,22 @@ def write_music(path):
             dry[start : start + len(sound), channel] += sound * gain * side
             send[start : start + len(sound), channel] += sound * gain * side * wet
 
-    for beat, notes, loud, bend in MELODY:
-        for k, midi in enumerate(notes):
-            strum = 0.035 * k if len(notes) > 2 else 0
-            place(koto(midi, 4.0 if b(beat) >= END else 3.2, bend), b(beat) + strum, 0.32 * loud,
-                  pan=clamp((midi - 62) / 30, -0.4, 0.4), wet=0.3)
-    for beat, loud in ((0, 0.55), (1.5, 0.8), (8, 0.45), (15, 0.5), (23.5, 1.0)):
-        place(taiko(), b(beat), 0.5 * loud, wet=0.12)
-    place(pad(), 0, 0.06, wet=0.3)
-    place(chime(86), END + 0.05, 0.2, pan=0.2, wet=0.4)
-    place(chime(93), END + 0.4, 0.12, pan=-0.2, wet=0.4)
-    place(whoosh(), REVEAL - 0.3, 0.2, pan=0.25, wet=0.15)
-    place(whoosh(0.8, 0.3), b(14.75) - 0.2, 0.1, pan=0.3, wet=0.15)
-    place(whoosh(0.8, 0.3), END - 0.3, 0.12, pan=-0.1, wet=0.15)
+    if MUSIC:
+        dry[:] += song(n)
+    else:
+        for beat, notes, loud, bend in MELODY:
+            for k, midi in enumerate(notes):
+                strum = 0.035 * k if len(notes) > 2 else 0
+                place(koto(midi, 4.0 if b(beat) >= END else 3.2, bend), b(beat) + strum, 0.32 * loud,
+                      pan=clamp((midi - 62) / 30, -0.4, 0.4), wet=0.3)
+        for beat, loud in ((0, 0.55), (1.5, 0.8), (8, 0.45), (15, 0.5), (23.5, 1.0)):
+            place(taiko(), b(beat), 0.5 * loud, wet=0.12)
+        place(pad(), 0, 0.06, wet=0.3)
+        place(chime(86), END + 0.05, 0.2, pan=0.2, wet=0.4)
+        place(chime(93), END + 0.4, 0.12, pan=-0.2, wet=0.4)
+        place(whoosh(), REVEAL - 0.3, 0.2, pan=0.25, wet=0.15)
+        place(whoosh(0.8, 0.3), b(14.75) - 0.2, 0.1, pan=0.3, wet=0.15)
+        place(whoosh(0.8, 0.3), END - 0.3, 0.12, pan=-0.1, wet=0.15)
     for keys, _ in KEYCAST:
         for label, at in keys:
             place(click(True), at, 0.2, wet=0.06)
