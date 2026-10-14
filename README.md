@@ -46,8 +46,8 @@ file was built; [SECURITY.md](SECURITY.md) says how to check a download and
 how to report a security problem.
 
 Hanami says in its tray menu when a newer version is out; it never updates
-itself. To start it with your computer on Linux, add `hanami --hidden` to
-your startup programs ([how](GUIDE.md#starting-with-the-computer)).
+itself. To start it with your computer, pick **Open at login** in the tray
+menu.
 
 ## Use
 

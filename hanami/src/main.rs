@@ -4,6 +4,7 @@
 // command-line use its output back.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod autostart;
 mod config;
 mod find;
 mod gamepad;
@@ -720,6 +721,22 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
             && let Err(error) = edit(path)
         {
             eprintln!("hanami: couldn't open {}: {error}", path.display());
+        }
+    });
+    tray.set_at_login(autostart::enabled());
+    let weak = tray.as_weak();
+    tray.on_toggle_at_login(move || {
+        let Some(tray) = weak.upgrade() else { return };
+        let on = !tray.get_at_login();
+        match autostart::set(on) {
+            Ok(()) => {
+                log(if on { "opens at login" } else { "no longer opens at login" });
+                tray.set_at_login(on);
+            }
+            Err(error) => {
+                eprintln!("hanami: {error}");
+                with_app(|app| app.notify(error));
+            }
         }
     });
     tray.on_quit_app(|| {

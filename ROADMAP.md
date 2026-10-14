@@ -30,6 +30,8 @@ use it in GUIDE.md.
   panel. No CPU while idle.
 - **Packages and updates (0.2):** AppImage, a per-user Windows installer, an
   AUR package ready to publish, and a tray item when a new version is out.
+- **Open at login (0.2.5):** a tray menu item that adds or removes the login
+  entry (autostart desktop file on Linux, the installer's Run key on Windows).
 - **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 35 MB; open with
   petals 0-1 % CPU; looking through every game source takes a few
   milliseconds, the ports scan runs in the background.

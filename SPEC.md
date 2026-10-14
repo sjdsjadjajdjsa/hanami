@@ -9,7 +9,8 @@ for Linux and Windows.
 1. **Runs in the tray.** One copy at a time: starting Hanami again just
    opens the running one. `hanami` opens the panel, `hanami --hidden` starts
    in the tray only (for starting with the system). The tray menu has Open,
-   Edit settings, Quit.
+   Edit settings, Open at login (a login entry that runs `hanami --hidden`),
+   Quit.
 2. **Opens and closes on demand.** Tray click, the built-in hotkey (default
    `Ctrl+Alt+H`, changeable), or `hanami --toggle` bound to a key in the
    desktop's own shortcut settings (needed on Wayland, where apps can't grab

@@ -36,7 +36,8 @@ version it saw in `~/.cache/hanami/latest` (Windows:
 
 - **Hotkey:** `Ctrl+Alt+H` by default. Press it again to close.
 - **Tray icon:** click to open or close. Right-click for Open, Edit
-  settings, Quit, and "Get Hanami X.Y.Z" when a newer version is out.
+  settings, Open at login, Quit, and "Get Hanami X.Y.Z" when a newer
+  version is out.
 - **Command:** `hanami --toggle` opens or closes it. On Wayland, apps can't
   grab keys themselves, so bind this command to a key in the desktop's own
   keyboard shortcut settings.
@@ -264,7 +265,7 @@ Games started by Hanami keep running when Hanami closes.
 | Command | What it does |
 |---|---|
 | `hanami` | open the panel (starts Hanami if needed) |
-| `hanami --hidden` | start in the tray only; use this to start with the computer |
+| `hanami --hidden` | start in the tray only (what the login entry runs) |
 | `hanami --toggle` | open or close the panel |
 | `hanami --quit` | close the running Hanami (the tray menu's Quit does the same) |
 | `hanami --list` | print every game the panel would show, with its label (with `--verbose`, also its icon file) |
@@ -274,11 +275,11 @@ Games started by Hanami keep running when Hanami closes.
 
 ## Starting with the computer
 
-- KDE Plasma: System Settings, Autostart, Add Application, then pick Hanami
-  and change its command to `hanami --hidden`.
-- GNOME and others: add a startup entry that runs `hanami --hidden`.
-- Windows: put a shortcut to `hanami.exe --hidden` in the Startup folder
-  (`shell:startup` in the Run box).
+Right-click the tray icon and pick **Open at login**. A tick shows it is on;
+pick it again to turn it off. On Linux this writes
+`~/.config/autostart/hanami.desktop` (pointing at the AppImage when you run
+one); on Windows it sets the same startup entry as the installer's tick box.
+Hanami then starts in the tray only, without opening the panel.
 
 ## Changing the look
 

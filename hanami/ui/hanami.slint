@@ -523,10 +523,13 @@ export component Panel inherits Window {
 export component Tray inherits SystemTrayIcon {
     // Set when a newer release is out, like "0.2.0"; empty hides the item.
     in property <string> update-version;
+    // Hanami opens in the tray at login.
+    in property <bool> at-login;
 
     callback open-panel();
     callback show-panel();
     callback edit-settings();
+    callback toggle-at-login();
     callback quit-app();
     callback get-update();
 
@@ -543,6 +546,10 @@ export component Tray inherits SystemTrayIcon {
         MenuItem {
             title: "Edit settings";
             activated => { root.edit-settings(); }
+        }
+        MenuItem {
+            title: root.at-login ? "Open at login  ✓" : "Open at login";
+            activated => { root.toggle-at-login(); }
         }
         if root.update-version != "": MenuItem {
             title: "Get Hanami " + root.update-version;
