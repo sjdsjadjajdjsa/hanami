@@ -409,7 +409,7 @@ def keycap(label, pressed):
 # `hanami --list` for real, on a home folder with the video's six games.
 CLAUDE_HOME = Path(tempfile.gettempdir()) / "alex"
 STAND_IN_PORT = 47811
-DEMO_KEY = "sk-ant-api03-" + "0" * 80 + "-AAAAAAAA"
+DEMO_KEY = "hanami-video-stand-in-key"
 INTRO = "I'll read the guide, then check which games Hanami finds."
 REPLY = (
     "Hanami is a small game launcher that lives in your tray.\n\n"
@@ -495,9 +495,14 @@ class StandIn(http.server.BaseHTTPRequestHandler):
 
 def prepare_claude(claude):
     """A home folder for Claude Code and Hanami that shows the video's games,
-    and the script the terminal runs. Returns the script and the text to paste."""
+    and the script the terminal runs. Returns the script and the text to paste.
+    A folder by that name that this script didn't make is left alone."""
+    mark = CLAUDE_HOME / ".hanami-video"
+    if CLAUDE_HOME.exists() and not mark.exists():
+        sys.exit(f"{CLAUDE_HOME} is in the way; move it and run again")
     shutil.rmtree(CLAUDE_HOME, ignore_errors=True)
     (CLAUDE_HOME / ".claude").mkdir(parents=True)
+    mark.touch()
     (CLAUDE_HOME / ".config" / "hanami").mkdir(parents=True)
     (CLAUDE_HOME / "bin").mkdir()
     (CLAUDE_HOME / "bin" / "hanami").symlink_to(ROOT / "target" / "release" / "hanami")
@@ -658,6 +663,7 @@ def capture_desktop(out, shots):
         )
     finally:
         server.shutdown()
+        shutil.rmtree(CLAUDE_HOME, ignore_errors=True)
     if not (out.exists() and (shots / "idle.png").exists()):
         sys.exit("could not capture the desktop")
 
