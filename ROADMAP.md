@@ -30,9 +30,12 @@ use it in GUIDE.md.
   panel. No CPU while idle.
 - **Packages and updates (0.2):** AppImage, a per-user Windows installer, an
   AUR package ready to publish, and a tray item when a new version is out.
-- **Your look (0.2.8):** a `[theme]` block (colours, petal count, speed,
-  size) and a `petal.svg` next to the settings, both plain text an AI can
-  write; GUIDE.md has the rules the `?` prompt points the AI at.
+- **Your look (0.2.8):** a `[theme]` block (colours, how many petals fall,
+  how fast, how big, how they sway, spin and are tinted, specks drifting
+  up) and a `petal.svg` or `petal.png` next to the settings, which an AI
+  can write; GUIDE.md has the rules the `?` prompt points the AI at, with
+  settings for sakura, autumn leaves and snow. Petals come in all sizes,
+  the small ones faint and slow, and turn over as they fall.
 - **Open at login (0.2.5):** a tray menu item that adds or removes the login
   entry (autostart desktop file on Linux, the installer's Run key on Windows).
 - **KDE on Wayland (0.2.5):** the panel is see-through (a patched softbuffer,
