@@ -4,7 +4,7 @@
 (() => {
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const petal = new Image();
-  petal.src = "assets/petal.svg";
+  petal.src = "assets/petal.svg?v=090c0b509c";
 
   function drift(canvas, { count, sizes, alphas, seed, scroll = false }) {
     const ctx = canvas.getContext("2d");
