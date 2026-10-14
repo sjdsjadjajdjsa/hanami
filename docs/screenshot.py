@@ -56,19 +56,19 @@ def cubic(p0, p1, p2, p3, steps=24):
 
 
 def petal(size, colour, vein, alpha, angle, blur):
-    """assets/petal.svg, drawn `size` pixels wide (the same curves, tilted the same 22 degrees)."""
+    """assets/petal.svg, drawn `size` pixels wide (the same curves, tilted the same 18 degrees)."""
     zoom = 8
     k = size * zoom / 20
-    outline = [((-1.5, 11), (-6.5, 6), (-7.5, -2.5), (-4.2, -8.3)), ((-4.2, -8.3), (-3.1, -10.3), (-1.6, -10.2), (-0.6, -8.4)),
-               ((-0.6, -8.4), (0.5, -10.1), (2.1, -10.6), (3.4, -9)), ((3.4, -9), (7, -4), (6, 3), (-1.5, 11))]
+    outline = [((0, 11), (-6, 6.5), (-8.2, 1), (-7.4, -4.2)), ((-7.4, -4.2), (-6.5, -9), (-3.6, -11), (0, -11)),
+               ((0, -11), (3.6, -11), (6.5, -9), (7.4, -4.2)), ((7.4, -4.2), (8.2, 1), (6, 6.5), (0, 11))]
     side = int(size * 1.6 * zoom)
     to_px = lambda p: (side / 2 + p[0] * k, side / 2 + p[1] * k)
     big = Image.new("RGBA", (side, side), colour + (0,))
     draw = ImageDraw.Draw(big)
     draw.polygon([to_px(p) for seg in outline for p in cubic(*seg)], fill=colour + (255,))
-    draw.line([to_px(p) for p in cubic((-1.2, 8.5), (-1.6, 4), (-1.4, -1), (-0.8, -5))] + [to_px((-0.8, -5))],
-              fill=vein + (180,), width=max(1, int(0.8 * k)))
-    small = big.rotate(angle + 22, resample=Image.BICUBIC).resize((side // zoom, side // zoom), Image.LANCZOS)
+    draw.line([to_px(p) for p in cubic((0.5, -6.5), (1.1, -3), (1, 1), (0.3, 5))] + [to_px((0.3, 5))],
+              fill=vein + (200,), width=max(1, int(1.3 * k)))
+    small = big.rotate(angle + 18, resample=Image.BICUBIC).resize((side // zoom, side // zoom), Image.LANCZOS)
     small.putalpha(small.getchannel("A").point(lambda a: int(a * alpha)))
     return small.filter(ImageFilter.GaussianBlur(blur)) if blur else small
 

@@ -58,8 +58,8 @@ controller = true
 online = true
 
 # The look. Colours are "#rrggbb" or "#rrggbbaa" (the last two digits are
-# how solid: 00 see-through, ff solid). A petal.svg file next to this one
-# replaces the sakura petal; see GUIDE.md, "Changing the look".
+# how solid: 00 see-through, ff solid). A petal.svg or petal.png next to
+# this file replaces the sakura petal; see GUIDE.md, "Changing the look".
 [theme]
 panel = "#17141db8"
 text = "#ece6ee"

@@ -22,7 +22,7 @@ opens a small panel that lists your installed games.
 - **Controls:** `Ctrl+Alt+H` or the tray icon opens the panel; type to
   search (first letters and small typos work too), Enter to launch, Tab or
   right-click for more. A game controller works too: hold Start and Select.
-- **Your look:** colours and the falling petals are two small text files;
+- **Your look:** colours and the falling petals are two small files;
   write them yourself or ask your AI for "autumn, with maple leaves"
   ([how](GUIDE.md#changing-the-look)).
 - **Resource use:** about 35 MB of memory, no CPU use while hidden.
@@ -88,4 +88,6 @@ looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
 Hanami is free software under the [GNU GPL, version 3 or later](LICENSE).
 It is built with [Slint](https://slint.dev) and ships the
 [Inter](https://rsms.me/inter/) typeface (SIL Open Font License, in
-`assets/Inter-LICENSE.txt`).
+`assets/Inter-LICENSE.txt`). The maple leaf and snowflake examples in the
+guide are from Microsoft's
+[Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT).

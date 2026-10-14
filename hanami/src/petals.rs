@@ -49,8 +49,8 @@ pub fn petals(motion: &Motion) -> Vec<Petal> {
                 sway: (5.0 + next() * 14.0) * motion.drift,
                 freq: 0.4 + next() * 0.6,
                 spin: (next() - 0.5) * 70.0 * motion.spin,
-                size: (6.0 + near * 8.5) * motion.size,
-                alpha: 0.35 + near * 0.45 + next() * 0.1,
+                size: (7.0 + near * 11.0) * motion.size,
+                alpha: 0.45 + near * 0.4 + next() * 0.1,
                 phase: next() * std::f32::consts::TAU,
                 tint,
             }
