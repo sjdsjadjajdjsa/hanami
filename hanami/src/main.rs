@@ -33,6 +33,8 @@ use std::time::{Duration, Instant};
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 use slint::winit_030::winit::event::WindowEvent;
+#[cfg(windows)]
+use slint::winit_030::winit::event::{ElementState, MouseButton};
 use slint::winit_030::winit::event_loop::ActiveEventLoop;
 use slint::winit_030::winit::window::{WindowAttributes, WindowId};
 use slint::winit_030::{CustomApplicationHandler, EventResult, WinitWindowAccessor};
@@ -820,12 +822,37 @@ fn connect_panel(panel: &Panel) {
         with_app(|app| app.hide());
         slint::CloseRequestResponse::KeepWindowShown
     });
-    panel.window().on_winit_window_event(|_, event| {
+    #[cfg(windows)]
+    let mut alt = false;
+    panel.window().on_winit_window_event(move |#[cfg_attr(not(windows), allow(unused_variables))] window, event| {
         if let WindowEvent::Focused(focused) = *event {
             Timer::single_shot(Duration::ZERO, move || with_app(|app| app.focus_changed(focused)));
         }
+        #[cfg(windows)]
+        if drag_with_alt(window, event, &mut alt) {
+            return EventResult::PreventDefault;
+        }
         EventResult::Propagate
     });
+}
+
+/// Windows has no Alt+drag of its own, so Alt held with the left button down
+/// hands the panel to the system's window dragging, as KDE and GNOME do.
+/// True when the press was taken and must not reach the panel.
+#[cfg(windows)]
+fn drag_with_alt(window: &slint::Window, event: &WindowEvent, alt: &mut bool) -> bool {
+    match event {
+        WindowEvent::ModifiersChanged(modifiers) => *alt = modifiers.state().alt_key(),
+        WindowEvent::Focused(false) => *alt = false,
+        WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } if *alt => {
+            window.with_winit_window(|window| {
+                let _ = window.drag_window();
+            });
+            return true;
+        }
+        _ => {}
+    }
+    false
 }
 
 /// Runs `desktop::prepare` on every native window as soon as it exists.
