@@ -438,8 +438,8 @@ REPLY = (
     "Hollow Knight from GOG, and OpenTTD is a port. Hades and Hollow Knight are pinned.\n"
     "- **Adding and hiding:** the + button adds a game by its program. Tab or right-click on a game pins, "
     "renames or hides it.\n"
-    "- **Customising:** the hotkey, sources, pins and names live in `~/.config/hanami/config.toml`. The look "
-    "itself is set in the source for now.\n\n"
+    "- **Customising:** the hotkey, sources, pins and names live in `~/.config/hanami/config.toml`, and a "
+    "`[theme]` block there changes the colours and the falling petals.\n\n"
     "What would you like to do first?"
 )
 
@@ -678,7 +678,7 @@ def capture_desktop(out, shots):
     try:
         subprocess.run(
             ["dbus-run-session", "--", "kwin_wayland", "--virtual", "--width", str(SCREEN_W), "--height",
-             str(SCREEN_H), "--scale", str(DESK), "--xwayland", "--exit-with-session", str(session)],
+             str(SCREEN_H), "--scale", str(DESK), "--xwayland", "--no-lockscreen", "--exit-with-session", str(session)],
             env=env, cwd=home, timeout=240, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
         )
     finally:
