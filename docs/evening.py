@@ -169,6 +169,7 @@ dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Sc
 dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.start > /dev/null
 sleep 3
 spectacle --background --nonotify --fullscreen --output '{out}'
+env -u WAYLAND_DISPLAY python3 '{warp}'
 env -u WAYLAND_DISPLAY XDG_CONFIG_HOME='{ottd_home}' XDG_DATA_HOME='{ottd_home}' '{openttd}' -r 1920x1080 -m null -s null \\
     -I OpenGFX > '{shots}/openttd.log' 2>&1 &
 mark game
@@ -180,6 +181,20 @@ while [ $n -lt 30 ]; do
     echo "game-$n $(date +%s.%N)" >> '{shots}/times'
     n=$((n + 1))
 done
+"""
+# The session's X pointer starts in the middle of the screen, where OpenTTD
+# opens, and would show in its shots with a tooltip; this moves it to the
+# bottom right corner first.
+WARP = """import ctypes
+x11 = ctypes.CDLL("libX11.so.6")
+x11.XOpenDisplay.restype = ctypes.c_void_p
+x11.XDefaultRootWindow.restype = ctypes.c_ulong
+x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+x11.XWarpPointer.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong] + [ctypes.c_int] * 2 + [ctypes.c_uint] * 2 + [ctypes.c_int] * 2
+x11.XSync.argtypes = [ctypes.c_void_p, ctypes.c_int]
+display = x11.XOpenDisplay(None)
+x11.XWarpPointer(display, 0, x11.XDefaultRootWindow(display), 0, 0, 0, 0, 3839, 2159)
+x11.XSync(display, 0)
 """
 # OpenTTD as it comes, without music, sound or the survey question, its
 # interface at double size to match the desktop's.
@@ -513,6 +528,7 @@ def capture_desktop(out, shots):
         "[General]\nName=Video\nParent=FALLBACK/\n"
     )
     (place / "minimise.js").write_text(MINIMISE)
+    (place / "warp.py").write_text(WARP)
     ottd_home = place / "openttd"
     (ottd_home / "openttd").mkdir(parents=True)
     (ottd_home / "openttd" / "openttd.cfg").write_text(OPENTTD_CONFIG)
@@ -524,7 +540,7 @@ def capture_desktop(out, shots):
     session.write_text(SESSION.format(
         tasks=TASKS, hanami=ROOT / "target" / "release" / "hanami", size=f"{TERMINAL[2] * DESK}x{TERMINAL[3] * DESK}",
         start=start, shots=shots, prompt=evening_ai.PROMPT, config=evening_ai.CONFIG, minimise=place / "minimise.js",
-        out=out, wallpaper=wallpaper, openttd=OPENTTD, ottd_home=ottd_home,
+        out=out, wallpaper=wallpaper, openttd=OPENTTD, ottd_home=ottd_home, warp=place / "warp.py",
     ))
     session.chmod(0o755)
     env = {
