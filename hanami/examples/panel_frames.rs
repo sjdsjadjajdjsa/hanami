@@ -96,6 +96,9 @@ struct Row {
     icon: Option<PathBuf>,
     #[serde(default)]
     pinned: bool,
+    /// Found by Hanami and waiting for Keep or Hide.
+    #[serde(default)]
+    new: bool,
 }
 
 fn icon(path: &Path, px: u32) -> Result<Image, Box<dyn Error>> {
@@ -157,7 +160,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     icon: picture,
                     initial: row.name.chars().next().map(String::from).unwrap_or_default().into(),
                     pinned: row.pinned,
-                    new: false,
+                    new: row.new,
                 });
             }
             model.set_vec(rows);
@@ -168,6 +171,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             shown_look = Some((state.theme.clone(), state.look.clone()));
         }
         panel.set_total(state.total.unwrap_or(shown_rows.len() as i32));
+        panel.set_fresh(shown_rows.iter().filter(|row| row.new).count() as i32);
         panel.set_query(state.query.as_str().into());
         panel.set_selected(state.selected);
         panel.set_acting(state.acting);
