@@ -18,7 +18,7 @@
   <meta name="twitter:image" content="https://hanami.lilygrove.dev/assets/social.png">
   <meta property="og:url" content="https://hanami.lilygrove.dev/">
   <link rel="preload" href="assets/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=f70687b4ae">
+  <link rel="stylesheet" href="style.css?v=257d7c3dcd">
 </head>
 <body>
   <canvas id="petals" aria-hidden="true"></canvas>
@@ -62,11 +62,17 @@
     </section>
 
     <section>
+      <h2>How it works</h2>
+      <p class="section-lead">Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> and the panel opens over whatever you're doing. Two letters find a game, <kbd>Tab</kbd> pins, renames or hides it, and <kbd>Enter</kbd> starts it. The <strong>?</strong> button copies a guide your AI can read, so it can answer questions about Hanami.</p>
+      <video class="clip" src="assets/video/tour.mp4?v=78490fda63" poster="assets/video/tour.webp?v=1e88051861" autoplay muted loop playsinline preload="metadata" aria-label="Hanami on a KDE Plasma desktop: Ctrl+Alt+H opens the panel, two letters find Hollow Knight, it gets pinned, and the ? button's guide is pasted into Claude Code."></video>
+    </section>
+
+    <section>
       <h2>Features</h2>
       <dl class="points">
         <div>
           <dt>Finds your games</dt>
-          <dd>Steam, Heroic, Lutris and the app menu on Linux; Steam, Epic, GOG and Heroic on Windows. Each with its own icon.</dd>
+          <dd>Steam, Heroic, Lutris and the app menu on Linux; Steam, Epic, GOG and Heroic on Windows; Minecraft instances in Prism Launcher on both. Each with its own icon.</dd>
         </div>
         <div>
           <dt>Ports and rewrites</dt>
@@ -96,6 +102,12 @@
     </section>
 
     <section>
+      <h2>Any AI</h2>
+      <p class="section-lead">Six AI coding agents, each on a different model, change one thing each about the same Hanami: Crush, OpenCode, Antigravity CLI, jcode, Codex and Claude Code. Then the panel opens with all of it, and Minecraft starts. The agents and models ran for real; their work is sped up.</p>
+      <video class="clip" src="assets/video/agents.mp4?v=8facfca7e1" poster="assets/video/agents.webp?v=598330be8b" controls playsinline preload="none" aria-label="Six AI agents set up Hanami, then Minecraft starts from its panel."></video>
+    </section>
+
+    <section>
       <h2>Start</h2>
       <ol class="steps">
         <li>Linux: download the AppImage, mark it executable and run it. Windows: run the installer; it needs no admin rights.</li>
@@ -115,6 +127,6 @@
   </footer>
 
   <script src="petals.js?v=7443cb2e06" defer></script>
-  <script src="demo.js?v=2496a75cab" defer></script>
+  <script src="demo.js?v=2e7ef45346" defer></script>
 </body>
 </html>

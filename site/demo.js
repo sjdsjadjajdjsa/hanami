@@ -238,3 +238,12 @@
   window.hanamiPetals?.(demo.querySelector(".demo-petals"), { count: 18, sizes: [7, 13], alphas: [0.35, 0.8], seed: 0x4f6cdd1d });
   render();
 })();
+
+// The tour plays by itself; not for people who asked their system for less motion.
+if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  for (const clip of document.querySelectorAll("video[autoplay]")) {
+    clip.removeAttribute("autoplay");
+    clip.pause();
+    clip.controls = true;
+  }
+}

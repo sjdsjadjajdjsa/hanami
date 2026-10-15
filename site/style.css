@@ -236,6 +236,18 @@ h2 {
   color: var(--dim);
 }
 
+/* The videos: the size of the page's column, like a screenshot. */
+.clip {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  background: #000;
+}
+.section-lead { margin: 0 0 var(--space-4); max-width: 40em; color: var(--dim); }
+
 .points {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
