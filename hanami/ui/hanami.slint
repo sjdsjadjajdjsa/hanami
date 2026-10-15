@@ -28,6 +28,8 @@ export struct GameRow {
     initial: string,
     pinned: bool,
     new: bool,
+    // A launcher row: Enter shows the games listed under it.
+    opens: bool,
 }
 
 // Every colour, size and gap comes from here (see DESIGN.md). The colours
@@ -232,6 +234,12 @@ component Row inherits Rectangle {
             color: Tokens.dim;
             vertical-alignment: center;
         }
+        if !renaming && game.opens: Text {
+            text: "›";
+            font-size: Tokens.name-size;
+            color: picked ? Tokens.accent : Tokens.dim;
+            vertical-alignment: center;
+        }
     }
 
     if acting: HorizontalLayout {
@@ -268,6 +276,8 @@ export component Panel inherits Window {
     in property <int> total;
     in property <int> fresh;
     in property <string> query;
+    // The open launcher row's name; empty on the whole list.
+    in property <string> folder;
     in property <string> notice;
     in property <float> t;
     in property <bool> shown;
@@ -279,6 +289,7 @@ export component Panel inherits Window {
 
     callback launch(int);
     callback dismiss();
+    callback back();
     callback typed(string);
     callback erased();
     callback ask-ai();
@@ -354,6 +365,8 @@ export component Panel inherits Window {
                     keys.focus();
                 } else if (root.acting >= 0) {
                     root.acting = -1;
+                } else if (root.folder != "") {
+                    root.back();
                 } else {
                     root.dismiss();
                 }
@@ -453,16 +466,23 @@ export component Panel inherits Window {
                     padding-right: Tokens.inset;
                     padding-bottom: 6px;
                     spacing: 12px;
-                    Text {
-                        text: root.query == "" ? "hanami" : root.query;
+                    title := Text {
+                        text: root.query != "" ? root.query : root.folder != "" ? "‹  " + root.folder : "hanami";
                         font-size: Tokens.title-size;
                         font-weight: root.query == "" ? 600 : 500;
-                        color: Tokens.text;
+                        color: root.folder != "" && back.has-hover ? Tokens.accent : Tokens.text;
                         horizontal-stretch: 1;
                         overflow: elide;
+                        back := TouchArea {
+                            enabled: root.folder != "";
+                            mouse-cursor: root.folder != "" ? MouseCursor.pointer : MouseCursor.default;
+                            clicked => { root.back(); }
+                        }
                     }
                     Text {
-                        text: root.query == "" ? root.total + " games" : root.games.length + " of " + root.total;
+                        text: root.query != "" ? root.games.length + " of " + root.total
+                            : root.folder == "" ? root.total + " games"
+                            : root.total == 1 ? "1 instance" : root.total + " instances";
                         font-size: Tokens.small-size;
                         color: Tokens.dim;
                         vertical-alignment: center;
@@ -484,7 +504,7 @@ export component Panel inherits Window {
                     }
                 }
 
-                if root.fresh > 0 && root.query == "": HorizontalLayout {
+                if root.fresh > 0 && root.query == "" && root.folder == "": HorizontalLayout {
                     padding-left: Tokens.inset;
                     spacing: 4px;
                     Text {
@@ -558,6 +578,7 @@ export component Panel inherits Window {
                         : add.hovered ? "Add a game by picking its program"
                         : root.renaming >= 0 ? "enter to save  ·  esc to cancel"
                         : root.acting >= 0 ? "← → to choose  ·  enter to do it  ·  esc to go back"
+                        : root.folder != "" ? "enter to play  ·  esc to go back  ·  tab for more"
                         : "type to search  ·  enter to play  ·  tab for more";
                     font-size: Tokens.small-size;
                     color: root.notice == "" ? Tokens.dim : Tokens.text;

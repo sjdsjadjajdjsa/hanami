@@ -181,6 +181,7 @@ fn walk(root: &Path, depth: usize, list: &list::List, shipped: &mut Vec<Game>, k
         }
         if let Some(port) = list.ports.iter().find(|port| port.is_program(path)) {
             known.push(Game {
+                group: None,
                 name: port.name.clone(),
                 label: "port".into(),
                 launch: Launch::Command {
@@ -224,6 +225,7 @@ fn flatpaks(list: &list::List) -> Vec<Game> {
         for id in entries.flatten().filter_map(|entry| entry.file_name().into_string().ok()) {
             if let Some(port) = list.ports.iter().find(|port| port.flatpak.contains(&id)) {
                 games.push(Game {
+                    group: None,
                     name: port.name.clone(),
                     label: "port".into(),
                     launch: Launch::Command {
@@ -277,6 +279,7 @@ fn parse_shipped(text: &str, dir: &Path) -> Option<Game> {
         return None;
     }
     Some(Game {
+        group: None,
         name: shipped.name,
         label: shipped.label.unwrap_or_else(|| "port".into()),
         launch: Launch::Command {

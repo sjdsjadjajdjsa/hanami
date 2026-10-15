@@ -153,7 +153,13 @@ pub fn analyse(root: &Path) -> Vec<Game> {
                     env: vec![("CARGO_MANIFEST_DIR".into(), dir.to_string_lossy().into_owned())],
                 },
             };
-            games.push(Game { name: shown.map(String::from).unwrap_or(readable), label: "rust".into(), launch, icon });
+            games.push(Game {
+                group: None,
+                name: shown.map(String::from).unwrap_or(readable),
+                label: "rust".into(),
+                launch,
+                icon,
+            });
         }
     }
     games

@@ -27,8 +27,9 @@ on_launch = "hide"
 # Where Hanami looks for installed games. Remove one to stop looking there.
 # Linux: steam, heroic (its Epic, GOG and Amazon games), lutris, and apps
 # (games in your app menu). Windows: steam, epic, gog and heroic. Both:
-# ports (game ports and rewrites, see folders and projects below).
-find = ["steam", "heroic", "lutris", "apps", "epic", "gog", "ports"]
+# ports (game ports and rewrites, see folders and projects below) and prism
+# (each Minecraft instance in Prism Launcher, PolyMC or MultiMC).
+find = ["steam", "heroic", "lutris", "apps", "epic", "gog", "ports", "prism"]
 
 # Games shown at the top of the list, by name.
 favourites = []
@@ -176,6 +177,19 @@ pub fn load(path: &Path) -> Result<Config, String> {
             }
         })?;
         config.find.push(Source::Ports);
+    }
+    // Likewise for the settings of 0.2 and the Minecraft instances.
+    if config.find == [&OLD_FIND[..], &[Source::Ports]].concat() && !text.contains("prism") {
+        edit(path, |doc| {
+            add_name(doc, "find", "prism");
+            if let Some(mut find) = doc.as_table_mut().key_mut("find") {
+                let before = find.leaf_decor().prefix().and_then(|p| p.as_str()).unwrap_or_default().to_owned();
+                find.leaf_decor_mut().set_prefix(format!(
+                    "{before}# Since 0.2.9 also prism: each Minecraft instance in Prism Launcher, PolyMC or MultiMC.\n"
+                ));
+            }
+        })?;
+        config.find.push(Source::Prism);
     }
     Ok(config)
 }
@@ -389,6 +403,27 @@ mod tests {
         )
         .unwrap();
         assert!(!load(&path).unwrap().find.contains(&Source::Ports));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn settings_of_0_2_get_the_prism_finder_once() {
+        let dir = std::env::temp_dir().join(format!("hanami-config-prism-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        let old = "# mine\nfind = [\"steam\", \"heroic\", \"lutris\", \"apps\", \"epic\", \"gog\", \"ports\"]\n";
+        std::fs::write(&path, old).unwrap();
+        assert_eq!(load(&path).unwrap().find, Source::ALL);
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.starts_with("# mine\n"), "{text}");
+        assert_eq!(parse(&text).unwrap().find, Source::ALL);
+        // Taking prism out again is respected: the note names it.
+        let without = text.replace(", \"prism\"", "");
+        std::fs::write(&path, &without).unwrap();
+        assert!(!load(&path).unwrap().find.contains(&Source::Prism));
+        // Settings of 0.1 get both.
+        std::fs::write(&path, "find = [\"steam\", \"heroic\", \"lutris\", \"apps\", \"epic\", \"gog\"]\n").unwrap();
+        assert_eq!(load(&path).unwrap().find, Source::ALL);
         std::fs::remove_dir_all(dir).unwrap();
     }
 

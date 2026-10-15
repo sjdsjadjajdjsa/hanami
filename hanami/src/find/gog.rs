@@ -33,6 +33,7 @@ pub fn find() -> Vec<Game> {
                 .map(|dir| PathBuf::from(dir).join(format!("goggame-{id}.ico")))
                 .find(|path| path.is_file());
             games.push(Game {
+                group: None,
                 name,
                 label: "gog".into(),
                 launch: Launch::Command {

@@ -65,15 +65,22 @@ version it saw in `~/.cache/hanami/latest` (Windows:
   by when you last played them, then everything else from A to Z.
 - Each game shows its icon (or its first letter) and a small label saying
   where it came from: steam, epic, gog, amazon, lutris, heroic, app, port,
-  rust, or your own label. Pinned games say "pinned", new finds say "new".
+  rust, the Minecraft version (like "fabric 1.21.1"), how many instances a
+  launcher has, or your own label. Pinned games say "pinned", new finds say "new".
 - **More for one game:** right-click it, or press Tab. Then pick **Pin to
   top** (or **Unpin**), **Rename** or **Hide**, with a click or with the left
   and right arrows and Enter. Esc goes back.
 - **Rename:** type the new name, Enter saves, Esc cancels.
+- **Launchers with games inside:** a row with › (Prism Launcher, for
+  Minecraft) opens a list of its own: the launcher itself on top, then its
+  instances, last played first and already selected, so Enter twice starts
+  it. Esc, Backspace, B on a controller or a click on the title goes back.
+  Searching from the whole list finds the instances too, marked "in Prism
+  Launcher".
 - **Add a game:** the **+** button opens the file picker. Pick the game's
   program (or an AppImage, a script, or on Windows a shortcut); Hanami adds it
   to the settings and lets you name it right away.
-- **New finds:** when Hanami finds ports and rewrites by itself, they show
+- **New finds:** when Hanami finds ports, rewrites or a Minecraft launcher by itself, they show
   at the top marked "new", under "Found 2 new games" with **Keep** and
   **Hide**. Each one can also be kept or hidden on its own (right-click or
   Tab). Playing, pinning or renaming a new game keeps it.
@@ -119,10 +126,11 @@ Hanami finds installed games by itself, every time the panel opens:
 | `steam` | installed Steam games, without Proton and runtimes | Linux, Windows |
 | `heroic` | Heroic's Epic, GOG and Amazon games and programs added to Heroic (native and Flatpak) | Linux, Windows |
 | `lutris` | installed Lutris games, except those in Lutris's hidden category | Linux |
-| `apps` | games in the app menu (desktop entries in the Game category that aren't also Utility); Steam, Heroic and Lutris themselves are left out because their games are found directly | Linux |
+| `apps` | games in the app menu (desktop entries in the Game category that aren't also Utility); Steam, Heroic, Lutris, Prism Launcher, PolyMC and MultiMC themselves are left out because their games are found directly (add a launcher as a `[[game]]` to keep a row for it) | Linux |
 | `epic` | Epic Games Launcher games (not DLC or engine tools) | Windows |
 | `gog` | GOG Galaxy and GOG installer games | Windows |
 | `ports` | game ports, recomps and rewrites (see below), games that come with a `hanami-game.toml`, and your own built Rust games from the `projects` folders | Linux, Windows |
+| `prism` | Prism Launcher, PolyMC and MultiMC (native, Flatpak or portable) as a row that opens to their Minecraft instances, each started through the launcher so it handles the Microsoft login | Linux, Windows |
 
 The same game found twice (for example in Steam and in the app menu) is
 listed once. Games added in the settings file win over found ones.
@@ -138,6 +146,7 @@ They are read in the background, so the panel opens before they are all in.
 | `apps` | the entry's `Icon=`: a file path as it is, or a name looked up as an application icon in the current icon theme (KDE's `kdeglobals` setting, else GTK's, else hicolor), then its parent themes, then hicolor and pixmaps |
 | `heroic` | Heroic's downloaded art in its `images-cache` folder, GOG's `goggame-<id>.ico` in the game folder, or on Windows the game's exe |
 | `lutris` | Lutris's icon (`lutris_<slug>.png` in the hicolor theme) or its cover in `lutris/coverart`; the wide banners are not used |
+| `prism` | the instance's own icon if you picked a custom one in the launcher (its `icons` folder), else the launcher's icon when the icon theme has it (Prism and PolyMC do; MultiMC doesn't), on Windows the launcher's exe |
 | `epic` | the game's exe named in the Epic manifest (Windows) |
 | `gog` | `goggame-<id>.ico` in the game folder, else the game's exe (Windows) |
 | your `[[game]]` | the `icon` setting; without one, on Windows, the icon inside the `command` program when it is an exe |
@@ -210,6 +219,49 @@ at once and a new search starts when that result is about a minute old, so
 a freshly downloaded port can take a minute (or two panel opens) to show.
 `hanami --list` searches right away.
 
+### Minecraft
+
+Prism Launcher (and PolyMC and MultiMC, the launchers it grew out of) is
+one row; Enter opens its instances. Each instance starts with the
+launcher's own command (`prismlauncher --launch <instance folder>`,
+through `flatpak run` for the Flatpak). The launcher opens, signs in with
+your Microsoft account and starts the game, so Hanami never sees an
+account. The launcher's row inside that list just opens the launcher, for
+making new instances.
+
+Where Hanami looks:
+
+- Prism: `~/.local/share/PrismLauncher` and the Flatpak's
+  `~/.var/app/org.prismlauncher.PrismLauncher/data/PrismLauncher` on Linux;
+  `%APPDATA%\PrismLauncher` on Windows, with the program from the installer
+  (`%LOCALAPPDATA%\Programs\PrismLauncher` or `C:\Program Files\PrismLauncher`).
+- PolyMC: `~/.local/share/PolyMC` and its Flatpak (`org.polymc.PolyMC`).
+- MultiMC: `~/.local/share/multimc` (the AUR package).
+- Portable copies (a folder with `prismlauncher.cfg`, `polymc.cfg` or
+  `multimc.cfg` next to the program): in your home folder, `~/Games`,
+  `~/Applications`, `~/AppImages`, Downloads, the Desktop, `/opt` (Linux),
+  `C:\Games`, `D:\Games` and `C:\MultiMC` (Windows), the `folders` setting,
+  and one folder deep in each (hidden folders and links are skipped).
+- Prism's AppImage uses the same data folder as the package; when
+  `prismlauncher` isn't installed, a `PrismLauncher*.AppImage` in those
+  places starts the instances.
+
+A launcher whose data is still there but whose program is gone (removed,
+or an AppImage moved elsewhere) is reported in the panel; put its program
+in one of the places above, or remove `prism` from `find`.
+
+A custom instance folder set in the launcher (`InstanceDir`) is followed.
+An instance's name is its name in the launcher; one still named after its version
+reads "Minecraft 1.21.1". The same name in two launchers gets the
+launcher after it, like "Minecraft 26.3 (Prism Flatpak)", and a copied
+instance gets its folder name. Launchers count for this as long as their
+data is there, so names don't change when one is uninstalled. The label is
+the mod loader (fabric, forge, neoforge, quilt) or "minecraft", then the
+version. A launcher found for the first time waits for **Keep** or **Hide**
+like other new finds (opening it keeps it); instances added later just show
+up inside. Pins, renames and hides work on instances like on any game, and
+hiding the launcher's row hides its instances.
+
 ## Settings
 
 One file, created with comments the first time Hanami runs:
@@ -229,7 +281,7 @@ hotkey = "Ctrl+Alt+H"
 on_launch = "hide"
 
 # Where to look for installed games (see the table above).
-find = ["steam", "heroic", "lutris", "apps", "epic", "gog", "ports"]
+find = ["steam", "heroic", "lutris", "apps", "epic", "gog", "ports", "prism"]
 
 # Games shown at the top of the list, by name.
 favourites = ["Celeste"]
@@ -391,4 +443,3 @@ behind them.
   the environment variable `HANAMI_RENDERER=software` to force that.
 - GNOME shows tray icons only with the AppIndicator extension; the hotkey
   and `hanami --toggle` work without it.
-- Minecraft through Prism Launcher instances is planned, not in yet.

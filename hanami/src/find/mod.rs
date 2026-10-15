@@ -13,6 +13,7 @@ mod icon_theme;
 #[cfg(target_os = "linux")]
 mod lutris;
 mod ports;
+mod prism;
 mod steam;
 
 use std::cell::RefCell;
@@ -50,11 +51,21 @@ pub enum Source {
     /// Game ports and rewrites, games with a hanami-game.toml, and games
     /// built in the `projects` folders.
     Ports,
+    /// Minecraft instances from Prism Launcher, PolyMC and MultiMC.
+    Prism,
 }
 
 impl Source {
-    pub const ALL: [Source; 7] =
-        [Source::Steam, Source::Heroic, Source::Lutris, Source::Apps, Source::Epic, Source::Gog, Source::Ports];
+    pub const ALL: [Source; 8] = [
+        Source::Steam,
+        Source::Heroic,
+        Source::Lutris,
+        Source::Apps,
+        Source::Epic,
+        Source::Gog,
+        Source::Ports,
+        Source::Prism,
+    ];
 }
 
 /// Scans for ports right away instead of in the background, for `--list`.
@@ -62,11 +73,12 @@ pub use ports::{on_change as on_ports_change, scan_now as scan_ports};
 #[cfg(test)]
 pub use steam::launch as steam_launch;
 
-/// The config is for `ports`, which reads `folders`, `projects` and `online`.
+/// The config is for `ports` (`folders`, `projects`, `online`) and `prism` (`folders`).
 pub fn games(source: Source, config: &Config) -> Vec<Game> {
     match source {
         Source::Steam => steam::find(),
         Source::Heroic => heroic::find(),
+        Source::Prism => prism::find(config),
         Source::Ports => ports::find(config),
         #[cfg(target_os = "linux")]
         Source::Lutris => lutris::find(),

@@ -55,7 +55,7 @@ fn from_manifest(text: &str, exists: impl Fn(&Path) -> bool) -> Option<Game> {
         (Some(folder), Some(exe)) => Some(Path::new(folder).join(exe)).filter(|path| exists(path)),
         _ => None,
     };
-    Some(Game { name: name.into(), label: "epic".into(), launch: Launch::Open(url), icon })
+    Some(Game { group: None, name: name.into(), label: "epic".into(), launch: Launch::Open(url), icon })
 }
 
 #[cfg(test)]

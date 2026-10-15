@@ -17,6 +17,8 @@ opens a small panel that lists your installed games.
   Harkinian, Zelda 64: Recompiled, OpenMW and more, listed in
   [ports.toml](ports.toml)) and, if you want, Rust games you built yourself.
   New finds wait for a yes before they join the list.
+- **Minecraft:** Prism Launcher (or PolyMC, MultiMC) is one row that opens
+  to its instances; the launcher starts them and handles the Microsoft login.
 - **Your list:** pin games to the top, rename or hide them, add any program
   with **+**. Games you played last come first.
 - **Controls:** `Ctrl+Alt+H` or the tray icon opens the panel; type to

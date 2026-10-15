@@ -31,14 +31,19 @@ pub struct Game {
     /// A picture file for the row: png, jpeg, ico, svg, or (on Windows) an exe
     /// whose icon is used.
     pub icon: Option<PathBuf>,
+    /// The launcher row this game is listed under (a Minecraft instance
+    /// under "Prism Launcher"); such games show when that row is opened.
+    pub group: Option<String>,
 }
 
 /// Games from settings first, then the found ones, each under its name from
 /// `rename`; a name seen twice (in any spelling, "Paper Gun 3D: PC Edition"
 /// and "Paper Gun 3D PC Edition") keeps its first entry. Names in `hide`,
-/// old or new, are left out. Sorted by name.
+/// old or new, are left out, and so are games under a launcher row that is
+/// left out. Sorted by name.
 pub fn collect(config: &Config, found: Vec<Game>) -> Vec<Game> {
     let own = config.games.iter().map(|entry| Game {
+        group: None,
         name: entry.name.clone(),
         label: entry.label.clone().unwrap_or_default(),
         launch: Launch::Command {
@@ -59,10 +64,18 @@ pub fn collect(config: &Config, found: Vec<Game>) -> Vec<Game> {
             if let Some(name) = renames.get(&original) {
                 game.name = (*name).to_owned();
             }
+            if let Some(group) = &mut game.group
+                && let Some(name) = renames.get(&key(group))
+            {
+                *group = (*name).to_owned();
+            }
             let shown = key(&game.name);
             (!hidden.contains(&original) && !hidden.contains(&shown) && seen.insert(shown)).then_some(game)
         })
         .collect();
+    // Hiding a launcher's row hides what is listed under it.
+    let rows: HashSet<String> = games.iter().filter(|game| game.group.is_none()).map(|game| key(&game.name)).collect();
+    games.retain(|game| game.group.as_ref().is_none_or(|group| rows.contains(&key(group))));
     for game in &mut games {
         if game.icon.is_none() {
             game.icon = exe_icon(&game.launch);
@@ -230,6 +243,7 @@ mod tests {
         };
         let found = [("Counter-Strike 2", 730), ("Outer Wilds", 1)]
             .map(|(name, id)| Game {
+                group: None,
                 name: name.into(),
                 label: "steam".into(),
                 launch: crate::find::steam_launch(id),
@@ -259,6 +273,7 @@ mod tests {
     #[test]
     fn the_same_game_is_listed_once_and_hidden_games_not_at_all() {
         let found = |name: &str, label: &str| Game {
+            group: None,
             name: name.into(),
             label: label.into(),
             launch: Launch::Open("x".into()),
@@ -280,9 +295,32 @@ mod tests {
     }
 
     #[test]
+    fn games_under_a_launcher_follow_its_rename_and_hide() {
+        let found = |name: &str, group: Option<&str>| Game {
+            name: name.into(),
+            label: String::new(),
+            launch: Launch::Open("x".into()),
+            icon: None,
+            group: group.map(String::from),
+        };
+        let list = || vec![found("Prism Launcher", None), found("Skyblock", Some("Prism Launcher"))];
+        let mut config = Config::default();
+        config.rename.insert("Prism Launcher".into(), "Minecraft".into());
+        let games = collect(&config, list());
+        assert_eq!(games[1].group.as_deref(), Some("Minecraft"));
+        config.hide.push("Prism Launcher".into());
+        assert!(collect(&config, list()).is_empty());
+    }
+
+    #[test]
     fn initials_typos_and_missing_letters_still_find_games() {
-        let found =
-            |name: &str| Game { name: name.into(), label: String::new(), launch: Launch::Open("x".into()), icon: None };
+        let found = |name: &str| Game {
+            group: None,
+            name: name.into(),
+            label: String::new(),
+            launch: Launch::Open("x".into()),
+            icon: None,
+        };
         let games: Vec<Game> =
             ["Counter-Strike 2", "Hollow Knight", "Stardew Valley", "Hades", "Shovel Knight"].map(found).to_vec();
         assert_eq!(names(&games, &filter(&games, "hk")), ["Hollow Knight"]);
@@ -296,8 +334,13 @@ mod tests {
 
     #[test]
     fn new_then_favourites_then_recent_then_the_rest() {
-        let found =
-            |name: &str| Game { name: name.into(), label: String::new(), launch: Launch::Open("x".into()), icon: None };
+        let found = |name: &str| Game {
+            group: None,
+            name: name.into(),
+            label: String::new(),
+            launch: Launch::Open("x".into()),
+            icon: None,
+        };
         let mut games: Vec<Game> =
             ["Celeste", "Hades", "Outer Wilds", "Sober", "Stardew Valley", "Tunic"].map(found).to_vec();
         let new = HashSet::from([key("Tunic")]);
@@ -310,6 +353,7 @@ mod tests {
     #[test]
     fn renamed_games_show_their_new_name_and_hide_by_either() {
         let found = |name: &str| Game {
+            group: None,
             name: name.into(),
             label: "steam".into(),
             launch: Launch::Open("x".into()),

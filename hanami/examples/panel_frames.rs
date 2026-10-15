@@ -70,6 +70,9 @@ struct State {
     total: Option<i32>,
     #[serde(default)]
     query: String,
+    /// The open launcher row, when the panel shows a launcher's games.
+    #[serde(default)]
+    folder: String,
     #[serde(default)]
     selected: i32,
     #[serde(default = "nothing")]
@@ -99,6 +102,9 @@ struct Row {
     /// Found by Hanami and waiting for Keep or Hide.
     #[serde(default)]
     new: bool,
+    /// A launcher row that opens to the games under it.
+    #[serde(default)]
+    opens: bool,
 }
 
 fn icon(path: &Path, px: u32) -> Result<Image, Box<dyn Error>> {
@@ -161,6 +167,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     initial: row.name.chars().next().map(String::from).unwrap_or_default().into(),
                     pinned: row.pinned,
                     new: row.new,
+                    opens: row.opens,
                 });
             }
             model.set_vec(rows);
@@ -173,6 +180,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         panel.set_total(state.total.unwrap_or(shown_rows.len() as i32));
         panel.set_fresh(shown_rows.iter().filter(|row| row.new).count() as i32);
         panel.set_query(state.query.as_str().into());
+        panel.set_folder(state.folder.as_str().into());
         panel.set_selected(state.selected);
         panel.set_acting(state.acting);
         panel.set_action(state.action);

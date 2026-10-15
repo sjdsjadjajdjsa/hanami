@@ -113,6 +113,8 @@ struct App {
     fresh: RefCell<HashSet<String>>,
     state: RefCell<State>,
     query: RefCell<String>,
+    /// The launcher row that is open, showing the games listed under it.
+    folder: RefCell<Option<String>>,
     config: RefCell<Config>,
     config_path: Option<PathBuf>,
     /// Why the hotkey can't work; said once, the first time the panel is open.
@@ -173,6 +175,7 @@ impl App {
             self.notify(message);
         }
         self.query.borrow_mut().clear();
+        *self.folder.borrow_mut() = None;
         self.refilter();
 
         let scale = self.panel.window().scale_factor();
@@ -319,18 +322,45 @@ impl App {
         }
         let (games, fresh) = listed(&self.config.borrow(), &self.state.borrow());
         log(&format!("{} games, {} new", games.len(), fresh.len()));
-        self.panel.set_total(games.len() as i32);
         self.panel.set_fresh(fresh.len() as i32);
         *self.games.borrow_mut() = games;
         *self.fresh.borrow_mut() = fresh;
     }
 
+    /// The rows for the panel: the whole list (games under a launcher only
+    /// when searching), or an open launcher's row and its games.
     fn refilter(&self) {
         let games = self.games.borrow();
         let fresh = self.fresh.borrow();
         let favourites: HashSet<String> = self.config.borrow().favourites.iter().map(|name| key(name)).collect();
         let query = self.query.borrow();
-        let shown = games::filter(&games, &query);
+        let folder = {
+            let mut folder = self.folder.borrow_mut();
+            // A launcher row that went away (hidden, renamed) closes.
+            if folder.as_ref().is_some_and(|name| !games.iter().any(|game| game.group.is_none() && &game.name == name))
+            {
+                *folder = None;
+            }
+            folder.clone()
+        };
+        let opens: HashSet<&str> = games.iter().filter_map(|game| game.group.as_deref()).collect();
+        let launcher =
+            folder.as_ref().and_then(|name| games.iter().position(|game| game.group.is_none() && &game.name == name));
+        let inside: Vec<usize> = (0..games.len())
+            .filter(|&index| match &folder {
+                Some(name) => games[index].group.as_ref() == Some(name),
+                None => !query.is_empty() || games[index].group.is_none(),
+            })
+            .collect();
+        let total = match &folder {
+            Some(_) => inside.len(),
+            None => games.iter().filter(|game| game.group.is_none()).count(),
+        };
+        let pool: Vec<games::Game> = inside.iter().map(|&index| games[index].clone()).collect();
+        let mut shown: Vec<usize> = games::filter(&pool, &query).into_iter().map(|at| inside[at]).collect();
+        if query.is_empty() {
+            shown.splice(0..0, launcher);
+        }
         self.rows.set_vec(
             shown
                 .iter()
@@ -345,7 +375,12 @@ impl App {
                     } else {
                         ""
                     };
-                    let label = match (mark, game.label.as_str()) {
+                    let label = match (&game.group, Some(index) == launcher) {
+                        (_, true) => "open launcher".to_owned(),
+                        (Some(group), false) if folder.is_none() => format!("in {group}"),
+                        _ => game.label.clone(),
+                    };
+                    let label = match (mark, label.as_str()) {
                         ("", label) | (label, "") => label.to_owned(),
                         (mark, label) => format!("{mark} · {label}"),
                     };
@@ -357,12 +392,16 @@ impl App {
                         initial: initial.unwrap_or_default().into(),
                         pinned,
                         new,
+                        opens: folder.is_none() && game.group.is_none() && opens.contains(game.name.as_str()),
                     }
                 })
                 .collect::<Vec<_>>(),
         );
+        self.panel.set_total(total as i32);
+        self.panel.set_folder(folder.unwrap_or_default().into());
         self.panel.set_query(query.as_str().into());
-        self.panel.set_selected(0);
+        // In a launcher, its most recently played game, right after the launcher's own row.
+        self.panel.set_selected(if launcher.is_some() && shown.len() > 1 { 1 } else { 0 });
         *self.shown.borrow_mut() = shown;
     }
 
@@ -546,12 +585,31 @@ impl App {
             return;
         };
         let game = self.games.borrow()[index].clone();
+        if self.folder.borrow().is_none()
+            && self.games.borrow().iter().any(|other| other.group.as_ref() == Some(&game.name))
+        {
+            log(&format!("open {}", game.name));
+            // Opening a new launcher row keeps it, like playing a new game does.
+            if self.fresh.borrow().contains(&key(&game.name)) {
+                self.state.borrow_mut().kept.insert(key(&game.name));
+                self.save_state();
+                self.reload();
+            }
+            *self.folder.borrow_mut() = Some(game.name);
+            self.query.borrow_mut().clear();
+            self.refilter();
+            self.panel.invoke_focus_keys();
+            return;
+        }
         log(&format!("launch {}", game.name));
         match launch::start(&game.launch) {
             Ok(()) => {
                 {
                     let mut state = self.state.borrow_mut();
                     state.played_now(&game.name);
+                    if let Some(group) = &game.group {
+                        state.played_now(group);
+                    }
                     if self.fresh.borrow().contains(&key(&game.name)) {
                         state.kept.insert(key(&game.name));
                     }
@@ -560,6 +618,19 @@ impl App {
                 self.after_launch();
             }
             Err(reason) => self.notify(format!("Couldn't start {}: {reason}", game.name)),
+        }
+    }
+
+    /// From a launcher's games back to the whole list, on its row.
+    fn back(&self) {
+        let Some(folder) = self.folder.borrow_mut().take() else { return };
+        log("back");
+        self.query.borrow_mut().clear();
+        self.refilter();
+        self.panel.invoke_focus_keys();
+        let games = self.games.borrow();
+        if let Some(row) = self.shown.borrow().iter().position(|&index| games[index].name == folder) {
+            self.panel.set_selected(row as i32);
         }
     }
 
@@ -625,6 +696,7 @@ impl App {
         match action {
             Action::Toggle => self.toggle(),
             _ if !self.open.get() => {}
+            Action::Hide if self.folder.borrow().is_some() => self.back(),
             Action::Hide => self.hide(),
             Action::Launch => self.launch(self.panel.get_selected() as usize),
             Action::Up | Action::Down => {
@@ -638,8 +710,8 @@ impl App {
 }
 
 /// Every game for the panel, in the order it shows them, and the name keys
-/// of new finds still waiting for a yes or no. Only ports and rewrites ask
-/// first; a game another place also lists isn't new.
+/// of new finds still waiting for a yes or no. Only ports, rewrites and
+/// Minecraft launchers ask first (the instances under them don't); a game another place also lists isn't new.
 fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>) {
     let mut sources = Vec::new();
     let mut found = Vec::new();
@@ -663,7 +735,7 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
         }
         for game in &games {
             let name = key(&game.name);
-            if source != Source::Ports {
+            if !matches!(source, Source::Ports | Source::Prism) || game.group.is_some() {
                 known.insert(name);
             } else if !state.kept.contains(&name) {
                 fresh.insert(name);
@@ -737,9 +809,12 @@ fn connect_panel(panel: &Panel) {
         with_app(|app| {
             if app.query.borrow_mut().pop().is_some() {
                 app.refilter();
+            } else {
+                app.back();
             }
         })
     });
+    panel.on_back(|| with_app(|app| app.back()));
     // Alt+F4 hides the panel the same way Esc does.
     panel.window().on_close_requested(|| {
         with_app(|app| app.hide());
@@ -955,10 +1030,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let verbose = VERBOSE.load(Ordering::Relaxed);
         for game in listed(&config, &State::load()).0 {
+            let label = match &game.group {
+                Some(group) => format!("{} · in {group}", game.label),
+                None => game.label,
+            };
             match (&game.icon, verbose) {
-                (Some(icon), true) => println!("{}\t{}\t{}", game.name, game.label, icon.display()),
-                (None, true) => println!("{}\t{}\t(no icon)", game.name, game.label),
-                _ => println!("{}\t{}", game.name, game.label),
+                (Some(icon), true) => println!("{}\t{label}\t{}", game.name, icon.display()),
+                (None, true) => println!("{}\t{label}\t(no icon)", game.name),
+                _ => println!("{}\t{label}", game.name),
             }
         }
         PROBLEMS.with_borrow(|problems| {
@@ -1034,6 +1113,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fresh: RefCell::default(),
         state: RefCell::new(State::load()),
         query: RefCell::default(),
+        folder: RefCell::default(),
         config: RefCell::new(config),
         config_path,
         hotkey_problem: RefCell::new(hotkey_problem),

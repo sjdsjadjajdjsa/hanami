@@ -7,13 +7,17 @@ use super::icon_theme::Lookup as IconTheme;
 use crate::games::{Game, Launch};
 
 /// Launchers that list games themselves; their games are found directly.
-const LAUNCHERS: [&str; 7] = [
+const LAUNCHERS: [&str; 11] = [
     "steam.desktop",
     "com.valvesoftware.Steam.desktop",
     "heroic.desktop",
     "com.heroicgameslauncher.hgl.desktop",
     "lutris.desktop",
     "net.lutris.Lutris.desktop",
+    "org.prismlauncher.PrismLauncher.desktop",
+    "org.polymc.PolyMC.desktop",
+    "multimc.desktop",
+    "MultiMC.desktop",
     "hanami.desktop",
 ];
 
@@ -132,10 +136,17 @@ impl Entry {
         let icon = self.icon.map(PathBuf::from);
         // Steam's own shortcuts launch through Steam, like the Steam source does.
         if let Some(url) = args.iter().find(|arg| arg.starts_with("steam://rungameid/")) {
-            return Some(Game { name: self.name, label: "steam".into(), launch: Launch::Open(url.clone()), icon });
+            return Some(Game {
+                group: None,
+                name: self.name,
+                label: "steam".into(),
+                launch: Launch::Open(url.clone()),
+                icon,
+            });
         }
         let (program, args) = args.split_first()?;
         Some(Game {
+            group: None,
             name: self.name,
             label: "app".into(),
             launch: Launch::Command {
@@ -165,7 +176,7 @@ fn icon_path(icon: &Path, theme: &IconTheme) -> Option<PathBuf> {
 }
 
 /// The user's icon theme: KDE's setting, then GTK's, then plain hicolor.
-fn icon_theme() -> String {
+pub(super) fn icon_theme() -> String {
     let config = dirs::config_dir().unwrap_or_default();
     [
         (config.join("kdeglobals"), "[Icons]", "Theme="),

@@ -26,6 +26,9 @@ use it in GUIDE.md.
   can add to (PORTS.md), a `hanami-game.toml` port makers can ship, an
   opt-in scan of a projects folder for Rust games; new finds wait for Keep
   or Hide.
+- **Minecraft (0.2.9):** Prism Launcher, PolyMC and MultiMC (native,
+  Flatpak, portable) as a row that opens to their instances, each started
+  through the launcher so it handles the Microsoft login.
 - **Controller (0.2):** hold Start and Select to open; D-pad, A and B in the
   panel. No CPU while idle.
 - **Packages and updates (0.2):** AppImage, a per-user Windows installer, an
@@ -75,8 +78,3 @@ use it in GUIDE.md.
 3. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources
    checked against more installs.
 4. **Controller:** more pads checked, and a way to change the open button.
-
-## Later
-
-- **Minecraft** through Prism Launcher instances, so Prism handles the
-  Microsoft login.

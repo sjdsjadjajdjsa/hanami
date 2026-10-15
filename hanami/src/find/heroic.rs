@@ -55,7 +55,7 @@ impl Found {
         } else {
             Launch::Open(url)
         };
-        Game { name: self.name, label: self.label.into(), launch, icon: self.icon }
+        Game { group: None, name: self.name, label: self.label.into(), launch, icon: self.icon }
     }
 }
 

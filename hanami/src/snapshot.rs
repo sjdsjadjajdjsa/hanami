@@ -49,6 +49,7 @@ pub fn render(path: &Path, scale: f32) -> Result<(), Box<dyn Error>> {
             initial: name[..1].into(),
             pinned: label.starts_with("pinned"),
             new: false,
+            opens: false,
         })
         .collect();
     panel.set_total(rows.len() as i32);

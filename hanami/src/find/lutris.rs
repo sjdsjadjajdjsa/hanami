@@ -34,6 +34,7 @@ fn game(id: i64, name: String, flatpak: bool) -> Game {
         (PathBuf::from("lutris"), vec![target])
     };
     Game {
+        group: None,
         name,
         label: "lutris".into(),
         launch: Launch::Command { program, args, dir: None, env: Vec::new() },
