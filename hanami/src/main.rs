@@ -823,28 +823,32 @@ fn connect_panel(panel: &Panel) {
         slint::CloseRequestResponse::KeepWindowShown
     });
     #[cfg(windows)]
-    let mut alt = false;
+    let mut held = false;
     panel.window().on_winit_window_event(move |#[cfg_attr(not(windows), allow(unused_variables))] window, event| {
         if let WindowEvent::Focused(focused) = *event {
             Timer::single_shot(Duration::ZERO, move || with_app(|app| app.focus_changed(focused)));
         }
         #[cfg(windows)]
-        if drag_with_alt(window, event, &mut alt) {
+        if drag_with_key(window, event, &mut held) {
             return EventResult::PreventDefault;
         }
         EventResult::Propagate
     });
 }
 
-/// Windows has no Alt+drag of its own, so Alt held with the left button down
-/// hands the panel to the system's window dragging, as KDE and GNOME do.
+/// Windows has no Alt+drag of its own, so Alt or the Windows key held with the
+/// left button down hands the panel to the system's window dragging, as KDE
+/// and GNOME do.
 /// True when the press was taken and must not reach the panel.
 #[cfg(windows)]
-fn drag_with_alt(window: &slint::Window, event: &WindowEvent, alt: &mut bool) -> bool {
+fn drag_with_key(window: &slint::Window, event: &WindowEvent, held: &mut bool) -> bool {
     match event {
-        WindowEvent::ModifiersChanged(modifiers) => *alt = modifiers.state().alt_key(),
-        WindowEvent::Focused(false) => *alt = false,
-        WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } if *alt => {
+        WindowEvent::ModifiersChanged(modifiers) => {
+            let keys = modifiers.state();
+            *held = keys.alt_key() || keys.super_key();
+        }
+        WindowEvent::Focused(false) => *held = false,
+        WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } if *held => {
             window.with_winit_window(|window| {
                 let _ = window.drag_window();
             });
