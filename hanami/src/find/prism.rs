@@ -537,7 +537,8 @@ mod tests {
         write(program.clone(), "");
         assert!(runnable(&root(&dir, "Prism", program.to_str().unwrap(), &[])));
         assert!(!runnable(&root(&dir, "Prism", "surely-not-a-program-hanami", &[])));
-        assert!(runnable(&root(&dir, "Prism", "sh", &[])));
+        let present = if cfg!(windows) { "cmd.exe" } else { "sh" };
+        assert!(runnable(&root(&dir, "Prism", present, &[])));
         assert!(!runnable(&root(&dir, "Prism Flatpak", "flatpak", &["run", "org.example.NotInstalled"])));
         std::fs::remove_dir_all(dir).unwrap();
     }
