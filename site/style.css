@@ -44,11 +44,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* As tall as the viewport with a phone's address bar hidden, so the canvas
+   keeps its size while the bar slides in and out. */
 #petals {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: 100vh;
+  height: 100lvh;
   pointer-events: none;
 }
 

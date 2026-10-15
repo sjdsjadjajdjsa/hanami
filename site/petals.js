@@ -22,14 +22,20 @@
     }));
 
     let width = 0, height = 0, scale = 1;
+    // Setting canvas.width or .height clears the canvas, even to the same
+    // value, so only do it when the pixel size really changes, and draw again
+    // right away, before the frame is painted, so a resize never shows it empty.
     const resize = () => {
       const box = canvas.getBoundingClientRect();
       scale = window.devicePixelRatio || 1;
       width = box.width; height = box.height;
-      canvas.width = Math.round(width * scale); canvas.height = Math.round(height * scale);
+      const w = Math.round(width * scale), h = Math.round(height * scale);
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+      if (frame) draw();
     };
 
-    let clock = 0, last = performance.now(), timer = null;
+    let clock = 0, last = performance.now(), frame = 0, drawn = 0;
     const draw = () => {
       const now = performance.now();
       clock += ((now - last) / 1000) * (motion.matches ? 0.4 : 1);
@@ -54,12 +60,20 @@
         ctx.restore();
       }
     };
-    const run = () => {
-      if (timer || document.hidden) return;
-      last = performance.now();
-      timer = setInterval(draw, 33);
+    // On the display's own frames, every other one at 60 Hz, so each clear and
+    // its petals reach the screen together.
+    const tick = (now) => {
+      frame = requestAnimationFrame(tick);
+      if (now - drawn < 30) return;
+      drawn = now;
+      draw();
     };
-    const stop = () => { clearInterval(timer); timer = null; };
+    const run = () => {
+      if (frame || document.hidden) return;
+      last = performance.now(); drawn = 0;
+      frame = requestAnimationFrame(tick);
+    };
+    const stop = () => { cancelAnimationFrame(frame); frame = 0; };
 
     resize();
     new ResizeObserver(resize).observe(canvas);
