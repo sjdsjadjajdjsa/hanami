@@ -76,5 +76,9 @@ use it in GUIDE.md.
 2. **Publish the AUR package** (`packaging/README.md` has the steps; needs
    an AUR account).
 3. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources
-   checked against more installs.
+   checked against more installs. In code, not released yet: Epic reads the
+   launcher's own data folder, skips games left behind by uninstalls and
+   reads manifests with a byte order mark; GOG fills in a missing `exe` from
+   the game's `goggame-<id>.info` and starts games through GOG Galaxy when
+   it is installed. Still to check on a real Windows machine.
 4. **Controller:** more pads checked, and a way to change the open button.
