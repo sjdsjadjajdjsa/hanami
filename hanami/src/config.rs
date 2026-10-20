@@ -206,11 +206,14 @@ pub fn edit(path: &Path, change: impl FnOnce(&mut DocumentMut)) -> Result<(), St
     write_atomic(path, &doc.to_string())
 }
 
-/// Writes next to `path` first, so a crash never leaves half a file.
+/// Writes next to `path` first, so a crash never leaves half a file. A
+/// symlinked file (kept with dotfiles) is written where it points, so the
+/// link stays.
 pub fn write_atomic(path: &Path, text: &str) -> Result<(), String> {
-    let temp = path.with_extension("tmp");
+    let target = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let temp = target.with_extension("tmp");
     std::fs::write(&temp, text)
-        .and_then(|()| std::fs::rename(&temp, path))
+        .and_then(|()| std::fs::rename(&temp, &target))
         .map_err(|e| format!("Couldn't save {}: {e}", path.display()))
 }
 
@@ -298,7 +301,7 @@ pub fn add_game(doc: &mut DocumentMut, name: &str, command: &Path, dir: Option<&
 
 pub fn parse(text: &str) -> Result<Config, String> {
     toml::from_str(text).map_err(|error| {
-        let line = error.span().map(|span| text[..span.start].lines().count().max(1));
+        let line = error.span().map(|span| text[..span.start].matches('\n').count() + 1);
         match line {
             Some(line) => format!("Settings, line {line}: {}", error.message()),
             None => format!("Settings: {}", error.message()),
@@ -352,6 +355,9 @@ mod tests {
     #[test]
     fn mistakes_name_the_line() {
         let error = parse("hotkey = \"Ctrl+Alt+H\"\non_launch = \"later\"\n").unwrap_err();
+        assert!(error.starts_with("Settings, line 2:"), "{error}");
+        // A misspelled setting is pointed at where its line starts.
+        let error = parse("hotkey = \"Ctrl+Alt+H\"\nfavorites = []\n").unwrap_err();
         assert!(error.starts_with("Settings, line 2:"), "{error}");
         assert!(parse("[[game]]\nname = \"x\"\n").is_err());
     }
@@ -424,6 +430,20 @@ mod tests {
         // Settings of 0.1 get both.
         std::fs::write(&path, "find = [\"steam\", \"heroic\", \"lutris\", \"apps\", \"epic\", \"gog\"]\n").unwrap();
         assert_eq!(load(&path).unwrap().find, Source::ALL);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_settings_file_stays_a_link() {
+        let dir = std::env::temp_dir().join(format!("hanami-config-link-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("dotfiles")).unwrap();
+        let (real, link) = (dir.join("dotfiles/config.toml"), dir.join("config.toml"));
+        std::fs::write(&real, "# mine\n").unwrap();
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        edit(&link, |doc| add_name(doc, "favourites", "Celeste")).unwrap();
+        assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
+        assert_eq!(parse(&std::fs::read_to_string(&real).unwrap()).unwrap().favourites, ["Celeste"]);
         std::fs::remove_dir_all(dir).unwrap();
     }
 
