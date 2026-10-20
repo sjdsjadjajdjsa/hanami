@@ -175,9 +175,11 @@ fn members(root: &Path, workspace: &Table) -> Vec<PathBuf> {
             .unwrap_or_default()
     };
     let excluded: Vec<PathBuf> = list("exclude").iter().map(|member| root.join(member)).collect();
+    // Only the members are patterns; a folder like `jam [2025]` is taken as it is.
+    let Some(base) = root.to_str().map(glob::Pattern::escape) else { return Vec::new() };
     let mut dirs = Vec::new();
     for member in list("members") {
-        let pattern = root.join(&member);
+        let pattern = Path::new(&base).join(&member);
         let Some(pattern) = pattern.to_str() else { continue };
         let Ok(paths) = glob::glob(pattern) else { continue };
         dirs.extend(paths.flatten().filter(|dir| dir.join("Cargo.toml").is_file() && !excluded.contains(dir)));
@@ -219,19 +221,27 @@ fn chosen_bins(manifest: &Table, dir: &Path, package: &str) -> Vec<String> {
         return vec![default.to_string()];
     }
     let mut bins: Vec<String> = Vec::new();
+    // Files a `[[bin]]` points at itself; Cargo guesses no other program from them.
+    let mut claimed: HashSet<PathBuf> = HashSet::new();
     for bin in manifest.get("bin").and_then(Value::as_array).into_iter().flatten() {
         if let Some(name) = bin.get("name").and_then(Value::as_str) {
             bins.push(name.to_string());
         }
+        if let Some(path) = bin.get("path").and_then(Value::as_str) {
+            claimed.insert(dir.join(path.trim_start_matches("./")));
+        }
     }
     let autobins = package_table.and_then(|p| p.get("autobins")).and_then(Value::as_bool).unwrap_or(true);
     if autobins {
-        if dir.join("src/main.rs").is_file() {
+        let main = dir.join("src/main.rs");
+        if main.is_file() && !claimed.contains(&main) {
             bins.push(package.to_string());
         }
         if let Ok(entries) = std::fs::read_dir(dir.join("src/bin")) {
             for path in entries.flatten().map(|entry| entry.path()) {
                 if (path.extension().is_some_and(|ext| ext == "rs") || path.join("main.rs").is_file())
+                    && !claimed.contains(&path)
+                    && !claimed.contains(&path.join("main.rs"))
                     && let Some(stem) = path.file_stem().and_then(|stem| stem.to_str())
                 {
                     bins.push(stem.to_string());
@@ -456,6 +466,30 @@ mod tests {
         write(&root, &format!("target/debug/{}", exe("arcade")), "");
         let names: Vec<_> = analyse(&root).into_iter().map(|game| game.name).collect();
         assert_eq!(names, ["Arcade"], "the program named like the package wins");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn workspace_members_are_found_in_a_folder_with_brackets() {
+        let root = temp("jam [2025]");
+        write(&root, "crates/kite/Cargo.toml", "");
+        let workspace: Table = toml::from_str("members = [\"crates/*\"]").unwrap();
+        assert_eq!(members(&root, &workspace), [root.join("crates/kite")]);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_program_renamed_in_its_bin_section_is_found() {
+        let root = temp("renamed");
+        write(
+            &root,
+            "Cargo.toml",
+            "[package]\nname = \"kite-game\"\n[[bin]]\nname = \"kite\"\npath = \"src/main.rs\"\n[dependencies]\nmacroquad = \"0.4\"\n",
+        );
+        write(&root, "src/main.rs", "");
+        write(&root, &format!("target/release/{}", exe("kite")), "");
+        let names: Vec<_> = analyse(&root).into_iter().map(|game| game.name).collect();
+        assert_eq!(names, ["Kite Game"]);
         std::fs::remove_dir_all(root).unwrap();
     }
 

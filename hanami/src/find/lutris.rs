@@ -15,7 +15,7 @@ pub fn find() -> Vec<Game> {
     native
         .into_iter()
         .chain([flatpak])
-        .filter(|(data, _)| data.join("lutris/pga.db").is_file())
+        .filter(|(data, flatpak)| data.join("lutris/pga.db").is_file() && runnable(*flatpak))
         .flat_map(|(data, flatpak)| {
             installed(&data.join("lutris/pga.db")).into_iter().map(move |(id, name, slug)| {
                 let mut found = game(id, name, flatpak);
@@ -24,6 +24,17 @@ pub fn find() -> Vec<Game> {
             })
         })
         .collect()
+}
+
+/// Whether that Lutris is still installed: its data folder outlives an
+/// uninstall, and its games would then only fail to start (and hide the same
+/// games of the Lutris that replaced it).
+fn runnable(flatpak: bool) -> bool {
+    if flatpak {
+        let user = dirs::data_dir().unwrap_or_default().join("flatpak/app");
+        return [user, PathBuf::from("/var/lib/flatpak/app")].iter().any(|apps| apps.join(FLATPAK_ID).is_dir());
+    }
+    std::env::var_os("PATH").is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join("lutris").is_file()))
 }
 
 fn game(id: i64, name: String, flatpak: bool) -> Game {

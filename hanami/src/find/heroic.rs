@@ -183,20 +183,21 @@ fn installed(root: &Path) -> Vec<Found> {
         }
     }
 
-    // Added by hand; entries with a browser URL are web pages, not programs.
-    // Their picture is a file the user picked, or a downloaded one.
+    // Added by hand; entries with a browser URL are web pages, not programs
+    // (Heroic saves programs with an empty one). Their picture is a file the
+    // user picked (saved as file://<path>), or a downloaded one.
     for game in
         read(&root.join("sideload_apps/library.json")).get("games").and_then(Value::as_array).into_iter().flatten()
     {
         let installed = game.get("is_installed").and_then(Value::as_bool).unwrap_or(true);
-        if !installed || game.get("browserUrl").is_some_and(|url| !url.is_null()) {
+        if !installed || text(game, "browserUrl").is_some() {
             continue;
         }
         if let (Some(app), Some(title)) = (text(game, "app_name"), text(game, "title")) {
             let art = ["art_square", "art_cover"].iter().filter_map(|key| text(game, key)).collect::<Vec<_>>();
             let icon = art
                 .iter()
-                .map(Path::new)
+                .map(|art| Path::new(art.strip_prefix("file://").unwrap_or(art)))
                 .find(|path| path.is_absolute() && path.is_file())
                 .map(Path::to_path_buf)
                 .or_else(|| cached_art(root, &art));
@@ -268,10 +269,11 @@ mod tests {
             "sideload_apps/library.json",
             &format!(
                 r#"{{"games": [
-            {{"app_name": "abc", "title": "My Emulator", "is_installed": true, "art_cover": {:?}}},
+            {{"app_name": "abc", "title": "My Emulator", "is_installed": true, "browserUrl": "",
+              "art_square": {picked:?}, "art_cover": {picked:?}}},
             {{"app_name": "web", "title": "Web Game", "browserUrl": "https://x"}},
             {{"app_name": "gone", "title": "Removed", "is_installed": false}}]}}"#,
-                unreal.join("cover.png")
+                picked = format!("file://{}", unreal.join("cover.png").display())
             ),
         );
         write(&unreal, "cover.png", "");
