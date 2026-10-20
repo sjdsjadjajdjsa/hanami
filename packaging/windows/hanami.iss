@@ -43,6 +43,10 @@ WizardStyle=modern
 ; A running Hanami is closed before its file is replaced.
 CloseApplications=force
 RestartApplications=no
+; The startup box starts unticked every time: the login entry is shared
+; with the tray's "Open at login", so a tick remembered from an earlier
+; install must not turn back on what the tray turned off.
+UsePreviousTasks=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -63,10 +67,9 @@ Name: "{userprograms}\Hanami"; Filename: "{app}\hanami.exe"; IconFilename: "{app
 Name: "{userdesktop}\Hanami"; Filename: "{app}\hanami.exe"; IconFilename: "{app}\hanami.ico"; Tasks: desktopicon
 
 [Registry]
-; The Run key starts Hanami in the tray after sign-in; the second line
-; removes it when the box is left unticked on a later install.
+; The Run key starts Hanami in the tray after sign-in. An unticked box
+; leaves it as it is: the tray's "Open at login" may have set it.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Hanami"; ValueData: """{app}\hanami.exe"" --hidden"; Flags: uninsdeletevalue; Tasks: startup
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Hanami"; Flags: deletevalue; Tasks: not startup
 
 [Run]
 Filename: "{app}\hanami.exe"; Description: "Start Hanami now"; Flags: nowait postinstall skipifsilent
@@ -76,6 +79,22 @@ Filename: "{app}\hanami.exe"; Description: "Start Hanami now"; Flags: nowait pos
 Filename: "{app}\hanami.exe"; Parameters: "--quit"; Flags: runhidden waituntilterminated; RunOnceId: "QuitHanami"
 
 [UninstallDelete]
-; Hanami's cache (the once-a-day update check stamp). Settings in
-; %APPDATA%\hanami stay, so a reinstall finds them.
-Type: filesandordirs; Name: "{localappdata}\hanami"
+; Hanami's cache: the once-a-day update check stamp and the list of known
+; ports. What was played (state.toml) and the settings in %APPDATA%\hanami
+; stay, so a reinstall finds them.
+Type: files; Name: "{localappdata}\hanami\latest"
+Type: files; Name: "{localappdata}\hanami\ports.toml"
+Type: dirifempty; Name: "{localappdata}\hanami"
+
+[Code]
+// The login entry can come from the tray's "Open at login" rather than
+// the installer's box, so uninstalling removes it either way, along with
+// a switch-off Task Manager may have kept for it.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    RegDeleteValue(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Run', 'Hanami');
+    RegDeleteValue(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run', 'Hanami');
+  end;
+end;

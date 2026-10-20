@@ -29,3 +29,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev libudev-dev
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+      # The installer script is otherwise only compiled when a release is
+      # tagged; packing stand-in files checks it (and its [Code]) here.
+      - name: Installer script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist/hanami -Force | Out-Null
+          Copy-Item README.md, GUIDE.md, LICENSE dist/hanami/
+          New-Item -ItemType File dist/hanami/hanami.exe | Out-Null
+          iscc /Q "/DSource=$env:GITHUB_WORKSPACE\dist\hanami" packaging\windows\hanami.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
