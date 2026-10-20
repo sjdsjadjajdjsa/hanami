@@ -141,7 +141,10 @@ pub fn apply(panel: &Panel, theme: &Theme, dir: Option<&Path>, scale: f32) -> Re
 /// stay while the colour changes.
 fn tinted(pixels: &SharedPixelBuffer<Rgba8Pixel>, tint: Color) -> SharedPixelBuffer<Rgba8Pixel> {
     let light = |p: &Rgba8Pixel| p.r as u32 * 299 + p.g as u32 * 587 + p.b as u32 * 114;
-    let brightest = pixels.as_slice().iter().filter(|p| p.a == 255).map(light).max().unwrap_or(0).max(1);
+    // Measured where the picture is most solid: a see-through one (an SVG
+    // with opacity) has no fully opaque pixel, and its faint edges are noisy.
+    let solid = pixels.as_slice().iter().map(|p| p.a).max().unwrap_or(0);
+    let brightest = pixels.as_slice().iter().filter(|p| solid > 0 && p.a == solid).map(light).max().unwrap_or(0).max(1);
     let (r, g, b) = (tint.red() as u32, tint.green() as u32, tint.blue() as u32);
     let mut out = pixels.clone();
     for p in out.make_mut_slice() {
@@ -188,6 +191,11 @@ mod tests {
         let blue = tinted(&pixels, Color::from_rgb_u8(0, 0, 255));
         let middle = blue.as_slice()[(PETAL_PX * PETAL_PX / 2 + PETAL_PX / 2) as usize];
         assert_eq!((middle.r, middle.g, middle.b, middle.a), (0, 0, 255, 255), "{middle:?}");
+        // A see-through picture is tinted, not washed out to white.
+        std::fs::write(&path, "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><circle cx='5' cy='5' r='4' fill='#c40' opacity='0.8'/></svg>").unwrap();
+        let blue = tinted(&petal(&path, PETAL_PX).unwrap(), Color::from_rgb_u8(0, 0, 255));
+        let middle = blue.as_slice()[(PETAL_PX * PETAL_PX / 2 + PETAL_PX / 2) as usize];
+        assert_eq!((middle.r, middle.g, middle.b), (0, 0, 255), "{middle:?}");
         std::fs::write(&path, "not svg at all").unwrap();
         assert!(petal(&path, PETAL_PX).unwrap_err().contains("not a picture"));
         std::fs::write(&path, vec![b' '; 600 * 1024]).unwrap();
