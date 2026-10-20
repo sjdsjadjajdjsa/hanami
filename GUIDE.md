@@ -84,6 +84,9 @@ version it saw in `~/.cache/hanami/latest` (Windows:
   at the top marked "new", under "Found 2 new games" with **Keep** and
   **Hide**. Each one can also be kept or hidden on its own (right-click or
   Tab). Playing, pinning or renaming a new game keeps it.
+- **Moving the panel:** on Windows, hold Alt or the Windows key and drag it.
+  On Linux your desktop does this itself, with the key it uses for moving
+  windows (on KDE Plasma 6 and GNOME, the Windows key).
 - Problems (a typo in the settings, a game that won't start) show as one
   line at the bottom for a few seconds.
 - The **?** button copies a prompt with this guide, for an AI assistant.
