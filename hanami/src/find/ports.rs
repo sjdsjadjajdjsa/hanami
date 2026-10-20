@@ -268,7 +268,10 @@ fn read_shipped(path: &Path) -> Option<Game> {
     let dir = path.parent()?;
     let game = parse_shipped(&std::fs::read_to_string(path).ok()?, dir)?;
     let Launch::Command { program, .. } = &game.launch else { return None };
-    program.is_file().then_some(game)
+    // On Linux it has to be executable, or it would only fail to start; a
+    // Windows port may name a .bat.
+    let starts = if cfg!(unix) { runnable(program, "") } else { program.is_file() };
+    starts.then_some(game)
 }
 
 fn parse_shipped(text: &str, dir: &Path) -> Option<Game> {
@@ -383,6 +386,12 @@ mod tests {
         assert_eq!(program, &root.join("openttd-15").join(exe("openttd")));
         assert_eq!(dir.as_deref(), Some(root.join("openttd-15").as_path()));
 
+        if !cfg!(windows) {
+            std::fs::write(root.join("mine/mine"), "").unwrap();
+            let (mut shipped, mut known) = (Vec::new(), Vec::new());
+            walk(&root, 3, &list, &mut shipped, &mut known);
+            assert!(shipped.is_empty(), "the shipped program must be executable");
+        }
         make_runnable(&root.join("mine").join(exe("mine")));
         let (mut shipped, mut known) = (Vec::new(), Vec::new());
         walk(&root, 3, &list, &mut shipped, &mut known);

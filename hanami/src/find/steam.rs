@@ -1,11 +1,27 @@
 //! Installed Steam games, without Steam's own tools.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use steamlocate::SteamDir;
 
 use crate::games::{Game, Launch};
 
+/// Every Steam found (native, Flatpak, Snap), as the folder a removed one
+/// leaves behind must not hide the one in use; a game in two of them (a
+/// shared library folder) is listed once.
 pub fn find() -> Vec<Game> {
-    let Ok(steam) = steamlocate::SteamDir::locate() else { return Vec::new() };
+    let mut seen = HashSet::new();
+    steamlocate::locate_all()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(installed)
+        .filter(|(id, _)| seen.insert(*id))
+        .map(|(_, game)| game)
+        .collect()
+}
+
+fn installed(steam: &SteamDir) -> Vec<(u32, Game)> {
     let libraries = match steam.libraries() {
         Ok(libraries) => libraries,
         Err(error) => {
@@ -29,7 +45,9 @@ pub fn find() -> Vec<Game> {
         .filter(|app| app.state_flags.is_none_or(|flags| flags.0 & FULLY_INSTALLED != 0))
         .map(|app| (app.app_id, app.name.unwrap_or(app.install_dir)))
         .filter(|(_, name)| !is_tool(name))
-        .map(|(id, name)| Game { group: None, name, label: "steam".into(), launch: launch(id), icon: icons.find(id) })
+        .map(|(id, name)| {
+            (id, Game { group: None, name, label: "steam".into(), launch: launch(id), icon: icons.find(id) })
+        })
         .collect()
 }
 
