@@ -24,6 +24,7 @@ mod update;
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -213,16 +214,25 @@ impl App {
         self.focus();
     }
 
-    /// Blur, taskbar and focus need the native window, which may not exist yet.
+    /// Blur, taskbar and focus need the native window, which may not exist
+    /// yet, and neither does its real scale before then.
     fn focus(&self) {
-        let scale = self.panel.window().scale_factor();
-        let (width, height) = self.physical_size();
-        let radius = (RADIUS as f32 * scale) as u32;
+        let guessed = self.panel.window().scale_factor();
         let cut_corners = self.cut_corners;
         let panel = self.panel.as_weak();
         let _ = slint::spawn_local(async move {
             let Some(panel) = panel.upgrade() else { return };
             if let Ok(window) = panel.window().winit_window().await {
+                let scale = panel.window().scale_factor();
+                // The very first show centres the panel before the window,
+                // and so its scale, exists.
+                if scale != guessed
+                    && let Some((x, y)) = desktop::centre_on_pointer(WIDTH, HEIGHT, scale)
+                {
+                    panel.window().set_position(PhysicalPosition::new(x, y));
+                }
+                let (width, height) = physical_size(scale);
+                let radius = (RADIUS as f32 * scale) as u32;
                 #[cfg(windows)]
                 off_taskbar(&window);
                 if cut_corners {
@@ -297,11 +307,6 @@ impl App {
         }
     }
 
-    fn physical_size(&self) -> (u32, u32) {
-        let scale = self.panel.window().scale_factor();
-        ((WIDTH as f32 * scale) as u32, (HEIGHT as f32 * scale) as u32)
-    }
-
     /// Re-reads the settings and the game list; keeps the last good settings on a mistake.
     fn reload(&self) {
         if let Some(path) = &self.config_path {
@@ -354,15 +359,13 @@ impl App {
                 None => !query.is_empty() || games[index].group.is_none(),
             })
             .collect();
-        let total = match &folder {
-            Some(_) => inside.len(),
-            None => games.iter().filter(|game| game.group.is_none()).count(),
-        };
+        // What a search looks through, so "N of M" never has N above M.
+        let total = inside.len();
         let pool: Vec<games::Game> = inside.iter().map(|&index| games[index].clone()).collect();
         let mut shown: Vec<usize> = games::filter(&pool, &query).into_iter().map(|at| inside[at]).collect();
-        if query.is_empty() {
-            shown.splice(0..0, launcher);
-        }
+        // The launcher's own row leads its list, but not a search in it.
+        let head = launcher.filter(|_| query.is_empty());
+        shown.splice(0..0, head);
         self.rows.set_vec(
             shown
                 .iter()
@@ -402,8 +405,9 @@ impl App {
         self.panel.set_total(total as i32);
         self.panel.set_folder(folder.unwrap_or_default().into());
         self.panel.set_query(query.as_str().into());
-        // In a launcher, its most recently played game, right after the launcher's own row.
-        self.panel.set_selected(if launcher.is_some() && shown.len() > 1 { 1 } else { 0 });
+        // In a launcher, its most recently played game, right after the
+        // launcher's own row; while searching, the best match.
+        self.panel.set_selected(if head.is_some() && shown.len() > 1 { 1 } else { 0 });
         *self.shown.borrow_mut() = shown;
     }
 
@@ -574,10 +578,11 @@ impl App {
                 .find(|name| !taken(name))
                 .unwrap_or(name)
         };
+        // Back from the file picker first, so a problem saving it is seen.
+        self.show();
         if !self.edit_settings(|doc| config::add_game(doc, &name, program, program.parent())) {
             return;
         }
-        self.show();
         self.relist(&name);
         self.panel.set_renaming(self.panel.get_selected());
     }
@@ -765,6 +770,11 @@ fn with_app(f: impl FnOnce(&Rc<App>)) {
     }
 }
 
+/// The panel's size in pixels at `scale`.
+fn physical_size(scale: f32) -> (u32, u32) {
+    ((WIDTH as f32 * scale) as u32, (HEIGHT as f32 * scale) as u32)
+}
+
 /// How the panel's window is created, per platform.
 fn window_attributes(attributes: WindowAttributes) -> WindowAttributes {
     #[cfg(all(unix, not(target_vendor = "apple")))]
@@ -913,7 +923,11 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
             }
             Err(error) => {
                 eprintln!("hanami: {error}");
-                with_app(|app| app.notify(error));
+                // The panel is usually closed while the tray menu is used.
+                with_app(|app| {
+                    app.show();
+                    app.notify(error);
+                });
             }
         }
     });
@@ -1060,15 +1074,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             log(&format!("scanned for ports in {} ms, found {}", started.elapsed().as_millis(), ports.len()));
         }
         let verbose = VERBOSE.load(Ordering::Relaxed);
+        let mut out = std::io::stdout().lock();
         for game in listed(&config, &State::load()).0 {
             let label = match &game.group {
                 Some(group) => format!("{} · in {group}", game.label),
                 None => game.label,
             };
-            match (&game.icon, verbose) {
-                (Some(icon), true) => println!("{}\t{label}\t{}", game.name, icon.display()),
-                (None, true) => println!("{}\t{label}\t(no icon)", game.name),
-                _ => println!("{}\t{label}", game.name),
+            let written = match (&game.icon, verbose) {
+                (Some(icon), true) => writeln!(out, "{}\t{label}\t{}", game.name, icon.display()),
+                (None, true) => writeln!(out, "{}\t{label}\t(no icon)", game.name),
+                _ => writeln!(out, "{}\t{label}", game.name),
+            };
+            // The reader went away (`hanami --list | head`): nothing more to say.
+            if written.is_err() {
+                break;
             }
         }
         PROBLEMS.with_borrow(|problems| {
@@ -1086,8 +1105,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Request::Open
     };
-    let handle = |request| {
-        let _ = slint::invoke_from_event_loop(move || with_app(|app| app.handle(request)));
+    // Another copy can ask before the event loop exists (Windows checks its
+    // OpenGL driver first): wait for it rather than drop the request.
+    let handle = |request: Request| {
+        for _ in 0..500 {
+            match slint::invoke_from_event_loop(move || with_app(|app| app.handle(request))) {
+                Err(slint::EventLoopError::NoEventLoopProvider) => std::thread::sleep(Duration::from_millis(20)),
+                _ => return,
+            }
+        }
     };
     if ipc::claim(first, handle)?.is_none() {
         return Ok(());
