@@ -61,6 +61,8 @@ menu.
 
 - **Open and close:** `Ctrl+Alt+H`, a click on the tray icon, or
   `hanami --toggle`.
+- **Move it:** on Windows, hold Alt or the Windows key and drag; on Linux,
+  your desktop's own key for moving windows does it.
 - **Pick a game:** type to search, arrows and Enter, or click.
 - **More for one game:** Tab or right-click: Pin to top, Rename, Hide.
 - **Add a game:** the **+** button.
