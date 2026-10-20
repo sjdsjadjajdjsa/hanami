@@ -25,7 +25,7 @@ something not on this page, add it here first.
 | `pick` | accent at 14 % | highlighted row fill |
 | `hover` | white at 5 % | row under the mouse, when not highlighted; letter tile behind a missing icon |
 | `select` | accent at 35 % | selected text while renaming |
-| `petal` | `#f7c4d3`, vein `#e9a3b8` | petals, 35–80 % opacity |
+| `petal` | `#f7c4d3`, vein `#e9a3b8` | petals, 50–100 % opacity |
 
 ## Type (Inter)
 
@@ -51,8 +51,9 @@ something not on this page, add it here first.
 ## Motion
 
 - Row fill fades in 120 ms.
-- Petals: 18 at 30 fps; each 7–13 px, falling 12–28 px/s, swaying 6–20 px,
-  turning up to ±35°/s. Seeded, so every open looks the same.
+- Petals: 24 at 30 fps; each 8–18 px, falling 9–33 px/s, swaying 5–19 px,
+  turning up to ±35°/s, at 50–100 % opacity; the nearer ones are bigger,
+  faster and more solid. Seeded, so every open looks the same.
 - Panel open/close: 140 ms fade.
 
 ## Platform

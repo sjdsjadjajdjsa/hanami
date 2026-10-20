@@ -22,8 +22,11 @@ Downloads are at <https://github.com/sjdsjadjajdjsa/hanami/releases/latest>.
   current user only (no admin rights) into `%LOCALAPPDATA%\Programs\Hanami`,
   adds Hanami to the Start menu and offers a box "Start Hanami when Windows
   starts" (off unless you tick it; it runs `hanami.exe --hidden` after sign-in).
+  It is the same entry as **Open at login** in the tray menu; leaving the box
+  unticked when installing a new version keeps what you chose there.
   Uninstall from Settings, Apps; that removes the program, the shortcut, the
-  startup entry and Hanami's cache, and leaves your settings file.
+  startup entry and Hanami's cache, and leaves your settings file and what
+  you played.
 - **Windows, portable:** `hanami-windows-x86_64.zip`. Unpack it anywhere and
   run `hanami.exe`.
 
@@ -53,6 +56,8 @@ version it saw in `~/.cache/hanami/latest` (Windows:
   pad) together for half a second. The same hold closes it again. See
   [Game controller](#game-controller).
 - **Closing:** Esc, clicking somewhere else, the hotkey, or the tray icon.
+  With `on_launch = "keep"` clicking somewhere else leaves it open, as the
+  game you start takes the focus.
 - Only one Hanami runs at a time; starting it again opens the running one.
 
 ## In the panel
@@ -378,9 +383,9 @@ enough for a look to feel right:
 | autumn leaves | 16 | 0.7 | 1.8 | 1.6 | 1.4 | `["#e0602a", "#c8401c", "#f0a040", "#9a3410"]` | 12 |
 | snow | 18 | 0.6 | 1.3 | 1.3 | 0.3 | `["#ffffff", "#dceeff", "#bfe0ff"]` | 24 |
 
-With `tints` the picture is painted flat in those colours, so its own
-colours and lines don't show; leave `tints` empty for a petal that has a
-vein or two colours of its own.
+With `tints` the picture is painted in those colours by its brightness:
+darker parts (a vein, a shadow) stay darker, but its own colours don't
+show; leave `tints` empty for a petal with two colours of its own.
 
 Colours are `"#rrggbb"` or `"#rrggbbaa"`. Keep `panel` between `80` and
 `e0` at the end so it stays see-through but readable, and keep `text`
@@ -391,7 +396,7 @@ old look and the panel says which line is wrong.
 exists, it is the falling shape instead of the sakura petal. Delete it to
 get the petal back. It can be an SVG, which is text an AI can write, or a
 png/webp/jpeg with a see-through background, from a picture AI or anywhere
-else (an emoji picture, say). Rules, which Hanami checks:
+else (an emoji picture, say). Rules that keep a petal clear and light:
 
 - An SVG is one plain file: a square `viewBox`, one or a few `path`,
   `circle` or `ellipse` elements with `fill` or `stroke` colours, nothing
@@ -402,8 +407,8 @@ else (an emoji picture, say). Rules, which Hanami checks:
   a petal, a snowflake, a star. Fine detail disappears at that size; a
   detailed shape like a leaf wants `size = 1.8` and fewer petals.
 
-A file that doesn't follow this is refused ("Couldn't read petal.svg: ...")
-and the sakura petal stays.
+Hanami refuses a file over 512 KB or one it can't draw ("Couldn't read
+petal.svg: ...") and the sakura petal stays.
 
 **For an AI changing the look:** edit only `[theme]` and `petal.svg`, nothing
 else in the settings file; keep the keys above and their ranges; start
