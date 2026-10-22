@@ -104,4 +104,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
-        run: gh release create "$TAG" hanami-* SHA256SUMS --repo "$REPO" --title "Hanami $TAG" --generate-notes
+        # A release published on github.com makes the tag itself; then the
+        # downloads are added to it instead.
+        run: |
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" hanami-* SHA256SUMS --repo "$REPO" --clobber
+          else
+            gh release create "$TAG" hanami-* SHA256SUMS --repo "$REPO" --title "Hanami $TAG" --generate-notes
+          fi
