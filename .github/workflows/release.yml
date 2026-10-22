@@ -17,7 +17,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # The Linux build runs on the oldest Ubuntu LTS still supported: a
+          # binary needs the glibc it was built against or newer, so this
+          # sets the oldest system it runs on (glibc 2.35).
           - os: ubuntu-24.04
+            container: ubuntu:22.04
             assets: |
               hanami-linux-x86_64.tar.gz
               hanami-x86_64.AppImage
@@ -26,9 +30,16 @@ jobs:
               hanami-windows-x86_64.zip
               hanami-setup-x86_64.exe
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     env:
       TAG: ${{ github.ref_name }}
     steps:
+      # Before checkout: the bare container has no git or curl.
+      - name: System libraries
+        if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git build-essential pkg-config file patchelf libxkbcommon-dev libxkbcommon-x11-0 libfontconfig1-dev libwayland-dev libdbus-1-dev libudev-dev
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -36,9 +47,6 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: System libraries
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libfontconfig1-dev libwayland-dev libdbus-1-dev libudev-dev
       - name: Check the tag against Cargo.toml
         shell: bash
         run: |
