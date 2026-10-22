@@ -17,9 +17,13 @@ is pushed; the tag must match `version` in `hanami/Cargo.toml`.
 `linux/appimage.sh target/release/hanami` builds `hanami-x86_64.AppImage`
 from the binary, `linux/hanami.desktop` and `assets/hanami-icon.svg`. It
 downloads appimagetool (github.com/AppImage/appimagetool, continuous build)
-unless `APPIMAGETOOL` points at one. Only the Hanami binary is inside: it
-needs glibc 2.39 or newer (Ubuntu 24.04 and anything from 2024 on) and
-fontconfig, which every desktop has.
+unless `APPIMAGETOOL` points at one. Inside are the Hanami binary and
+copies of libxkbcommon, libxkbcommon-x11 and libxcb-xkb, which winit opens
+as it starts and which aren't installed everywhere; the script finds them
+on the build machine (`libxkbcommon-x11-0`) and needs `patchelf`. The
+release builds in an Ubuntu 22.04 container, so the AppImage and the tar.gz
+need glibc 2.35 or newer (anything from 2022 on) and fontconfig, which every
+desktop has.
 
 The desktop file is in `Game;Utility;`, so Hanami's own app-menu search
 leaves it out even when an AppImage tool installs it under another name.

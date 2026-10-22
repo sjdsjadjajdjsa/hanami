@@ -11,8 +11,8 @@ Downloads are at <https://github.com/sjdsjadjajdjsa/hanami/releases/latest>.
 
 - **Linux, AppImage:** `hanami-x86_64.AppImage`. Mark it executable
   (right-click, Properties, "Allow executing" or `chmod +x`) and run it. It
-  needs a distribution from 2024 or newer (glibc 2.39: Ubuntu 24.04, Fedora
-  40, Mint 22, Debian 13, Arch) and FUSE, which every common desktop Linux
+  needs a distribution from 2022 or newer (glibc 2.35: Ubuntu 22.04, Fedora
+  36, Mint 21, Debian 12, Arch) and FUSE, which every common desktop Linux
   has; without FUSE, run `./hanami-x86_64.AppImage --appimage-extract-and-run`.
 - **Linux, plain binary:** `hanami-linux-x86_64.tar.gz` holds `hanami`,
   README.md, GUIDE.md and LICENSE. Put `hanami` anywhere in your PATH.

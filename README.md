@@ -40,8 +40,8 @@ Download the newest version from
 [Releases](https://github.com/sjdsjadjajdjsa/hanami/releases/latest):
 
 - **Linux:** `hanami-x86_64.AppImage`. Mark it executable (right-click,
-  Properties, or `chmod +x`) and run it. Needs a distribution from 2024 or
-  newer (Ubuntu 24.04, Fedora 40, Mint 22, Arch, and so on). There is also
+  Properties, or `chmod +x`) and run it. Needs a distribution from 2022 or
+  newer (Ubuntu 22.04, Fedora 36, Mint 21, Arch, and so on). There is also
   `hanami-linux-x86_64.tar.gz` with the plain binary.
 - **Windows:** `hanami-setup-x86_64.exe`. It installs for your user only (no
   admin rights), adds a Start menu entry and, if you tick the box, starts
