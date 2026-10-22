@@ -1,6 +1,6 @@
 [package]
 name = "hanami"
-version = "0.2.12"
+version = "0.2.13"
 edition = "2024"
 description = "A small game launcher with falling sakura petals"
 license = "GPL-3.0-or-later"
