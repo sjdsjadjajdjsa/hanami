@@ -1,5 +1,5 @@
 //! Desktop glue the toolkit doesn't provide: blur behind the panel on KWin
-//! (X11 and Wayland), keeping the panel out of the taskbar, focusing it, and
+//! (X11 and Wayland) and Windows 11, keeping the panel out of the taskbar, focusing it, and
 //! finding where to open it. Each function quietly does nothing where it has
 //! no support, so callers never need platform checks.
 
@@ -74,7 +74,9 @@ pub fn cut_corners(window: &(impl HasWindowHandle + ?Sized), width: u32, height:
 
 /// Asks the compositor to blur what is behind `window`, inside a rounded
 /// rectangle of `width` x `height` logical pixels with `radius` corners,
-/// drawn at `scale`. Returns whether the request was accepted.
+/// drawn at `scale`. Windows tints its blur (Acrylic) light or dark, after
+/// `dark`, and cuts the window to the rounded shape so the blur keeps to
+/// it. Returns whether the request was accepted.
 pub fn blur_behind(
     window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
     id: u64,
@@ -82,8 +84,9 @@ pub fn blur_behind(
     height: u32,
     radius: u32,
     scale: f32,
+    dark: bool,
 ) -> bool {
-    imp::blur_behind(window, id, width, height, radius, scale)
+    imp::blur_behind(window, id, width, height, radius, scale, dark)
 }
 
 /// The icon inside a Windows program (or `.ico`, `.dll`) at about `px`
@@ -200,6 +203,7 @@ mod imp {
         height: u32,
         radius: u32,
         scale: f32,
+        _dark: bool,
     ) -> bool {
         let Some(id) = x11_id(window) else { return wayland::blur_behind(window, key, width, height, radius) };
         let (width, height, radius) =
@@ -413,6 +417,10 @@ mod imp {
 
     use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::Foundation::{HWND, POINT};
+    use windows_sys::Win32::Graphics::Dwm::{
+        DWMSBT_TRANSIENTWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DWMWA_USE_IMMERSIVE_DARK_MODE, DwmExtendFrameIntoClientArea,
+        DwmSetWindowAttribute,
+    };
     use windows_sys::Win32::Graphics::Gdi::{
         BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateRoundRectRgn, DIB_RGB_COLORS, DeleteDC,
         DeleteObject, GetDC, GetDIBits, GetMonitorInfoW, GetObjectW, HBITMAP, MONITOR_DEFAULTTONEAREST, MONITORINFO,
@@ -422,6 +430,7 @@ mod imp {
         ChoosePixelFormat, GL_VERSION, PFD_DOUBLEBUFFER, PFD_DRAW_TO_WINDOW, PFD_SUPPORT_OPENGL, PFD_TYPE_RGBA,
         PIXELFORMATDESCRIPTOR, SetPixelFormat, glGetString, wglCreateContext, wglDeleteContext, wglMakeCurrent,
     };
+    use windows_sys::Win32::UI::Controls::MARGINS;
     use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         CreateWindowExW, DestroyIcon, DestroyWindow, GetCursorPos, GetIconInfo, HICON, ICONINFO, LR_DEFAULTCOLOR,
@@ -611,8 +620,8 @@ mod imp {
         }
     }
 
-    // Taskbar, rounding and Acrylic are window attributes on Windows, set
-    // when the window is created; focus works through winit.
+    // Taskbar and rounding are window attributes on Windows, set when the
+    // window is created; focus works through winit.
     pub fn prepare(_window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized), _id: u64) -> bool {
         true
     }
@@ -623,15 +632,34 @@ mod imp {
         false
     }
 
+    /// Acrylic, Windows 11 22H2 and newer; older versions refuse the
+    /// attribute and keep the plain see-through panel.
     pub fn blur_behind(
-        _window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
+        window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
         _id: u64,
-        _width: u32,
-        _height: u32,
-        _radius: u32,
-        _scale: f32,
+        width: u32,
+        height: u32,
+        radius: u32,
+        scale: f32,
+        dark: bool,
     ) -> bool {
-        false
+        let Some(hwnd) = hwnd(window) else { return false };
+        let set = |attribute, value: &i32| {
+            // SAFETY: `value` outlives the call, which only reads its 4 bytes.
+            unsafe { DwmSetWindowAttribute(hwnd, attribute as u32, (value as *const i32).cast(), 4) == 0 }
+        };
+        // The blur's tint follows the window's light or dark mode.
+        set(DWMWA_USE_IMMERSIVE_DARK_MODE, &i32::from(dark));
+        if !set(DWMWA_SYSTEMBACKDROP_TYPE, &DWMSBT_TRANSIENTWINDOW) {
+            return false;
+        }
+        // The backdrop shows through the whole window, client area too, and
+        // fills its rectangle; the region keeps it inside the rounded panel.
+        let all = MARGINS { cxLeftWidth: -1, cxRightWidth: -1, cyTopHeight: -1, cyBottomHeight: -1 };
+        // SAFETY: `all` outlives the call.
+        unsafe { DwmExtendFrameIntoClientArea(hwnd, &all) };
+        let size = |logical: u32| (logical as f32 * scale) as u32;
+        cut_corners(window, size(width), size(height), size(radius))
     }
 }
 
@@ -672,6 +700,7 @@ mod imp {
         _height: u32,
         _radius: u32,
         _scale: f32,
+        _dark: bool,
     ) -> bool {
         false
     }

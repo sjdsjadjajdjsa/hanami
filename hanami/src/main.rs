@@ -219,6 +219,8 @@ impl App {
     fn focus(&self) {
         let guessed = self.panel.window().scale_factor();
         let cut_corners = self.cut_corners;
+        let (r, g, b, _) = self.config.borrow().theme.panel.rgba();
+        let dark = u32::from(r) * 299 + u32::from(g) * 587 + u32::from(b) * 114 < 128_000;
         let panel = self.panel.as_weak();
         let _ = slint::spawn_local(async move {
             let Some(panel) = panel.upgrade() else { return };
@@ -235,12 +237,14 @@ impl App {
                 let radius = (RADIUS as f32 * scale) as u32;
                 #[cfg(windows)]
                 off_taskbar(&window);
-                if cut_corners {
-                    desktop::cut_corners(&*window, width, height, radius);
-                }
                 let id = u64::from(window.id());
                 desktop::prepare(&*window, id);
-                desktop::blur_behind(&*window, id, WIDTH, HEIGHT, RADIUS, scale);
+                // A window cut to shape is drawn solid: nothing to see through.
+                if cut_corners {
+                    desktop::cut_corners(&*window, width, height, radius);
+                } else {
+                    desktop::blur_behind(&*window, id, WIDTH, HEIGHT, RADIUS, scale, dark);
+                }
                 if !desktop::activate(&*window) {
                     window.focus_window();
                 }
