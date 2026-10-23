@@ -49,6 +49,13 @@ use it in GUIDE.md.
 - **Measured** (Linux, KDE on X11): hidden 0 % CPU and about 35 MB; open with
   petals 0-1 % CPU; looking through every game source takes a few
   milliseconds, the ports scan runs in the background.
+- **Windows** runs on real machines, not only under Wine.
+- **In code, not released yet:** Acrylic blur behind the panel on Windows
+  11 22H2 and newer; sturdier Epic (the launcher's own data folder, games
+  left behind by uninstalls skipped, manifests with a byte order mark read)
+  and GOG (a missing `exe` filled in from `goggame-<id>.info`, games started
+  through GOG Galaxy when it is installed); `controller_buttons` to choose
+  the buttons that open the panel.
 - **Checked on five Linux desktops** (live ISOs in QEMU, Oct 2026): the
   AppImage runs without libfuse2, finds the app-menu games and a Steam
   library, opens from the tray and from `hanami --toggle`, and starts an
@@ -70,15 +77,11 @@ use it in GUIDE.md.
 
 ## Next
 
-1. **Works everywhere:** still to check: Windows 10 and 11 on a real
-   machine or a VM (so far only Wine), and other desktops (MATE, Budgie,
-   LXQt, Hyprland).
-2. **Publish the AUR package** (`packaging/README.md` has the steps; needs
+1. **Check the new Windows parts on a real machine:** Acrylic (the blur
+   keeps to the rounded corners, no solid flash on opening, light and dark
+   panel colours), and Epic and GOG against more installs.
+2. **Works everywhere:** other Linux desktops (MATE, Budgie, LXQt,
+   Hyprland).
+3. **Publish the AUR package** (`packaging/README.md` has the steps; needs
    an AUR account).
-3. **Windows:** Acrylic blur behind the panel; the Epic and GOG sources
-   checked against more installs. In code, not released yet: Epic reads the
-   launcher's own data folder, skips games left behind by uninstalls and
-   reads manifests with a byte order mark; GOG fills in a missing `exe` from
-   the game's `goggame-<id>.info` and starts games through GOG Galaxy when
-   it is installed. Still to check on a real Windows machine.
-4. **Controller:** more pads checked, and a way to change the open button.
+4. **Controller:** more pads checked.
