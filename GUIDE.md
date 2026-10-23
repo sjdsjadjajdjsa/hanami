@@ -117,6 +117,12 @@ DS4Windows). It can be plugged in while Hanami runs.
   game, B (the right button, Circle) hides the panel. Holding Start and
   Select again hides it too.
 - `controller = false` in the settings turns all of this off.
+- `controller_buttons` picks other buttons to hold, all together, for the
+  half second: any of `start`, `select`, `guide`, `x`, `y`, `lb`, `rb`,
+  `lt`, `rt`, `l3`, `r3` (the sticks pressed in), `left` and `right` (on
+  the D-pad). A, B, up and down can't be used: the open panel needs them.
+  For example `controller_buttons = ["lb", "rb", "start"]`, or
+  `["guide"]` where nothing else takes the Guide button.
 
 Why Start and Select: the Guide button (the Xbox or PlayStation logo) is
 taken. Steam opens its overlay or Big Picture on it, Windows opens the Game
@@ -135,8 +141,8 @@ Hanami finds installed games by itself, every time the panel opens:
 | `heroic` | Heroic's Epic, GOG and Amazon games and programs added to Heroic (native and Flatpak) | Linux, Windows |
 | `lutris` | installed Lutris games, except those in Lutris's hidden category | Linux |
 | `apps` | games in the app menu (desktop entries in the Game category that aren't also Utility); Steam, Heroic, Lutris, Prism Launcher, PolyMC and MultiMC themselves are left out because their games are found directly (add a launcher as a `[[game]]` to keep a row for it) | Linux |
-| `epic` | Epic Games Launcher games (not DLC or engine tools) | Windows |
-| `gog` | GOG Galaxy and GOG installer games | Windows |
+| `epic` | Epic Games Launcher games (not DLC, engine tools or uninstalled leftovers) | Windows |
+| `gog` | GOG Galaxy and GOG installer games, started through GOG Galaxy when it is installed | Windows |
 | `ports` | game ports, recomps and rewrites (see below), games that come with a `hanami-game.toml`, and your own built Rust games from the `projects` folders | Linux, Windows |
 | `prism` | Prism Launcher, PolyMC and MultiMC (native, Flatpak or portable) as a row that opens to their Minecraft instances, each started through the launcher so it handles the Microsoft login | Linux, Windows |
 
@@ -304,6 +310,9 @@ hide = ["Some Game"]
 # or hide the panel; in the panel, up and down move, A starts, B hides.
 controller = true
 
+# The buttons held together to open the panel.
+controller_buttons = ["start", "select"]
+
 # Extra folders to search for ports and games with a hanami-game.toml.
 folders = ["~/Emulation/ports"]
 
@@ -444,8 +453,8 @@ behind them.
 ## Known limits
 
 - The frosted blur needs KDE Plasma's Blur effect (System Settings, Desktop
-  Effects, Blur) on Linux, on X11 or Wayland. Elsewhere, Windows included,
-  the panel is plain see-through.
+  Effects, Blur) on Linux, on X11 or Wayland, or Windows 11 22H2 or newer.
+  Elsewhere the panel is plain see-through.
 - Windows without a graphics driver (virtual machines, Remote Desktop) gets
   a solid panel drawn on the CPU. If the panel never shows on Windows, set
   the environment variable `HANAMI_RENDERER=software` to force that.

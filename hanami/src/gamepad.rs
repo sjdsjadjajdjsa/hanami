@@ -1,8 +1,9 @@
 //! Game controller support: a thread that waits for controller events and
 //! turns them into panel actions.
 //!
-//! The panel opens on Start and Select held together for half a second.
-//! The Guide button is out: Steam opens its overlay or Big Picture on it,
+//! The panel opens on Start and Select held together for half a second
+//! (the `controller_buttons` setting can name others). The Guide button is
+//! not the default: Steam opens its overlay or Big Picture on it,
 //! Windows opens the Game Bar, and Steam often keeps the controller for
 //! itself while it runs. Holding one button is common in games. Start and
 //! Select together are bound by nothing well known, and the half-second
@@ -10,12 +11,13 @@
 //! nothing but that chord does anything.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
 use gilrs::{Axis, Button, EventType, Gilrs};
+use serde::Deserialize;
 
-/// Start and Select held together this long open or hide the panel.
+/// The open buttons held together this long open or hide the panel.
 const HOLD: Duration = Duration::from_millis(500);
 /// A held direction moves again after DELAY, then every STEP.
 const DELAY: Duration = Duration::from_millis(400);
@@ -23,6 +25,61 @@ const STEP: Duration = Duration::from_millis(120);
 /// The stick counts as pushed past ENGAGE and as let go under RELEASE.
 const ENGAGE: f32 = 0.5;
 const RELEASE: f32 = 0.3;
+
+/// Buttons that can open the panel, by their names in the settings. A, B,
+/// up and down are left out: the open panel uses them.
+const NAMES: [(&str, Button); 13] = [
+    ("start", Button::Start),
+    ("select", Button::Select),
+    ("guide", Button::Mode),
+    ("x", Button::West),
+    ("y", Button::North),
+    ("lb", Button::LeftTrigger),
+    ("rb", Button::RightTrigger),
+    ("lt", Button::LeftTrigger2),
+    ("rt", Button::RightTrigger2),
+    ("l3", Button::LeftThumb),
+    ("r3", Button::RightThumb),
+    ("left", Button::DPadLeft),
+    ("right", Button::DPadRight),
+];
+
+/// The buttons held together to open the panel, one bit per entry in NAMES.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Buttons(u32);
+
+impl Buttons {
+    fn bit(button: Button) -> u32 {
+        NAMES.iter().position(|(_, known)| *known == button).map_or(0, |index| 1 << index)
+    }
+}
+
+impl Default for Buttons {
+    fn default() -> Self {
+        Self(Self::bit(Button::Start) | Self::bit(Button::Select))
+    }
+}
+
+impl<'de> Deserialize<'de> for Buttons {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let names = Vec::<String>::deserialize(deserializer)?;
+        let mut bits = 0;
+        for name in &names {
+            let Some((_, button)) = NAMES.iter().find(|(known, _)| known.eq_ignore_ascii_case(name)) else {
+                let known: Vec<&str> = NAMES.iter().map(|(known, _)| *known).collect();
+                return Err(serde::de::Error::custom(format!(
+                    "\"{name}\" isn't a button Hanami can open with; pick from {}",
+                    known.join(", ")
+                )));
+            };
+            bits |= Self::bit(*button);
+        }
+        if bits == 0 {
+            return Err(serde::de::Error::custom("name at least one button, like [\"start\", \"select\"]"));
+        }
+        Ok(Self(bits))
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -62,32 +119,38 @@ pub struct Controls {
     dpad: Option<Dir>,
     stick: Option<Dir>,
     repeat: Option<(Dir, Instant)>,
-    start: bool,
-    select: bool,
+    open_with: Buttons,
+    /// Which of NAMES are down.
+    held: u32,
     chord: Chord,
 }
 
 impl Default for Controls {
     fn default() -> Self {
-        Self { dpad: None, stick: None, repeat: None, start: false, select: false, chord: Chord::Off }
+        Self::new(Buttons::default())
     }
 }
 
 impl Controls {
+    pub fn new(open_with: Buttons) -> Self {
+        Self { dpad: None, stick: None, repeat: None, open_with, held: 0, chord: Chord::Off }
+    }
+
     /// `open` says whether the panel is on screen; hidden, only the chord counts.
     pub fn feed(&mut self, input: Input, now: Instant, open: bool) -> Option<Action> {
         match input {
-            Input::Button(Button::Start, down) => self.start = down,
-            Input::Button(Button::Select, down) => self.select = down,
             Input::Button(Button::DPadUp, down) => self.dpad = Self::toggled(self.dpad, Dir::Up, down),
             Input::Button(Button::DPadDown, down) => self.dpad = Self::toggled(self.dpad, Dir::Down, down),
+            Input::Button(button, true) => self.held |= Buttons::bit(button),
+            Input::Button(button, false) => self.held &= !Buttons::bit(button),
             Input::Stick(y) => self.stick = Self::stick_dir(self.stick, y),
-            Input::Button(..) | Input::Tick => {}
+            Input::Tick => {}
         }
 
+        let all_held = self.held & self.open_with.0 == self.open_with.0;
         self.chord = match self.chord {
-            Chord::Off if self.start && self.select => Chord::Held(now),
-            _ if !(self.start && self.select) => Chord::Off,
+            Chord::Off if all_held => Chord::Held(now),
+            _ if !all_held => Chord::Off,
             chord => chord,
         };
         if let Chord::Held(since) = self.chord
@@ -170,16 +233,22 @@ impl From<Dir> for Action {
 /// What the settings and the panel allow, shared with the controller thread.
 pub struct Controller {
     enabled: AtomicBool,
+    open_with: AtomicU32,
     open: AtomicBool,
 }
 
 impl Controller {
-    pub fn new(enabled: bool) -> Arc<Self> {
-        Arc::new(Self { enabled: AtomicBool::new(enabled), open: AtomicBool::new(false) })
+    pub fn new(enabled: bool, open_with: Buttons) -> Arc<Self> {
+        Arc::new(Self {
+            enabled: AtomicBool::new(enabled),
+            open_with: AtomicU32::new(open_with.0),
+            open: AtomicBool::new(false),
+        })
     }
 
-    pub fn set_enabled(&self, enabled: bool) {
+    pub fn set_enabled(&self, enabled: bool, open_with: Buttons) {
         self.enabled.store(enabled, Ordering::Relaxed);
+        self.open_with.store(open_with.0, Ordering::Relaxed);
     }
 
     pub fn set_open(&self, open: bool) {
@@ -210,7 +279,7 @@ pub fn start(controller: Arc<Controller>, act: impl Fn(Action) + Send + 'static)
                                 crate::log(&format!("controller: {}", gilrs.gamepad(event.id).name()));
                             }
                             // Buttons held on a pad that went away must not stay held.
-                            EventType::Disconnected => controls = Controls::default(),
+                            EventType::Disconnected => controls = Controls::new(controls.open_with),
                             _ => {}
                         }
                         continue;
@@ -218,9 +287,12 @@ pub fn start(controller: Arc<Controller>, act: impl Fn(Action) + Send + 'static)
                 },
                 None => Input::Tick,
             };
-            if !controller.enabled.load(Ordering::Relaxed) {
-                controls = Controls::default();
-                continue;
+            let open_with = Buttons(controller.open_with.load(Ordering::Relaxed));
+            if !controller.enabled.load(Ordering::Relaxed) || open_with != controls.open_with {
+                controls = Controls::new(open_with);
+                if !controller.enabled.load(Ordering::Relaxed) {
+                    continue;
+                }
             }
             let open = controller.open.load(Ordering::Relaxed);
             if let Some(action) = controls.feed(input, Instant::now(), open) {
@@ -360,6 +432,36 @@ mod tests {
         assert_eq!(c.feed(press(Button::DPadDown), t, true), Some(Action::Down));
         assert_eq!(c.feed(Input::Tick, ms(t, 400), false), None);
         assert_eq!(c.deadline(), None);
+    }
+
+    #[test]
+    fn other_buttons_can_open() {
+        let t = Instant::now();
+        let open_with: Buttons = toml::from_str::<Wrap>("b = [\"LB\", \"rb\"]").unwrap().b;
+        let mut c = Controls::new(open_with);
+        c.feed(press(Button::Start), t, false);
+        c.feed(press(Button::Select), t, false);
+        assert_eq!(c.deadline(), None);
+        c.feed(press(Button::LeftTrigger), t, false);
+        c.feed(press(Button::RightTrigger), t, false);
+        assert_eq!(c.feed(Input::Tick, ms(t, 500), false), Some(Action::Toggle));
+
+        let guide: Buttons = toml::from_str::<Wrap>("b = [\"guide\"]").unwrap().b;
+        let mut c = Controls::new(guide);
+        c.feed(press(Button::Mode), t, false);
+        assert_eq!(c.feed(Input::Tick, ms(t, 500), false), Some(Action::Toggle));
+    }
+
+    #[test]
+    fn the_panels_own_buttons_cant_open_it() {
+        for list in ["[\"a\"]", "[\"start\", \"up\"]", "[]", "[\"plus\"]"] {
+            assert!(toml::from_str::<Wrap>(&format!("b = {list}")).is_err(), "{list}");
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct Wrap {
+        b: Buttons,
     }
 
     #[test]

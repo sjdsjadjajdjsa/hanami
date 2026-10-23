@@ -8,6 +8,7 @@ use serde::Deserialize;
 use toml_edit::{Array, ArrayOfTables, DocumentMut, InlineTable, value};
 
 use crate::find::Source;
+use crate::gamepad::Buttons;
 use crate::games::key;
 use crate::theme::Theme;
 
@@ -54,6 +55,10 @@ projects = []
 # Game controller: hold Start and Select together for half a second to open
 # or hide the panel; in the panel, up and down move, A starts, B hides.
 controller = true
+
+# The buttons held together to open the panel: start, select, guide, x, y,
+# lb, rb, lt, rt, l3, r3, left, right.
+controller_buttons = ["start", "select"]
 
 # Hanami goes online at most once a day, only to GitHub: for the newest list
 # of known ports and to check for a new version. false = never.
@@ -102,6 +107,7 @@ pub struct Config {
     pub folders: Vec<String>,
     pub projects: Vec<String>,
     pub controller: bool,
+    pub controller_buttons: Buttons,
     pub online: bool,
     pub theme: Theme,
     #[serde(rename = "game")]
@@ -120,6 +126,7 @@ impl Default for Config {
             folders: Vec::new(),
             projects: Vec::new(),
             controller: true,
+            controller_buttons: Buttons::default(),
             online: true,
             theme: Theme::default(),
             games: Vec::new(),

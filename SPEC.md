@@ -28,7 +28,7 @@ for Linux and Windows.
      category that aren't also Utility, minus launchers whose games are
      found directly (Steam, Heroic, Lutris).
    - **epic** and **gog:** the Epic Games Launcher's and GOG's installed
-     games (Windows).
+     games (Windows); GOG games start through GOG Galaxy when it is installed.
    - Your own entries from the settings file come first and win when the
      same game turns up twice ("Paper Gun 3D: PC Edition" and "Paper Gun 3D
      PC Edition" count as one). Names in `hide` are left out.

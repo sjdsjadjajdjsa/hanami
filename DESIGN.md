@@ -60,4 +60,7 @@ something not on this page, add it here first.
 
 - Linux (KWin): blur behind a rounded region (`kwin-blur`). Without the
   Blur effect the panel is plain translucent.
-- Windows 11: Acrylic behind the panel (to build).
+- Windows 11 (22H2 and newer): Acrylic behind the panel, tinted dark or
+  light after the `panel` colour, the window cut to the panel's rounded
+  shape. Older Windows, and Windows drawing with the CPU, keep the plain
+  translucent (or solid) panel.

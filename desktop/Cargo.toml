@@ -17,4 +17,4 @@ wayland-backend = { version = "0.3", features = ["client_system"] }
 wayland-protocols-plasma = { version = "0.3", features = ["client"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Graphics_OpenGL", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Graphics_OpenGL", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
