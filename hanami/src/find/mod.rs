@@ -5,7 +5,7 @@
 mod apps;
 #[cfg(any(windows, test))]
 mod epic;
-#[cfg(windows)]
+#[cfg(any(windows, test))]
 mod gog;
 mod heroic;
 #[cfg(target_os = "linux")]
