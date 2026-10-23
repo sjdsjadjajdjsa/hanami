@@ -117,6 +117,12 @@ DS4Windows). It can be plugged in while Hanami runs.
   game, B (the right button, Circle) hides the panel. Holding Start and
   Select again hides it too.
 - `controller = false` in the settings turns all of this off.
+- `controller_buttons` picks other buttons to hold, all together, for the
+  half second: any of `start`, `select`, `guide`, `x`, `y`, `lb`, `rb`,
+  `lt`, `rt`, `l3`, `r3` (the sticks pressed in), `left` and `right` (on
+  the D-pad). A, B, up and down can't be used: the open panel needs them.
+  For example `controller_buttons = ["lb", "rb", "start"]`, or
+  `["guide"]` where nothing else takes the Guide button.
 
 Why Start and Select: the Guide button (the Xbox or PlayStation logo) is
 taken. Steam opens its overlay or Big Picture on it, Windows opens the Game
@@ -303,6 +309,9 @@ hide = ["Some Game"]
 # Game controller: hold Start and Select together for half a second to open
 # or hide the panel; in the panel, up and down move, A starts, B hides.
 controller = true
+
+# The buttons held together to open the panel.
+controller_buttons = ["start", "select"]
 
 # Extra folders to search for ports and games with a hanami-game.toml.
 folders = ["~/Emulation/ports"]

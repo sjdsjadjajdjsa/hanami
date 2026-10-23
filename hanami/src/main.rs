@@ -315,7 +315,10 @@ impl App {
                 Err(message) => self.notify(message),
             }
         }
-        self.controller.set_enabled(self.config.borrow().controller);
+        {
+            let config = self.config.borrow();
+            self.controller.set_enabled(config.controller, config.controller_buttons);
+        }
         let dir = self.config_path.as_deref().and_then(Path::parent);
         if let Err(problem) =
             theme::apply(&self.panel, &self.config.borrow().theme, dir, self.panel.window().scale_factor())
@@ -1161,7 +1164,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         log(problem);
     }
 
-    let controller = gamepad::Controller::new(config.controller);
+    let controller = gamepad::Controller::new(config.controller, config.controller_buttons);
     let app = Rc::new(App {
         panel,
         rows,
