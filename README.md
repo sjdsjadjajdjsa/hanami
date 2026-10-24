@@ -27,7 +27,11 @@ opens a small panel that lists your installed games.
 - **Your look:** colours and the falling petals are two small files;
   write them yourself or ask your AI for "autumn, with maple leaves"
   ([how](GUIDE.md#changing-the-look)).
-- **Resource use:** about 35 MB of memory, no CPU use while hidden.
+- **Resource use:** about 29 MB of memory with 200 games, 35 MB with
+  1,350. While hidden it does next to nothing: a library it uses checks
+  for work twice a second, and on Windows the controller is checked 100
+  times a second unless `controller = false`.
+  [ROADMAP.md](ROADMAP.md#measured) has how this was measured.
 - **AI help prompt:** the **?** button copies a prompt containing the full
   documentation, for AI assistants that can read your computer (Claude Code,
   OpenCode and similar) to answer questions about Hanami.
