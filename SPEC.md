@@ -10,7 +10,7 @@ for Linux and Windows.
    opens the running one. `hanami` opens the panel, `hanami --hidden` starts
    in the tray only (for starting with the system). The tray menu has Open,
    Edit settings, Open at login (a login entry that runs `hanami --hidden`),
-   Quit.
+   Report a problem, Quit.
 2. **Opens and closes on demand.** Tray click, the built-in hotkey (default
    `Ctrl+Alt+H`, changeable), or `hanami --toggle` bound to a key in the
    desktop's own shortcut settings (needed on Wayland, where apps can't grab
@@ -52,6 +52,9 @@ for Linux and Windows.
    prints the same prompt.
 9. **Errors.** A game that fails to start shows one
    line in the panel footer for a few seconds. Nothing pops up elsewhere.
+   After a crash, the next open says so once in the footer, and **Report a
+   problem** in the tray menu opens a filled-in GitHub issue; nothing is
+   sent unless the user submits it.
 
 ## Config
 

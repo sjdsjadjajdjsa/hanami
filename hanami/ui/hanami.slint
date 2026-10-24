@@ -615,6 +615,7 @@ export component Tray inherits SystemTrayIcon {
     callback toggle-at-login();
     callback quit-app();
     callback get-update();
+    callback report-problem();
 
     icon: @image-url("../../assets/hanami-icon.svg");
     title: "Hanami";
@@ -637,6 +638,10 @@ export component Tray inherits SystemTrayIcon {
         if root.update-version != "": MenuItem {
             title: "Get Hanami " + root.update-version;
             activated => { root.get-update(); }
+        }
+        MenuItem {
+            title: "Report a problem";
+            activated => { root.report-problem(); }
         }
         MenuItem {
             title: "Quit";
