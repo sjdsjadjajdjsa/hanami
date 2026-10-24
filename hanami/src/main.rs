@@ -56,8 +56,6 @@ slint::include_modules!();
 const WIDTH: u32 = 340;
 const HEIGHT: u32 = 440;
 const RADIUS: u32 = 16;
-/// Icons are 24 px in the row, decoded at twice that for sharp HiDPI.
-const ICON_PX: u32 = 48;
 /// Opening the panel looks for games again, unless the last look is this recent.
 const FRESH: Duration = Duration::from_secs(1);
 const FRAME: Duration = Duration::from_millis(33);
@@ -191,6 +189,7 @@ impl App {
         }
         self.query.borrow_mut().clear();
         *self.folder.borrow_mut() = None;
+        self.fit_icons();
         self.refilter();
 
         let scale = self.panel.window().scale_factor();
@@ -241,6 +240,9 @@ impl App {
             let Some(panel) = panel.upgrade() else { return };
             if let Ok(window) = panel.window().winit_window().await {
                 let scale = panel.window().scale_factor();
+                // Only now is the scale real: the rows' pictures may need
+                // another size.
+                with_app(|app| app.fit_icons());
                 // The very first show centres the panel before the window,
                 // and so its scale, exists.
                 if scale != guessed
@@ -512,18 +514,38 @@ impl App {
     }
 
     /// Puts pictures that finished loading into the rows already showing,
-    /// without touching the highlight or the search.
+    /// without touching the highlight or the search. A row still showing a
+    /// picture made for another scale gets the new one.
     fn show_icons(&self) {
         if !self.mapped.get() {
+            return;
+        }
+        let px = self.icons.px();
+        let games = self.games.borrow();
+        for (row, &index) in self.shown.borrow().iter().enumerate() {
+            let Some(mut data) = self.rows.row_data(row) else { continue };
+            let size = data.icon.size();
+            if size.width.max(size.height) == px {
+                continue;
+            }
+            if let Some(icon) = games[index].icon.as_deref().and_then(|path| self.icons.peek(path)) {
+                data.icon = icon;
+                self.rows.set_row_data(row, data);
+            }
+        }
+    }
+
+    /// Makes the rows' pictures exactly as big as they are drawn at the
+    /// panel's scale, so they stay sharp and small. A new scale (another
+    /// monitor) makes them again; rows keep the old ones until then.
+    fn fit_icons(&self) {
+        if !self.icons.set_px(icons::row_px(self.panel.window().scale_factor())) || !self.mapped.get() {
             return;
         }
         let games = self.games.borrow();
         for (row, &index) in self.shown.borrow().iter().enumerate() {
             let Some(mut data) = self.rows.row_data(row) else { continue };
-            if data.icon.size().width > 0 {
-                continue;
-            }
-            if let Some(icon) = games[index].icon.as_deref().and_then(|path| self.icons.peek(path)) {
+            if let Some(icon) = games[index].icon.as_deref().and_then(|path| self.icons.get(path)) {
                 data.icon = icon;
                 self.rows.set_row_data(row, data);
             }
@@ -965,6 +987,9 @@ fn connect_panel(panel: &Panel) {
         if let WindowEvent::Focused(focused) = *event {
             Timer::single_shot(Duration::ZERO, move || with_app(|app| app.focus_changed(focused)));
         }
+        if let WindowEvent::ScaleFactorChanged { .. } = event {
+            Timer::single_shot(Duration::ZERO, || with_app(|app| app.fit_icons()));
+        }
         #[cfg(windows)]
         if drag_with_key(window, event, &mut held) {
             return EventResult::PreventDefault;
@@ -1307,6 +1332,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let controller = gamepad::Controller::new(config.controller, config.controller_buttons);
+    let icon_px = icons::row_px(panel.window().scale_factor());
     let app = Rc::new(App {
         panel,
         rows,
@@ -1334,7 +1360,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fade: Timer::default(),
         notice_clock: Timer::default(),
         clipboard: RefCell::new(None),
-        icons: icons::Icons::new(ICON_PX, || {
+        icons: icons::Icons::new(icon_px, || {
             let _ = slint::invoke_from_event_loop(|| with_app(|app| app.show_icons()));
         }),
         update_notice: RefCell::new(None),
