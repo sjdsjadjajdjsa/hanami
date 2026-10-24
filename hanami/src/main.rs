@@ -29,6 +29,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::{JoinHandle, ThreadId};
 use std::time::{Duration, Instant};
 
 use global_hotkey::hotkey::HotKey;
@@ -56,6 +57,8 @@ const HEIGHT: u32 = 440;
 const RADIUS: u32 = 16;
 /// Icons are 24 px in the row, decoded at twice that for sharp HiDPI.
 const ICON_PX: u32 = 48;
+/// Opening the panel looks for games again, unless the last look is this recent.
+const FRESH: Duration = Duration::from_secs(1);
 const FRAME: Duration = Duration::from_millis(33);
 const NOTICE: Duration = Duration::from_secs(4);
 /// Matches the fade in hanami.slint.
@@ -111,6 +114,10 @@ struct App {
     panel: Panel,
     rows: Rc<VecModel<GameRow>>,
     games: RefCell<Vec<games::Game>>,
+    /// What the game sources found last, and when; nothing before the first look.
+    found: RefCell<Option<(Found, Instant)>>,
+    /// The look for games running in the background.
+    looking: RefCell<Option<JoinHandle<Looked>>>,
     shown: RefCell<Vec<usize>>,
     /// Name keys of found games the user hasn't said yes or no to yet.
     fresh: RefCell<HashSet<String>>,
@@ -197,6 +204,9 @@ impl App {
         // dirty; on Wayland a surface without a first frame is never mapped.
         self.panel.window().request_redraw();
         self.panel.invoke_focus_keys();
+        // The list shown is the last one found; a game installed since then
+        // joins it a moment later.
+        self.look_again();
 
         let app = Rc::downgrade(self);
         self.clock.start(TimerMode::Repeated, FRAME, move || {
@@ -311,7 +321,8 @@ impl App {
         }
     }
 
-    /// Re-reads the settings and the game list; keeps the last good settings on a mistake.
+    /// Re-reads the settings and makes the game list from what was found
+    /// last; keeps the last good settings on a mistake.
     fn reload(&self) {
         if let Some(path) = &self.config_path {
             match config::load(path) {
@@ -334,7 +345,14 @@ impl App {
                 }
             });
         }
-        let (games, fresh) = listed(&self.config.borrow(), &self.state.borrow());
+        if self.found.borrow().is_none() {
+            self.first_look();
+        }
+        let (games, fresh) = {
+            let found = self.found.borrow();
+            let found = found.as_ref().map(|(found, _)| found.as_slice()).unwrap_or_default();
+            listed(&self.config.borrow(), &self.state.borrow(), found)
+        };
         log(&format!("{} games, {} new", games.len(), fresh.len()));
         self.panel.set_fresh(fresh.len() as i32);
         *self.games.borrow_mut() = games;
@@ -418,9 +436,67 @@ impl App {
         *self.shown.borrow_mut() = shown;
     }
 
-    /// A background search for ports finished with something new: show it,
-    /// unless the user is in the middle of renaming or picking an action.
-    fn ports_changed(&self) {
+    /// The first list waits for the look started with Hanami, or looks now.
+    fn first_look(&self) {
+        let running = self.looking.borrow_mut().take();
+        let (found, problems) =
+            running.and_then(|look| look.join().ok()).unwrap_or_else(|| look(&self.config.borrow()));
+        note(problems);
+        *self.found.borrow_mut() = Some((found, Instant::now()));
+    }
+
+    /// Looks for games on another thread, unless a look is running or the
+    /// last one is very recent; the list changes when something new turns up.
+    fn look_again(&self) {
+        if self.looking.borrow().as_ref().is_some_and(|look| !look.is_finished()) {
+            return;
+        }
+        // One that finished before saying so.
+        self.take_look();
+        if self.found.borrow().as_ref().is_some_and(|(_, at)| at.elapsed() < FRESH) {
+            return;
+        }
+        let config = self.config.borrow().clone();
+        let started = std::thread::Builder::new().name("look".into()).spawn(move || {
+            let looked = look(&config);
+            desktop::return_memory();
+            let me = std::thread::current().id();
+            let _ = slint::invoke_from_event_loop(move || with_app(|app| app.looked(me)));
+            looked
+        });
+        match started {
+            Ok(look) => *self.looking.borrow_mut() = Some(look),
+            Err(error) => log(&format!("couldn't look for games in the background: {error}")),
+        }
+    }
+
+    /// The look on thread `id` finished; an earlier one that `first_look`
+    /// already took says nothing.
+    fn looked(&self, id: ThreadId) {
+        if self.looking.borrow().as_ref().is_some_and(|look| look.thread().id() == id) {
+            self.take_look();
+        }
+    }
+
+    /// Keeps what a finished look found, and shows it if it changed the list.
+    fn take_look(&self) {
+        let Some(look) = self.looking.borrow_mut().take() else { return };
+        let Ok((found, problems)) = look.join() else {
+            log("looking for games stopped with an error; the list stays as it was");
+            return;
+        };
+        note(problems);
+        let changed = self.found.borrow().as_ref().is_none_or(|(last, _)| *last != found);
+        *self.found.borrow_mut() = Some((found, Instant::now()));
+        if changed {
+            log("the games found changed");
+            self.list_changed();
+        }
+    }
+
+    /// Something found in the background changed the list: show it, unless
+    /// the user is in the middle of renaming or picking an action.
+    fn list_changed(&self) {
         if !self.open.get() || self.panel.get_renaming() >= 0 || self.panel.get_acting() >= 0 {
             return;
         }
@@ -723,12 +799,50 @@ impl App {
     }
 }
 
-/// Every game for the panel, in the order it shows them, and the name keys
-/// of new finds still waiting for a yes or no. Only ports, rewrites and
-/// Minecraft launchers ask first (the instances under them don't); a game another place also lists isn't new.
-fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>) {
+/// What each game source found, before the settings rename, hide and
+/// order the games. Ports keep their own list, kept fresh in the background.
+type Found = Vec<(Source, Vec<games::Game>)>;
+/// What a look found, and the places it couldn't read.
+type Looked = (Found, Vec<String>);
+
+/// Looks in every game source in the settings but ports; any thread can.
+fn look(config: &Config) -> Looked {
+    let mut found: Found = Vec::new();
+    let mut problems = Vec::new();
+    for &source in &config.find {
+        if source == Source::Ports || found.iter().any(|(seen, _)| *seen == source) {
+            continue;
+        }
+        let started = Instant::now();
+        let games = find::games(source, config);
+        log(&format!("looked in {source:?}: {} games in {} ms", games.len(), started.elapsed().as_millis()));
+        for problem in find::problems() {
+            log(&problem);
+            problems.push(problem);
+        }
+        found.push((source, games));
+    }
+    (found, problems)
+}
+
+/// Places that couldn't be read, to say in the panel.
+fn note(found: Vec<String>) {
+    PROBLEMS.with_borrow_mut(|problems| {
+        for problem in found {
+            if !problems.contains(&problem) {
+                problems.push(problem);
+            }
+        }
+    });
+}
+
+/// Every game for the panel from what was found, in the order it shows
+/// them, and the name keys of new finds still waiting for a yes or no. Only
+/// ports, rewrites and Minecraft launchers ask first (the instances under
+/// them don't); a game another place also lists isn't new.
+fn listed(config: &Config, state: &State, found: &[(Source, Vec<games::Game>)]) -> (Vec<games::Game>, HashSet<String>) {
     let mut sources = Vec::new();
-    let mut found = Vec::new();
+    let mut all = Vec::new();
     let mut known: HashSet<String> = config.games.iter().map(|game| key(&game.name)).collect();
     let mut fresh = HashSet::new();
     for &source in &config.find {
@@ -736,17 +850,18 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
             continue;
         }
         sources.push(source);
-        let started = Instant::now();
-        let games = find::games(source, config);
-        log(&format!("looked in {source:?}: {} games in {} ms", games.len(), started.elapsed().as_millis()));
-        for problem in find::problems() {
-            log(&problem);
-            PROBLEMS.with_borrow_mut(|problems| {
-                if !problems.contains(&problem) {
-                    problems.push(problem);
-                }
-            });
-        }
+        let games = if source == Source::Ports {
+            let started = Instant::now();
+            let games = find::games(source, config);
+            log(&format!("looked in {source:?}: {} games in {} ms", games.len(), started.elapsed().as_millis()));
+            note(find::problems());
+            games
+        } else {
+            match found.iter().find(|(seen, _)| *seen == source) {
+                Some((_, games)) => games.clone(),
+                None => continue,
+            }
+        };
         for game in &games {
             let name = key(&game.name);
             if !matches!(source, Source::Ports | Source::Prism) || game.group.is_some() {
@@ -755,9 +870,9 @@ fn listed(config: &Config, state: &State) -> (Vec<games::Game>, HashSet<String>)
                 fresh.insert(name);
             }
         }
-        found.extend(games);
+        all.extend(games);
     }
-    let mut games = games::collect(config, found);
+    let mut games = games::collect(config, all);
     fresh.retain(|name| !known.contains(name) && games.iter().any(|game| key(&game.name) == *name));
     games::order(&mut games, &fresh, &config.favourites, &state.played);
     (games, fresh)
@@ -1082,7 +1197,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let verbose = VERBOSE.load(Ordering::Relaxed);
         let mut out = std::io::stdout().lock();
-        for game in listed(&config, &State::load()).0 {
+        let (found, problems) = look(&config);
+        note(problems);
+        for game in listed(&config, &State::load(), &found).0 {
             let label = match &game.group {
                 Some(group) => format!("{} · in {group}", game.label),
                 None => game.label,
@@ -1153,7 +1270,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The ports search runs in the background; start it now so the first
     // panel already has its result, and show what it finds while open.
     find::on_ports_change(|| {
-        let _ = slint::invoke_from_event_loop(|| with_app(|app| app.ports_changed()));
+        let _ = slint::invoke_from_event_loop(|| with_app(|app| app.list_changed()));
     });
     if config.find.contains(&Source::Ports) {
         find::games(Source::Ports, &config);
@@ -1173,6 +1290,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         panel,
         rows,
         games: RefCell::default(),
+        found: RefCell::default(),
+        looking: RefCell::default(),
         shown: RefCell::default(),
         fresh: RefCell::default(),
         state: RefCell::new(State::load()),
@@ -1202,6 +1321,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         app.notify(message);
     }
     APP.with_borrow_mut(|slot| *slot = Some(app.clone()));
+    // The first list is ready before the first open, or nearly.
+    app.look_again();
     Timer::single_shot(Duration::ZERO, move || app.handle(first));
     gamepad::start(controller, |action| {
         let _ = slint::invoke_from_event_loop(move || with_app(|app| app.control(action)));
@@ -1215,7 +1336,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod tests {
-    use super::searchable;
+    use super::*;
 
     #[test]
     fn only_text_keys_go_into_the_search() {
@@ -1225,5 +1346,28 @@ mod tests {
         for key in ["\u{f700}", "\u{f729}", "\u{f704}", "\t", "\u{1b}"] {
             assert_eq!(searchable(key), "", "{key:?}");
         }
+    }
+
+    #[test]
+    fn the_list_follows_the_settings_without_looking_again() {
+        let game = |name: &str| games::Game {
+            group: None,
+            name: name.into(),
+            label: String::new(),
+            launch: games::Launch::Open(String::new()),
+            icon: None,
+        };
+        let found = vec![(Source::Steam, vec![game("Celeste")]), (Source::Lutris, vec![game("Doom")])];
+        let names = |config: &Config| -> Vec<String> {
+            listed(config, &State::default(), &found).0.into_iter().map(|game| game.name).collect()
+        };
+        let mut config = Config { find: vec![Source::Lutris, Source::Steam], ..Config::default() };
+        assert_eq!(names(&config), ["Celeste", "Doom"]);
+        config.find = vec![Source::Lutris];
+        assert_eq!(names(&config), ["Doom"]);
+        config.rename.insert("Doom".into(), "DOOM (1993)".into());
+        assert_eq!(names(&config), ["DOOM (1993)"]);
+        config.hide = vec!["Doom".into()];
+        assert!(names(&config).is_empty());
     }
 }

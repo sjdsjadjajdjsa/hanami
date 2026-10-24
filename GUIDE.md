@@ -133,7 +133,9 @@ inside a game from opening the panel.
 
 ## Where games come from
 
-Hanami finds installed games by itself, every time the panel opens:
+Hanami finds installed games by itself, every time the panel opens. The
+panel shows the list it found last, and a game installed since then joins
+it a moment later:
 
 | Name in settings | What it finds | Systems |
 |---|---|---|

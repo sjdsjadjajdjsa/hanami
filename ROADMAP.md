@@ -55,7 +55,11 @@ use it in GUIDE.md.
   left behind by uninstalls skipped, manifests with a byte order mark read)
   and GOG (a missing `exe` filled in from `goggame-<id>.info`, games started
   through GOG Galaxy when it is installed); `controller_buttons` to choose
-  the buttons that open the panel.
+  the buttons that open the panel. With a big library (1,350 games made up
+  by `tools/bench.py`), the open panel uses 5 % CPU instead of 42 % and 33 MB
+  instead of 55 MB, because only the rows in view are built. It opens in
+  15 ms instead of 94 ms, because Hanami looks for new games after the panel
+  is up.
 - **Checked on five Linux desktops** (live ISOs in QEMU, Oct 2026): the
   AppImage runs without libfuse2, finds the app-menu games and a Steam
   library, opens from the tray and from `hanami --toggle`, and starts an

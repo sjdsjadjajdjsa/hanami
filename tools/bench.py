@@ -15,7 +15,7 @@ What it measures:
   panel does each time it opens, with the time each source took.
 - cold start: `hanami` from nothing to the panel's first drawn pixel.
 - open: `hanami --toggle` against a running, hidden Hanami, to the first
-  drawn pixel, and how long the open itself spent finding games.
+  drawn pixel, and how long looking for games took around each open.
 - memory and CPU: hidden after start, open with petals falling, and
   hidden again after an open.
 """
@@ -444,7 +444,7 @@ def report(results):
         print(f"--toggle process             {warm['toggle_process']['median']:>7} ms")
         print(f"--toggle to first pixel      {warm['to_first_pixel']['median']:>7} ms")
         if warm["finding_games_per_open"]:
-            print(f"finding games on each open   {warm['finding_games_per_open']['median']:>7} ms")
+            print(f"looking for games, each open {warm['finding_games_per_open']['median']:>7} ms")
         for source, ms in sorted(warm["sources_ms_per_open"].items(), key=lambda item: -item[1]):
             print(f"  {source:<26} {ms:>7} ms")
         print(f"\n{'':<22}{'RSS MB':>8}{'PSS MB':>8}{'anon MB':>9}{'threads':>9}{'CPU %':>8}")
