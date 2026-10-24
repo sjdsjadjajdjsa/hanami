@@ -9,12 +9,19 @@
 //! Select together are bound by nothing well known, and the half-second
 //! hold keeps a quick press from counting. While the panel is hidden,
 //! nothing but that chord does anything.
+//!
+//! Controller support starts the first time `controller` is on, and gilrs's
+//! rumble thread, which wakes every 50 ms, is never started. On Windows,
+//! XInput can only be asked, so gilrs asks every 10 ms while controller
+//! support runs, hidden or not; turning `controller` off stops that at the
+//! next start of Hanami.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, OnceLock};
+use std::thread::Thread;
 use std::time::{Duration, Instant};
 
-use gilrs::{Axis, Button, EventType, Gilrs};
+use gilrs::{Axis, Button, EventType, GilrsBuilder};
 use serde::Deserialize;
 
 /// The open buttons held together this long open or hide the panel.
@@ -235,6 +242,8 @@ pub struct Controller {
     enabled: AtomicBool,
     open_with: AtomicU32,
     open: AtomicBool,
+    /// The controller thread, woken when the settings turn controllers on.
+    thread: OnceLock<Thread>,
 }
 
 impl Controller {
@@ -243,12 +252,16 @@ impl Controller {
             enabled: AtomicBool::new(enabled),
             open_with: AtomicU32::new(open_with.0),
             open: AtomicBool::new(false),
+            thread: OnceLock::new(),
         })
     }
 
     pub fn set_enabled(&self, enabled: bool, open_with: Buttons) {
         self.enabled.store(enabled, Ordering::Relaxed);
         self.open_with.store(open_with.0, Ordering::Relaxed);
+        if enabled && let Some(thread) = self.thread.get() {
+            thread.unpark();
+        }
     }
 
     pub fn set_open(&self, open: bool) {
@@ -259,8 +272,13 @@ impl Controller {
 /// Waits for controller events on its own thread, blocking between them,
 /// and hands each action to `act`. Controllers plugged in later are picked up.
 pub fn start(controller: Arc<Controller>, act: impl Fn(Action) + Send + 'static) {
+    let shared = controller.clone();
     let spawned = std::thread::Builder::new().name("controller".into()).spawn(move || {
-        let mut gilrs = match Gilrs::new() {
+        // Asleep, without gilrs, until controllers are on.
+        while !controller.enabled.load(Ordering::Relaxed) {
+            std::thread::park();
+        }
+        let mut gilrs = match GilrsBuilder::new().with_force_feedback(false).build() {
             Ok(gilrs) => gilrs,
             Err(error) => {
                 crate::log(&format!("no controller support: {error}"));
@@ -300,8 +318,15 @@ pub fn start(controller: Arc<Controller>, act: impl Fn(Action) + Send + 'static)
             }
         }
     });
-    if let Err(error) = spawned {
-        crate::log(&format!("no controller thread: {error}"));
+    match spawned {
+        Ok(handle) => {
+            let _ = shared.thread.set(handle.thread().clone());
+            // Turned on before the thread was known: it may be parked already.
+            if shared.enabled.load(Ordering::Relaxed) {
+                handle.thread().unpark();
+            }
+        }
+        Err(error) => crate::log(&format!("no controller thread: {error}")),
     }
 }
 
