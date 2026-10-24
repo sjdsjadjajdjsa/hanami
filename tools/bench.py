@@ -3,27 +3,47 @@ screen, so changes for speed and memory come with numbers.
 
     cargo build --release
     python3 tools/bench.py
+    python3 tools/bench.py --library typical --out typical.json
     python3 tools/bench.py --steam 2000 --out after.json
+    python3 tools/bench.py --note machine="my desktop" --note display_scale=1.25
 
 Needs Linux, Xvfb and dbus-run-session. Nothing outside a temporary folder
 is read or written: HOME and the XDG folders point into it, and Hanami
 never goes online.
 
-What it measures:
+Two made-up libraries: `large` (1,350 games, the default) and `typical`
+(200 games). Every game in both has an icon. Counts given by hand win.
 
-- scan: `hanami --list`, the same look through every game source the
-  panel does each time it opens, with the time each source took.
-- cold start: `hanami` from nothing to the panel's first drawn pixel.
-- open: `hanami --toggle` against a running, hidden Hanami, to the first
-  drawn pixel, and how long looking for games took around each open.
-- memory and CPU: hidden after start, open with petals falling, and
-  hidden again after an open.
+What it measures. Internal times come from Hanami's own --verbose log;
+external ones are taken from outside, by watching the X screen. None of
+them include starting a game: they are about the panel.
+
+- scan (internal and external): `hanami --list`, the same look through
+  every game source the panel does, with the time each source took.
+- cold start (external): `hanami` from nothing to the panel's first drawn
+  pixel.
+- open (external): `hanami --toggle` against a running, hidden Hanami, to
+  the first drawn pixel, and how long looking for games took around each
+  open (internal; it runs after the panel is up).
+- hotkey (external): Ctrl+Alt+H sent through XTest to the first drawn
+  pixel, read from the X server every millisecond. That is when the pixel
+  is in the X server, not when a monitor shows it.
+- memory and CPU: hidden after start (the library loaded), open and idle
+  with petals falling, and hidden again after opening and hiding (icons
+  kept). CPU is a percent of one logical core: one fully used logical
+  core is 100 %.
+
+Each saved result says how it was made: version, commit, the machine, the
+screen, the library and the petals. What the script can't tell is
+"unknown"; --note adds what you know (and wins over what was detected).
 """
 
 import argparse
 import ctypes
 import ctypes.util
+import datetime
 import hashlib
+import platform
 import json
 import os
 import re
@@ -40,6 +60,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TICK = os.sysconf("SC_CLK_TCK")
+UNKNOWN = "unknown"
+
+# Made-up libraries. `typical` is the one memory targets are checked
+# against; keep it the same so runs compare.
+LIBRARIES = {
+    "large": {"steam": 800, "apps": 150, "programs": 400, "heroic": 300, "lutris": 100},
+    "typical": {"steam": 110, "apps": 30, "programs": 80, "heroic": 40, "lutris": 20},
+}
 
 
 # A made-up library ---------------------------------------------------------
@@ -68,7 +96,7 @@ def write(path, data):
     path.write_bytes(data)
 
 
-def library(home, counts):
+def library(home, counts, petals=24):
     """Steam, app menu, Heroic and Lutris games under `home`; returns the environment that points Hanami at them."""
     config, data, system = home / ".config", home / ".local/share", home / "usr/share"
     env = {
@@ -80,7 +108,7 @@ def library(home, counts):
         "XDG_DATA_DIRS": str(system),
         "PATH": f"{home / 'bin'}:/usr/bin:/bin",
     }
-    write(config / "hanami/config.toml", "online = false\n")
+    write(config / "hanami/config.toml", f"online = false\n\n[theme]\npetals = {petals}\n")
 
     # Steam: two library folders, a 32 px icon per game.
     steam, second = data / "Steam", home / "SteamLibrary"
@@ -242,15 +270,50 @@ class Screen:
             raise RuntimeError(f"couldn't open display {display}")
         self.root = x.XDefaultRootWindow(self.d)
         self.pid_atom = x.XInternAtom(self.d, b"_NET_WM_PID", 0)
+        self.width = 0
+        self.xtest = None
+        found = ctypes.util.find_library("Xtst")
+        if found:
+            xtest = ctypes.CDLL(found)
+            xtest.XTestFakeKeyEvent.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong]
+            x.XStringToKeysym.restype = ctypes.c_ulong
+            x.XStringToKeysym.argtypes = [ctypes.c_char_p]
+            x.XKeysymToKeycode.restype = ctypes.c_ubyte
+            x.XKeysymToKeycode.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+            x.XFlush.argtypes = [ctypes.c_void_p]
+            self.xtest = xtest
 
-    def children(self):
+    def press(self, *keys):
+        """Holds `keys` down in order and lets go, as a person would; needs XTest."""
+        codes = [self.x.XKeysymToKeycode(self.d, self.x.XStringToKeysym(key.encode())) for key in keys]
+        for code in codes:
+            self.xtest.XTestFakeKeyEvent(self.d, code, 1, 0)
+        for code in reversed(codes):
+            self.xtest.XTestFakeKeyEvent(self.d, code, 0, 0)
+        self.x.XFlush(self.d)
+
+    def children(self, window=None):
         root, parent, children, n = ctypes.c_ulong(), ctypes.c_ulong(), ctypes.POINTER(ctypes.c_ulong)(), ctypes.c_uint()
-        if not self.x.XQueryTree(self.d, self.root, ctypes.byref(root), ctypes.byref(parent), ctypes.byref(children), ctypes.byref(n)):
+        window = self.root if window is None else window
+        if not self.x.XQueryTree(self.d, window, ctypes.byref(root), ctypes.byref(parent), ctypes.byref(children), ctypes.byref(n)):
             return []
         windows = [children[i] for i in range(n.value)]
         if children:
             self.x.XFree(children)
         return windows
+
+    def windows_of(self, pid):
+        """`pid`'s windows: on the root window, or one or two levels down, inside a window manager's frame."""
+        found, level = [], self.children()
+        for _ in range(3):
+            below = []
+            for window in level:
+                if self.pid(window) == pid:
+                    found.append(window)
+                else:
+                    below += self.children(window)
+            level = below
+        return found
 
     def pid(self, window):
         kind, fmt, count, after, value = ctypes.c_ulong(), ctypes.c_int(), ctypes.c_ulong(), ctypes.c_ulong(), ctypes.c_void_p()
@@ -265,16 +328,17 @@ class Screen:
     def panel(self, pid):
         """(on screen, drawn) for the biggest window `pid` has on screen."""
         best = None
-        for window in self.children():
+        for window in self.windows_of(pid):
             attributes = XWindowAttributes()
             if not self.x.XGetWindowAttributes(self.d, window, ctypes.byref(attributes)):
                 continue
-            if attributes.map_state != IS_VIEWABLE or attributes.width < 100 or self.pid(window) != pid:
+            if attributes.map_state != IS_VIEWABLE or attributes.width < 100:
                 continue
             best = (window, attributes)
         if best is None:
             return False, False
         window, attributes = best
+        self.width = attributes.width
         # A few pixels in the middle: the panel is fully see-through until it draws.
         image = self.x.XGetImage(self.d, window, attributes.width // 2 - 2, attributes.height // 2 - 2, 4, 4,
                                  0xFFFFFFFF, Z_PIXMAP)
@@ -353,6 +417,115 @@ def games_per_source(log):
     return {source: int(count) for source, count, _ in LOOKED.findall(log)}
 
 
+# How a run was made -----------------------------------------------------
+
+
+def run_text(*command):
+    try:
+        done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.stdout.strip() if done.returncode == 0 else None
+
+
+def source_value(path, pattern):
+    try:
+        found = re.search(pattern, (ROOT / path).read_text(), re.MULTILINE)
+    except OSError:
+        return None
+    return found.group(1) if found else None
+
+
+def meminfo():
+    try:
+        lines = Path("/proc/meminfo").read_text().splitlines()
+    except OSError:
+        return {}
+    return {line.split(":")[0]: int(line.split()[1]) // 1024 for line in lines}
+
+
+def machine():
+    """What this computer is, as far as Linux says."""
+    cpu = UNKNOWN
+    try:
+        for line in Path("/proc/cpuinfo").read_text().splitlines():
+            if line.startswith("model name"):
+                cpu = line.split(":", 1)[1].strip()
+                break
+    except OSError:
+        pass
+    os_name = UNKNOWN
+    try:
+        os_name = re.search(r'^PRETTY_NAME="?([^"\n]*)', Path("/etc/os-release").read_text(), re.MULTILINE).group(1)
+    except (OSError, AttributeError):
+        pass
+    memory = meminfo()
+    virtual = run_text("systemd-detect-virt")
+    return {
+        "os": f"{os_name}, Linux {platform.release()}",
+        "cpu_model": cpu,
+        "logical_cores": os.cpu_count() or UNKNOWN,
+        "memory_total_mb": memory.get("MemTotal", UNKNOWN),
+        "memory_available_mb": memory.get("MemAvailable", UNKNOWN),
+        "virtual_machine": virtual if virtual else UNKNOWN,
+    }
+
+
+def conditions(args, counts, binary):
+    frame_ms = source_value("hanami/src/main.rs", r"^const FRAME: Duration = Duration::from_millis\((\d+)\);")
+    dirty = run_text("git", "status", "--porcelain")
+    return {
+        "measured_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "app_version": source_value("hanami/Cargo.toml", r'^version = "(.*)"') or UNKNOWN,
+        "commit": run_text("git", "rev-parse", "HEAD") or UNKNOWN,
+        "local_changes": UNKNOWN if dirty is None else bool(dirty),
+        "binary": binary,
+        "machine": machine(),
+        "display": {
+            "server": f"existing X display {args.display}" if args.display else "Xvfb 1920x1080x24, no window manager, no compositor",
+            # Filled in from the panel's width once it has drawn.
+            "scale": UNKNOWN,
+            "renderer": UNKNOWN,
+        },
+        "library": {
+            "preset": args.library,
+            "counts": counts,
+            "games": UNKNOWN,
+            "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)",
+        },
+        "petals": {
+            "count": args.petals,
+            "on": args.petals > 0,
+            "frame_rate_fps": round(1000 / int(frame_ms), 1) if frame_ms else UNKNOWN,
+            "frame_rate_source": "FRAME in hanami/src/main.rs of this checkout" if frame_ms else UNKNOWN,
+        },
+        "cpu": {
+            "unit": "percent of one logical core; one fully used logical core is 100",
+            "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+            "sample_seconds": args.sample,
+            "panel_states": {
+                "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept",
+            },
+        },
+        "memory": {
+            "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+            "rss": "resident: everything in memory, shared libraries counted in full",
+            "pss": "proportional: shared pages split between the programs using them",
+        },
+        "timings": {
+            "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+            "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+            "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+            "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+            "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+            "game_launch": "not measured",
+        },
+        "notes": {},
+    }
+
+
 # The measurements ----------------------------------------------------------
 
 
@@ -415,6 +588,7 @@ def warm(binary, env, screen, runs, sample):
             screen.wait(pid, gone=True)
             # Past Hanami's debounce, so the next toggle counts.
             time.sleep(0.4)
+        result["hotkey_to_first_pixel"] = hotkey(screen, pid, runs)
         time.sleep(1)
         result["hidden_after_opens"] = memory(pid) | {"cpu_percent": cpu_percent(pid, sample)}
         result["toggle_process"] = summary(toggle)
@@ -422,6 +596,8 @@ def warm(binary, env, screen, runs, sample):
     finally:
         quit_hanami(binary, env, process)
     text = log.read_text()
+    renderer = re.search(r"drawing with (.*)", text)
+    result["renderer"] = renderer.group(1) if renderer else UNKNOWN
     opens = text.split(" show\n")[1:]
     finding = [sum(int(ms) for _, _, ms in LOOKED.findall(chunk)) for chunk in opens]
     result["finding_games_per_open"] = summary(finding, scale=1) if finding else None
@@ -429,7 +605,39 @@ def warm(binary, env, screen, runs, sample):
     return result
 
 
+def hotkey(screen, pid, runs):
+    """Ctrl+Alt+H to the first drawn pixel; "unknown" when the key can't be sent or Hanami didn't get it."""
+    if screen.xtest is None:
+        return UNKNOWN
+    drawn = []
+    try:
+        for _ in range(runs):
+            start = time.perf_counter()
+            screen.press("Control_L", "Alt_L", "h")
+            screen.wait(pid, timeout=3)
+            drawn.append(time.perf_counter() - start)
+            time.sleep(0.3)
+            screen.press("Control_L", "Alt_L", "h")
+            screen.wait(pid, gone=True, timeout=3)
+            time.sleep(0.4)
+    except TimeoutError:
+        # Leave the panel hidden, as the measurements after this expect.
+        if screen.panel(pid)[0]:
+            subprocess.run([screen.binary, "--toggle"], env=screen.env, check=True)
+            screen.wait(pid, gone=True)
+        return UNKNOWN
+    return summary(drawn)
+
+
 def report(results):
+    c = results["conditions"]
+    m = c["machine"]
+    print(f"\nHanami {c['app_version']}, {c['commit'][:12]}{' with local changes' if c['local_changes'] is True else ''}")
+    print(f"{m['cpu_model']}, {m['logical_cores']} logical cores, {m['memory_available_mb']} MB free, {m['os']}")
+    print(f"{c['display']['server']}, scale {c['display']['scale']}, drawing with {c['display']['renderer']}")
+    print(f"{c['petals']['count']} petals at {c['petals']['frame_rate_fps']} fps; CPU is % of one logical core over {c['cpu']['sample_seconds']} s")
+    for key, value in c["notes"].items():
+        print(f"{key}: {value}")
     scan = results["scan"]
     print(f"\nGames listed: {scan['games']}  (found: {scan['found']})")
     print(f"hanami --list                {scan['total']['median']:>7} ms  (min {scan['total']['min']}, max {scan['total']['max']})")
@@ -443,6 +651,8 @@ def report(results):
         warm = results["warm"]
         print(f"--toggle process             {warm['toggle_process']['median']:>7} ms")
         print(f"--toggle to first pixel      {warm['to_first_pixel']['median']:>7} ms")
+        hot = warm["hotkey_to_first_pixel"]
+        print(f"hotkey to first pixel        {hot['median'] if hot != UNKNOWN else UNKNOWN:>7} ms")
         if warm["finding_games_per_open"]:
             print(f"looking for games, each open {warm['finding_games_per_open']['median']:>7} ms")
         for source, ms in sorted(warm["sources_ms_per_open"].items(), key=lambda item: -item[1]):
@@ -456,11 +666,18 @@ def report(results):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--binary", default=str(ROOT / "target/release/hanami"))
-    parser.add_argument("--steam", type=int, default=800, help="Steam games")
-    parser.add_argument("--apps", type=int, default=150, help="games in the app menu")
-    parser.add_argument("--programs", type=int, default=400, help="other programs in the app menu")
-    parser.add_argument("--heroic", type=int, default=300, help="Epic and GOG games in Heroic")
-    parser.add_argument("--lutris", type=int, default=100, help="Lutris games")
+    parser.add_argument("--library", choices=sorted(LIBRARIES), default="large", help="which made-up library")
+    parser.add_argument("--steam", type=int, help="Steam games")
+    parser.add_argument("--apps", type=int, help="games in the app menu")
+    parser.add_argument("--programs", type=int, help="other programs in the app menu")
+    parser.add_argument("--heroic", type=int, help="Epic and GOG games in Heroic")
+    parser.add_argument("--lutris", type=int, help="Lutris games")
+    parser.add_argument("--petals", type=int, default=24, help="petals in the panel (0 for none)")
+    parser.add_argument("--display", help="an X display to use instead of starting Xvfb, like :0; quit your own "
+                                          "Hanami first, as the timed Ctrl+Alt+H presses go to that whole screen")
+    parser.add_argument("--note", action="append", default=[], metavar="KEY=VALUE",
+                        help="something about this run the script can't find out, like machine=\"my desktop\" "
+                             "or display_scale=1.25; saved with the results")
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--sample", type=float, default=10, help="seconds to measure CPU over")
     parser.add_argument("--scan-only", action="store_true", help="skip everything that needs a screen")
@@ -475,27 +692,47 @@ def main():
 
     binary = str(Path(args.binary).resolve())
     home = Path(tempfile.mkdtemp(prefix="hanami-bench-"))
-    counts = {key: getattr(args, key) for key in ("steam", "apps", "programs", "heroic", "lutris")}
+    counts = {key: LIBRARIES[args.library][key] if getattr(args, key) is None else getattr(args, key)
+              for key in ("steam", "apps", "programs", "heroic", "lutris")}
+    notes = {}
+    for note in args.note:
+        key, _, value = note.partition("=")
+        if not value:
+            parser.error(f"--note {note}: write it as KEY=VALUE")
+        notes[key.strip()] = value.strip()
     xvfb = None
     try:
         print(f"Making a library in {home} ...")
         env = {key: value for key, value in os.environ.items() if not key.startswith(("XDG_", "WAYLAND"))}
-        env |= library(home, counts)
-        results = {"counts": counts, "scan": scan(binary, env, args.runs)}
+        env |= library(home, counts, args.petals)
+        results = {"conditions": conditions(args, counts, binary), "counts": counts, "scan": scan(binary, env, args.runs)}
+        results["conditions"]["library"]["games"] = results["scan"]["games"]
 
         if not args.scan_only:
-            display = f":{90 + os.getpid() % 100}"
-            xvfb = subprocess.Popen(["Xvfb", display, "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            for _ in range(100):
-                if Path(f"/tmp/.X11-unix/X{display[1:]}").exists():
-                    break
-                time.sleep(0.05)
+            display = args.display
+            if not display:
+                display = f":{90 + os.getpid() % 100}"
+                xvfb = subprocess.Popen(["Xvfb", display, "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for _ in range(100):
+                    if Path(f"/tmp/.X11-unix/X{display[1:]}").exists():
+                        break
+                    time.sleep(0.05)
             env["DISPLAY"] = display
             screen = Screen(display)
+            screen.binary, screen.env = binary, env
             results["cold"] = cold(binary, env, screen, max(3, args.runs // 2))
             results["warm"] = warm(binary, env, screen, args.runs, args.sample)
+            shown = results["conditions"]["display"]
+            # The panel is 340 px wide at scale 1.
+            shown["scale"] = round(screen.width / 340, 2) if screen.width else UNKNOWN
+            shown["renderer"] = results["warm"]["renderer"]
 
+        conditions_notes = results["conditions"]["notes"]
+        for key, value in notes.items():
+            conditions_notes[key] = value
+        if "display_scale" in notes:
+            results["conditions"]["display"]["scale"] = notes["display_scale"]
         report(results)
         if args.out:
             Path(args.out).write_text(json.dumps(results, indent=2) + "\n")

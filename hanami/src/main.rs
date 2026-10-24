@@ -1089,7 +1089,9 @@ fn edit(path: &Path) -> std::io::Result<()> {
 /// The manager must stay alive for the hotkey to keep working. On Wayland
 /// no app can grab a key itself (registering through Xwayland would succeed
 /// and never fire), so the desktop is asked for the key instead, off the
-/// UI thread; a problem there reaches the panel as a notice.
+/// UI thread; a problem there reaches the panel as a notice. On X11 Hanami
+/// grabs the key itself (see hotkey.rs), and global-hotkey only takes keys
+/// that grab doesn't know.
 fn register_hotkey(text: &str) -> Result<Option<GlobalHotKeyManager>, String> {
     let hotkey: HotKey = text.parse().map_err(|_| format!("Hotkey \"{text}\" isn't a key Hanami understands."))?;
     #[cfg(all(unix, not(target_vendor = "apple")))]
@@ -1105,6 +1107,12 @@ fn register_hotkey(text: &str) -> Result<Option<GlobalHotKeyManager>, String> {
                 }
             });
         });
+        return Ok(None);
+    }
+    #[cfg(target_os = "linux")]
+    if hotkey::grab(text, || {
+        let _ = slint::invoke_from_event_loop(|| with_app(|app| app.toggle()));
+    })? {
         return Ok(None);
     }
     let manager = GlobalHotKeyManager::new().map_err(|_| {

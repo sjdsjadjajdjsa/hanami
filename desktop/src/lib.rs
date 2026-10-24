@@ -76,7 +76,8 @@ pub fn cut_corners(window: &(impl HasWindowHandle + ?Sized), width: u32, height:
 /// rectangle of `width` x `height` logical pixels with `radius` corners,
 /// drawn at `scale`. Windows tints its blur (Acrylic) light or dark, after
 /// `dark`, and cuts the window to the rounded shape so the blur keeps to
-/// it. Returns whether the request was accepted.
+/// it; Acrylic is turned off for now (see `ACRYLIC`). Returns whether the
+/// request was accepted.
 pub fn blur_behind(
     window: &(impl HasWindowHandle + HasDisplayHandle + ?Sized),
     id: u64,
@@ -632,6 +633,11 @@ mod imp {
         false
     }
 
+    /// Off until Acrylic has been checked on real Windows 11 machines; it is
+    /// planned for 0.2.15. Until then the panel is plain see-through, as it
+    /// was before Acrylic.
+    const ACRYLIC: bool = false;
+
     /// Acrylic, Windows 11 22H2 and newer; older versions refuse the
     /// attribute and keep the plain see-through panel.
     pub fn blur_behind(
@@ -643,6 +649,9 @@ mod imp {
         scale: f32,
         dark: bool,
     ) -> bool {
+        if !ACRYLIC {
+            return false;
+        }
         let Some(hwnd) = hwnd(window) else { return false };
         let set = |attribute, value: &i32| {
             // SAFETY: `value` outlives the call, which only reads its 4 bytes.

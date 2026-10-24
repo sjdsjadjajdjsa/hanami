@@ -63,4 +63,6 @@ something not on this page, add it here first.
 - Windows 11 (22H2 and newer): Acrylic behind the panel, tinted dark or
   light after the `panel` colour, the window cut to the panel's rounded
   shape. Older Windows, and Windows drawing with the CPU, keep the plain
-  translucent (or solid) panel.
+  translucent (or solid) panel. Acrylic is in the code but turned off
+  until it has been checked on real machines (planned for 0.2.15); until
+  then every Windows gets the plain panel.

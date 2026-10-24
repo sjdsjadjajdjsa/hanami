@@ -1628,7 +1628,7 @@ dependencies = [
 
 [[package]]
 name = "hanami"
-version = "0.2.13"
+version = "0.2.14"
 dependencies = [
  "arboard",
  "desktop",
@@ -1659,6 +1659,7 @@ dependencies = [
  "windows-sys 0.61.2",
  "winreg",
  "winresource",
+ "x11rb",
 ]
 
 [[package]]

@@ -1,6 +1,8 @@
 //! The hotkey on Wayland, where no app can grab a key itself: KDE Plasma and
 //! GNOME let a program ask for a shortcut in the desktop's own settings, the
 //! same place the user would add one by hand, so Hanami asks for its own.
+//! On X11, Hanami grabs the key itself and waits for the X server to say it
+//! was pressed.
 
 /// The keys of a hotkey like "Ctrl+Alt+H", pulled apart.
 #[derive(Debug, PartialEq)]
@@ -254,6 +256,109 @@ mod platform {
 
 pub use platform::bind;
 
+/// global-hotkey looks for a press every 50 ms for as long as Hanami runs;
+/// this sleeps until the X server has one, so a hidden Hanami does no work.
+#[cfg(target_os = "linux")]
+mod x11 {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::Event;
+    use x11rb::protocol::xkb::{self, ConnectionExt as _};
+    use x11rb::protocol::xproto::{ConnectionExt as _, GrabMode, KeyButMask, Keycode, ModMask};
+    use x11rb::rust_connection::RustConnection;
+
+    use super::{Key, Keys, parse};
+
+    /// Calls `pressed` on another thread each time the hotkey goes down.
+    /// Ok(false): a key only global-hotkey knows, for it to grab instead.
+    pub fn grab(text: &str, pressed: fn()) -> Result<bool, String> {
+        let Ok(keys) = parse(text) else { return Ok(false) };
+        let none = || "No built-in hotkey here: bind hanami --toggle in your desktop's shortcut settings.".to_string();
+        let (conn, screen) = RustConnection::connect(None).map_err(|_| none())?;
+        let root = conn.setup().roots[screen].root;
+        let Some(keycode) = keycode(&conn, keysym(&keys)) else { return Ok(false) };
+        // Holding the keys then repeats presses only, not release and press.
+        if let Ok(asked) = conn.xkb_use_extension(1, 0) {
+            let _ = asked.reply();
+        }
+        let repeat = xkb::PerClientFlag::DETECTABLE_AUTO_REPEAT;
+        if let Ok(asked) = conn.xkb_per_client_flags(
+            xkb::ID::USE_CORE_KBD.into(),
+            repeat,
+            repeat,
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        ) {
+            let _ = asked.reply();
+        }
+        let mods = mods(&keys);
+        // Caps Lock and Num Lock arrive as modifiers too.
+        for locks in [ModMask::default(), ModMask::LOCK, ModMask::M2, ModMask::LOCK | ModMask::M2] {
+            conn.grab_key(false, root, mods | locks, keycode, GrabMode::ASYNC, GrabMode::ASYNC)
+                .map_err(|_| none())?
+                .check()
+                .map_err(|_| format!("{text} is taken by another app. Pick another hotkey in settings."))?;
+        }
+        std::thread::spawn(move || {
+            let counted = KeyButMask::CONTROL | KeyButMask::SHIFT | KeyButMask::MOD1 | KeyButMask::MOD4;
+            let wanted = KeyButMask::from(u16::from(mods));
+            let mut down = false;
+            while let Ok(event) = conn.wait_for_event() {
+                match event {
+                    Event::KeyPress(press) if press.detail == keycode && (press.state & counted) == wanted => {
+                        // Holding the keys repeats the press; only the first one counts.
+                        if !down {
+                            down = true;
+                            pressed();
+                        }
+                    }
+                    Event::KeyRelease(release) if release.detail == keycode => down = false,
+                    _ => {}
+                }
+            }
+        });
+        Ok(true)
+    }
+
+    pub(super) fn keysym(keys: &Keys) -> u32 {
+        match keys.key {
+            Key::Letter(c) | Key::Digit(c) => c as u32,
+            Key::Function(n) => 0xffbe + u32::from(n) - 1,
+            Key::Space => 0x20,
+        }
+    }
+
+    pub(super) fn mods(keys: &Keys) -> ModMask {
+        let mut mods = ModMask::default();
+        for (on, mask) in [
+            (keys.ctrl, ModMask::CONTROL),
+            (keys.alt, ModMask::M1),
+            (keys.shift, ModMask::SHIFT),
+            (keys.meta, ModMask::M4),
+        ] {
+            if on {
+                mods |= mask;
+            }
+        }
+        mods
+    }
+
+    /// The key on this keyboard that types `keysym`.
+    fn keycode(conn: &RustConnection, keysym: u32) -> Option<Keycode> {
+        let (min, max) = (conn.setup().min_keycode, conn.setup().max_keycode);
+        let map = conn.get_keyboard_mapping(min, max - min + 1).ok()?.reply().ok()?;
+        let per = usize::from(map.keysyms_per_keycode);
+        if per == 0 {
+            return None;
+        }
+        let index = map.keysyms.chunks(per).position(|keysyms| keysyms.contains(&keysym))?;
+        min.checked_add(u8::try_from(index).ok()?)
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub use x11::grab;
+
 #[cfg(test)]
 mod tests {
     use super::{Key, parse};
@@ -269,6 +374,21 @@ mod tests {
         assert_eq!(keys.gtk(), "<Super>F5");
         assert_eq!(parse("Shift+Ctrl+Space").unwrap().gtk(), "<Shift><Control>space");
         assert_eq!(parse("Ctrl+Alt+1").unwrap().qt(), 0x0C00_0031);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn hotkeys_become_x11_keysyms_and_modifiers() {
+        use x11rb::protocol::xproto::ModMask;
+
+        let keys = parse("Ctrl+Alt+H").unwrap();
+        assert_eq!(super::x11::keysym(&keys), 0x68);
+        assert_eq!(super::x11::mods(&keys), ModMask::CONTROL | ModMask::M1);
+        let keys = parse("Super+Shift+F12").unwrap();
+        assert_eq!(super::x11::keysym(&keys), 0xffc9);
+        assert_eq!(super::x11::mods(&keys), ModMask::SHIFT | ModMask::M4);
+        assert_eq!(super::x11::keysym(&parse("Ctrl+Alt+1").unwrap()), 0x31);
+        assert_eq!(super::x11::keysym(&parse("Ctrl+Space").unwrap()), 0x20);
     }
 
     #[test]
