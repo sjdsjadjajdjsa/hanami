@@ -292,14 +292,28 @@ class Screen:
             self.xtest.XTestFakeKeyEvent(self.d, code, 0, 0)
         self.x.XFlush(self.d)
 
-    def children(self):
+    def children(self, window=None):
         root, parent, children, n = ctypes.c_ulong(), ctypes.c_ulong(), ctypes.POINTER(ctypes.c_ulong)(), ctypes.c_uint()
-        if not self.x.XQueryTree(self.d, self.root, ctypes.byref(root), ctypes.byref(parent), ctypes.byref(children), ctypes.byref(n)):
+        window = self.root if window is None else window
+        if not self.x.XQueryTree(self.d, window, ctypes.byref(root), ctypes.byref(parent), ctypes.byref(children), ctypes.byref(n)):
             return []
         windows = [children[i] for i in range(n.value)]
         if children:
             self.x.XFree(children)
         return windows
+
+    def windows_of(self, pid):
+        """`pid`'s windows: on the root window, or one or two levels down, inside a window manager's frame."""
+        found, level = [], self.children()
+        for _ in range(3):
+            below = []
+            for window in level:
+                if self.pid(window) == pid:
+                    found.append(window)
+                else:
+                    below += self.children(window)
+            level = below
+        return found
 
     def pid(self, window):
         kind, fmt, count, after, value = ctypes.c_ulong(), ctypes.c_int(), ctypes.c_ulong(), ctypes.c_ulong(), ctypes.c_void_p()
@@ -314,11 +328,11 @@ class Screen:
     def panel(self, pid):
         """(on screen, drawn) for the biggest window `pid` has on screen."""
         best = None
-        for window in self.children():
+        for window in self.windows_of(pid):
             attributes = XWindowAttributes()
             if not self.x.XGetWindowAttributes(self.d, window, ctypes.byref(attributes)):
                 continue
-            if attributes.map_state != IS_VIEWABLE or attributes.width < 100 or self.pid(window) != pid:
+            if attributes.map_state != IS_VIEWABLE or attributes.width < 100:
                 continue
             best = (window, attributes)
         if best is None:
@@ -607,6 +621,10 @@ def hotkey(screen, pid, runs):
             screen.wait(pid, gone=True, timeout=3)
             time.sleep(0.4)
     except TimeoutError:
+        # Leave the panel hidden, as the measurements after this expect.
+        if screen.panel(pid)[0]:
+            subprocess.run([screen.binary, "--toggle"], env=screen.env, check=True)
+            screen.wait(pid, gone=True)
         return UNKNOWN
     return summary(drawn)
 
@@ -655,7 +673,8 @@ def main():
     parser.add_argument("--heroic", type=int, help="Epic and GOG games in Heroic")
     parser.add_argument("--lutris", type=int, help="Lutris games")
     parser.add_argument("--petals", type=int, default=24, help="petals in the panel (0 for none)")
-    parser.add_argument("--display", help="an X display to use instead of starting Xvfb, like :0")
+    parser.add_argument("--display", help="an X display to use instead of starting Xvfb, like :0; quit your own "
+                                          "Hanami first, as the timed Ctrl+Alt+H presses go to that whole screen")
     parser.add_argument("--note", action="append", default=[], metavar="KEY=VALUE",
                         help="something about this run the script can't find out, like machine=\"my desktop\" "
                              "or display_scale=1.25; saved with the results")
@@ -701,6 +720,7 @@ def main():
                     time.sleep(0.05)
             env["DISPLAY"] = display
             screen = Screen(display)
+            screen.binary, screen.env = binary, env
             results["cold"] = cold(binary, env, screen, max(3, args.runs // 2))
             results["warm"] = warm(binary, env, screen, args.runs, args.sample)
             shown = results["conditions"]["display"]
