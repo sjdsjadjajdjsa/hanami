@@ -1,0 +1,14 @@
+[package]
+name = "slint-dirty-regions"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2", "unstable-winit-030"] }
+
+[profile.release]
+debug = "line-tables-only"
+
+# Its own workspace, so it builds inside the Hanami repo without joining it.
+[workspace]
