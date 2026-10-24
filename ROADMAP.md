@@ -59,8 +59,10 @@ it looks in DESIGN.md, and how to use it in GUIDE.md.
   panel; only the rows in view are built, so a big library costs about as
   much as a small one; the panel shows the games found last and looks for
   new ones after it is up; on X11 the hotkey no longer wakes Hanami every
-  50 ms; with `controller = false` no controller work runs. It waits on a
-  basic check on real Windows (see "Waiting on real hardware").
+  50 ms; with `controller = false` no controller work runs; icons are kept
+  at the size rows draw them, not 48 px; the empty frame Slint drew after
+  each petal step is skipped (not on Wayland). It waits on a basic check on
+  real Windows (see "Waiting on real hardware").
 - **0.2.15, in code but turned off:** Acrylic blur behind the panel on
   Windows 11 22H2 and newer (`ACRYLIC` in `desktop/src/lib.rs`). Until it
   has been checked on real machines, Windows gets the plain panel.
@@ -87,6 +89,12 @@ it looks in DESIGN.md, and how to use it in GUIDE.md.
 
 Targets are in SPEC.md, under "Quality bar". These are results, and none
 of them is from the reference desktop yet.
+
+Every release on the same benchmark, with a chart, is in
+[docs/benchmarks.md](docs/benchmarks.md). With smaller icons and skipped
+empty frames, 0.2.14 uses 28.1 MB hidden after opening with 200 games and
+31.7 MB with 1,350, and 2.8 % open; the rest below is from before those
+two changes.
 
 **0.2.14 on a shared cloud machine** (commit `1ea8090`, no local changes,
 24 Oct 2026). Only for comparing runs with each other: it doesn't decide
@@ -129,8 +137,9 @@ What this says:
   says otherwise.
 - With the typical library Hanami uses 28.9 MB hidden after opening and
   28.4 MB open, inside the 30 MB and 40 MB targets on this machine. With
-  1,350 games it is 34.9 MB hidden, over 30 MB. Icons stay decoded after
-  the first open; that is kept for 0.2.14.
+  1,350 games it is 34.9 MB hidden, over 30 MB (31.7 MB with the smaller
+  icons, still over). Icons stay decoded after the first open; that is
+  kept for 0.2.14.
 - The hotkey time runs from Ctrl+Alt+H sent through XTest to the first
   pixel in the X server, not to the monitor. Looking for games happens
   after the panel is up, so it doesn't add to opening. Starting a game

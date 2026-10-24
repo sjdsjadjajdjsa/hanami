@@ -1,0 +1,1587 @@
+{
+  "conditions": {
+    "measured_at": "2026-10-24T18:36:33+00:00",
+    "finished_at": "2026-10-24T18:42:07+00:00",
+    "bench_commit": "0efff76a85926efed188f3a2250d5486bfa21f1e",
+    "bench_local_changes": true,
+    "machine": {
+      "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+      "cpu_model": "Intel(R) Xeon(R) Processor",
+      "logical_cores": 4,
+      "memory_total_mb": 16091,
+      "memory_available_mb": 15093,
+      "virtual_machine": "docker"
+    },
+    "display": "Xvfb 1920x1080x24, no window manager, no compositor",
+    "library": "large",
+    "library_counts": {
+      "steam": 800,
+      "apps": 150,
+      "programs": 400,
+      "heroic": 300,
+      "lutris": 100
+    },
+    "petals": 24,
+    "rounds": 3,
+    "runs": 10,
+    "sample_seconds": 10,
+    "round_orders": [
+      [
+        "main (0.2.14, bd8ee9b)",
+        "perf/next (0.2.14, 54432de)"
+      ],
+      [
+        "perf/next (0.2.14, 54432de)",
+        "main (0.2.14, bd8ee9b)"
+      ],
+      [
+        "main (0.2.14, bd8ee9b)",
+        "perf/next (0.2.14, 54432de)"
+      ]
+    ],
+    "how": "each version built in release mode from its own checkout; tools/bench.py from bench_commit run against each with the same settings; versions interleaved, every other round reversed; per metric the median over rounds, with min and max",
+    "raw_results": "raw/20261024-183633"
+  },
+  "versions": [
+    {
+      "ref": "main",
+      "label": "0.2.14-pre (main at bd8ee9b, before smaller icons and skipped empty frames)",
+      "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+      "version": "0.2.14",
+      "build_id": "bd8ee9b381a3",
+      "build": {
+        "ref": "HEAD",
+        "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+        "command": "cargo build --release --locked -p hanami",
+        "seconds": 583,
+        "built_at": "2026-10-24T16:57:49+00:00",
+        "ok": true,
+        "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)"
+      },
+      "capabilities": {
+        "quit_flag": true,
+        "hidden_flag": true,
+        "toggle_flag": true,
+        "list_flag": true,
+        "looked_in_log": true,
+        "show_log": true,
+        "renderer_log": true,
+        "online_setting": true,
+        "petals_setting": true,
+        "default_hotkey": "Ctrl+Alt+H",
+        "frame_ms": 33,
+        "fixed_petals": "unknown"
+      },
+      "bench_flags": [],
+      "petals": 24,
+      "notes": [],
+      "runs": [
+        {
+          "round": 1,
+          "ok": true,
+          "seconds": 56,
+          "file": "raw/20261024-183633/main__0.2.14__bd8ee9b_-round1.json",
+          "result": {
+            "conditions": {
+              "measured_at": "2026-10-24T18:36:34+00:00",
+              "app_version": "0.2.14",
+              "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+              "local_changes": false,
+              "binary": "given with --binary (hanami)",
+              "machine": {
+                "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+                "cpu_model": "Intel(R) Xeon(R) Processor",
+                "logical_cores": 4,
+                "memory_total_mb": 16091,
+                "memory_available_mb": 15077,
+                "virtual_machine": "docker"
+              },
+              "display": {
+                "server": "Xvfb 1920x1080x24, no window manager, no compositor",
+                "scale": 1.0,
+                "renderer": "the CPU"
+              },
+              "library": {
+                "preset": "large",
+                "counts": {
+                  "steam": 800,
+                  "apps": 150,
+                  "programs": 400,
+                  "heroic": 300,
+                  "lutris": 100
+                },
+                "games": 1350,
+                "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)"
+              },
+              "petals": {
+                "count": 24,
+                "on": true,
+                "frame_rate_fps": 30.3,
+                "frame_rate_source": "FRAME in hanami/src/main.rs of the measured commit"
+              },
+              "cpu": {
+                "unit": "percent of one logical core; one fully used logical core is 100",
+                "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+                "sample_seconds": 10.0,
+                "panel_states": {
+                  "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                  "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                  "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept"
+                }
+              },
+              "memory": {
+                "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+                "rss": "resident: everything in memory, shared libraries counted in full",
+                "pss": "proportional: shared pages split between the programs using them"
+              },
+              "timings": {
+                "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+                "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+                "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+                "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+                "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+                "game_launch": "not measured"
+              },
+              "config": "online = false\n\n[theme]\npetals = 24\n",
+              "notes": {
+                "app_version": "0.2.14",
+                "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+                "petals": "24",
+                "local_changes": "false",
+                "frame_ms": "33"
+              }
+            },
+            "counts": {
+              "steam": 800,
+              "apps": 150,
+              "programs": 400,
+              "heroic": 300,
+              "lutris": 100
+            },
+            "scan": {
+              "total": {
+                "median": 29.9,
+                "min": 29.2,
+                "max": 33.1,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "games": 1350,
+              "sources_ms": {
+                "Steam": 15.0,
+                "Heroic": 1.0,
+                "Lutris": 0.0,
+                "Apps": 3.0,
+                "Epic": 0.0,
+                "Gog": 0.0,
+                "Prism": 0.0,
+                "Ports": 0.0
+              },
+              "found": {
+                "Steam": 800,
+                "Heroic": 300,
+                "Lutris": 100,
+                "Apps": 150,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0,
+                "Ports": 0
+              }
+            },
+            "cold": {
+              "to_window": {
+                "median": 58.9,
+                "min": 57.3,
+                "max": 69.8,
+                "runs": 5,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 59.2,
+                "min": 57.7,
+                "max": 70.3,
+                "runs": 5,
+                "unit": "ms"
+              }
+            },
+            "warm": {
+              "hidden_at_start": {
+                "rss_mb": 25.5,
+                "pss_mb": 22.6,
+                "anon_mb": 4.1,
+                "threads": 9,
+                "cpu_percent": 0.0
+              },
+              "open": {
+                "rss_mb": 33.9,
+                "pss_mb": 30.8,
+                "anon_mb": 10.9,
+                "threads": 10,
+                "cpu_percent": 3.0
+              },
+              "hotkey_to_first_pixel": {
+                "median": 7.9,
+                "min": 7.0,
+                "max": 10.7,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "hidden_after_opens": {
+                "rss_mb": 35.1,
+                "pss_mb": 31.8,
+                "anon_mb": 12.0,
+                "threads": 10,
+                "cpu_percent": 0.0
+              },
+              "toggle_process": {
+                "median": 3.7,
+                "min": 3.5,
+                "max": 4.9,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 10.3,
+                "min": 9.8,
+                "max": 10.4,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "renderer": "the CPU",
+              "finding_games_per_open": {
+                "median": 19.5,
+                "min": 0,
+                "max": 31,
+                "runs": 20,
+                "unit": "ms"
+              },
+              "sources_ms_per_open": {
+                "Ports": 0.0,
+                "Steam": 16,
+                "Heroic": 2,
+                "Lutris": 0,
+                "Apps": 3,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0
+              }
+            }
+          }
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "seconds": 56,
+          "file": "raw/20261024-183633/main__0.2.14__bd8ee9b_-round2.json",
+          "result": {
+            "conditions": {
+              "measured_at": "2026-10-24T18:39:21+00:00",
+              "app_version": "0.2.14",
+              "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+              "local_changes": false,
+              "binary": "given with --binary (hanami)",
+              "machine": {
+                "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+                "cpu_model": "Intel(R) Xeon(R) Processor",
+                "logical_cores": 4,
+                "memory_total_mb": 16091,
+                "memory_available_mb": 15090,
+                "virtual_machine": "docker"
+              },
+              "display": {
+                "server": "Xvfb 1920x1080x24, no window manager, no compositor",
+                "scale": 1.0,
+                "renderer": "the CPU"
+              },
+              "library": {
+                "preset": "large",
+                "counts": {
+                  "steam": 800,
+                  "apps": 150,
+                  "programs": 400,
+                  "heroic": 300,
+                  "lutris": 100
+                },
+                "games": 1350,
+                "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)"
+              },
+              "petals": {
+                "count": 24,
+                "on": true,
+                "frame_rate_fps": 30.3,
+                "frame_rate_source": "FRAME in hanami/src/main.rs of the measured commit"
+              },
+              "cpu": {
+                "unit": "percent of one logical core; one fully used logical core is 100",
+                "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+                "sample_seconds": 10.0,
+                "panel_states": {
+                  "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                  "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                  "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept"
+                }
+              },
+              "memory": {
+                "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+                "rss": "resident: everything in memory, shared libraries counted in full",
+                "pss": "proportional: shared pages split between the programs using them"
+              },
+              "timings": {
+                "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+                "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+                "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+                "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+                "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+                "game_launch": "not measured"
+              },
+              "config": "online = false\n\n[theme]\npetals = 24\n",
+              "notes": {
+                "app_version": "0.2.14",
+                "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+                "petals": "24",
+                "local_changes": "false",
+                "frame_ms": "33"
+              }
+            },
+            "counts": {
+              "steam": 800,
+              "apps": 150,
+              "programs": 400,
+              "heroic": 300,
+              "lutris": 100
+            },
+            "scan": {
+              "total": {
+                "median": 30.6,
+                "min": 29.7,
+                "max": 43.9,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "games": 1350,
+              "sources_ms": {
+                "Steam": 15.0,
+                "Heroic": 1.0,
+                "Lutris": 0.0,
+                "Apps": 3.0,
+                "Epic": 0.0,
+                "Gog": 0.0,
+                "Prism": 0.0,
+                "Ports": 0.0
+              },
+              "found": {
+                "Steam": 800,
+                "Heroic": 300,
+                "Lutris": 100,
+                "Apps": 150,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0,
+                "Ports": 0
+              }
+            },
+            "cold": {
+              "to_window": {
+                "median": 57.4,
+                "min": 56.4,
+                "max": 57.7,
+                "runs": 5,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 57.6,
+                "min": 56.8,
+                "max": 58.0,
+                "runs": 5,
+                "unit": "ms"
+              }
+            },
+            "warm": {
+              "hidden_at_start": {
+                "rss_mb": 25.5,
+                "pss_mb": 22.6,
+                "anon_mb": 4.0,
+                "threads": 9,
+                "cpu_percent": 0.0
+              },
+              "open": {
+                "rss_mb": 34.1,
+                "pss_mb": 30.9,
+                "anon_mb": 11.0,
+                "threads": 10,
+                "cpu_percent": 3.2
+              },
+              "hotkey_to_first_pixel": {
+                "median": 7.9,
+                "min": 7.2,
+                "max": 41.3,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "hidden_after_opens": {
+                "rss_mb": 35.2,
+                "pss_mb": 32.0,
+                "anon_mb": 12.2,
+                "threads": 10,
+                "cpu_percent": 0.0
+              },
+              "toggle_process": {
+                "median": 3.7,
+                "min": 3.7,
+                "max": 4.0,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 10.6,
+                "min": 10.1,
+                "max": 43.0,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "renderer": "the CPU",
+              "finding_games_per_open": {
+                "median": 20.0,
+                "min": 0,
+                "max": 27,
+                "runs": 20,
+                "unit": "ms"
+              },
+              "sources_ms_per_open": {
+                "Ports": 0.0,
+                "Steam": 16,
+                "Heroic": 2,
+                "Lutris": 0,
+                "Apps": 3,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0
+              }
+            }
+          }
+        },
+        {
+          "round": 3,
+          "ok": true,
+          "seconds": 55,
+          "file": "raw/20261024-183633/main__0.2.14__bd8ee9b_-round3.json",
+          "result": {
+            "conditions": {
+              "measured_at": "2026-10-24T18:40:18+00:00",
+              "app_version": "0.2.14",
+              "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+              "local_changes": false,
+              "binary": "given with --binary (hanami)",
+              "machine": {
+                "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+                "cpu_model": "Intel(R) Xeon(R) Processor",
+                "logical_cores": 4,
+                "memory_total_mb": 16091,
+                "memory_available_mb": 15075,
+                "virtual_machine": "docker"
+              },
+              "display": {
+                "server": "Xvfb 1920x1080x24, no window manager, no compositor",
+                "scale": 1.0,
+                "renderer": "the CPU"
+              },
+              "library": {
+                "preset": "large",
+                "counts": {
+                  "steam": 800,
+                  "apps": 150,
+                  "programs": 400,
+                  "heroic": 300,
+                  "lutris": 100
+                },
+                "games": 1350,
+                "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)"
+              },
+              "petals": {
+                "count": 24,
+                "on": true,
+                "frame_rate_fps": 30.3,
+                "frame_rate_source": "FRAME in hanami/src/main.rs of the measured commit"
+              },
+              "cpu": {
+                "unit": "percent of one logical core; one fully used logical core is 100",
+                "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+                "sample_seconds": 10.0,
+                "panel_states": {
+                  "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                  "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                  "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept"
+                }
+              },
+              "memory": {
+                "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+                "rss": "resident: everything in memory, shared libraries counted in full",
+                "pss": "proportional: shared pages split between the programs using them"
+              },
+              "timings": {
+                "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+                "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+                "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+                "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+                "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+                "game_launch": "not measured"
+              },
+              "config": "online = false\n\n[theme]\npetals = 24\n",
+              "notes": {
+                "app_version": "0.2.14",
+                "commit": "bd8ee9b381a3eea3e16b687190f317bbcac53fbc",
+                "petals": "24",
+                "local_changes": "false",
+                "frame_ms": "33"
+              }
+            },
+            "counts": {
+              "steam": 800,
+              "apps": 150,
+              "programs": 400,
+              "heroic": 300,
+              "lutris": 100
+            },
+            "scan": {
+              "total": {
+                "median": 30.0,
+                "min": 29.1,
+                "max": 33.9,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "games": 1350,
+              "sources_ms": {
+                "Steam": 15.0,
+                "Heroic": 1.0,
+                "Lutris": 0.0,
+                "Apps": 3.0,
+                "Epic": 0.0,
+                "Gog": 0.0,
+                "Prism": 0.0,
+                "Ports": 0.0
+              },
+              "found": {
+                "Steam": 800,
+                "Heroic": 300,
+                "Lutris": 100,
+                "Apps": 150,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0,
+                "Ports": 0
+              }
+            },
+            "cold": {
+              "to_window": {
+                "median": 58.0,
+                "min": 57.6,
+                "max": 58.9,
+                "runs": 5,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 58.8,
+                "min": 57.9,
+                "max": 88.2,
+                "runs": 5,
+                "unit": "ms"
+              }
+            },
+            "warm": {
+              "hidden_at_start": {
+                "rss_mb": 25.6,
+                "pss_mb": 22.7,
+                "anon_mb": 4.0,
+                "threads": 9,
+                "cpu_percent": 0.0
+              },
+              "open": {
+                "rss_mb": 34.1,
+                "pss_mb": 30.9,
+                "anon_mb": 11.0,
+                "threads": 10,
+                "cpu_percent": 3.0
+              },
+              "hotkey_to_first_pixel": {
+                "median": 7.7,
+                "min": 7.4,
+                "max": 40.9,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "hidden_after_opens": {
+                "rss_mb": 35.4,
+                "pss_mb": 32.2,
+                "anon_mb": 12.3,
+                "threads": 10,
+                "cpu_percent": 0.0
+              },
+              "toggle_process": {
+                "median": 3.8,
+                "min": 3.5,
+                "max": 4.0,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 10.3,
+                "min": 9.7,
+                "max": 42.7,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "renderer": "the CPU",
+              "finding_games_per_open": {
+                "median": 19.0,
+                "min": 0,
+                "max": 27,
+                "runs": 20,
+                "unit": "ms"
+              },
+              "sources_ms_per_open": {
+                "Ports": 0.0,
+                "Steam": 16,
+                "Heroic": 2,
+                "Lutris": 0,
+                "Apps": 3,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0
+              }
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "games": {
+          "median": 1350,
+          "min": 1350,
+          "max": 1350,
+          "rounds": [
+            1350,
+            1350,
+            1350
+          ],
+          "unit": "",
+          "label": "games listed"
+        },
+        "list_ms": {
+          "median": 30.0,
+          "min": 29.9,
+          "max": 30.6,
+          "rounds": [
+            29.9,
+            30.6,
+            30.0
+          ],
+          "unit": "ms",
+          "label": "hanami --list"
+        },
+        "cold_first_pixel_ms": {
+          "median": 58.8,
+          "min": 57.6,
+          "max": 59.2,
+          "rounds": [
+            59.2,
+            57.6,
+            58.8
+          ],
+          "unit": "ms",
+          "label": "cold start to first pixel"
+        },
+        "toggle_first_pixel_ms": {
+          "median": 10.3,
+          "min": 10.3,
+          "max": 10.6,
+          "rounds": [
+            10.3,
+            10.6,
+            10.3
+          ],
+          "unit": "ms",
+          "label": "--toggle to first pixel"
+        },
+        "hotkey_first_pixel_ms": {
+          "median": 7.9,
+          "min": 7.7,
+          "max": 7.9,
+          "rounds": [
+            7.9,
+            7.9,
+            7.7
+          ],
+          "unit": "ms",
+          "label": "Ctrl+Alt+H to first pixel"
+        },
+        "finding_games_per_open_ms": {
+          "median": 19.5,
+          "min": 19.0,
+          "max": 20.0,
+          "rounds": [
+            19.5,
+            20.0,
+            19.0
+          ],
+          "unit": "ms",
+          "label": "looking for games, each open"
+        },
+        "cpu_hidden_start": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "rounds": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "unit": "%",
+          "label": "CPU hidden at start"
+        },
+        "cpu_open": {
+          "median": 3.0,
+          "min": 3.0,
+          "max": 3.2,
+          "rounds": [
+            3.0,
+            3.2,
+            3.0
+          ],
+          "unit": "%",
+          "label": "CPU open"
+        },
+        "cpu_hidden_after": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "rounds": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "unit": "%",
+          "label": "CPU hidden after opening"
+        },
+        "rss_hidden_start": {
+          "median": 25.5,
+          "min": 25.5,
+          "max": 25.6,
+          "rounds": [
+            25.5,
+            25.5,
+            25.6
+          ],
+          "unit": "MB",
+          "label": "RSS hidden at start"
+        },
+        "rss_open": {
+          "median": 34.1,
+          "min": 33.9,
+          "max": 34.1,
+          "rounds": [
+            33.9,
+            34.1,
+            34.1
+          ],
+          "unit": "MB",
+          "label": "RSS open"
+        },
+        "rss_hidden_after": {
+          "median": 35.2,
+          "min": 35.1,
+          "max": 35.4,
+          "rounds": [
+            35.1,
+            35.2,
+            35.4
+          ],
+          "unit": "MB",
+          "label": "RSS hidden after opening"
+        },
+        "pss_hidden_after": {
+          "median": 32.0,
+          "min": 31.8,
+          "max": 32.2,
+          "rounds": [
+            31.8,
+            32.0,
+            32.2
+          ],
+          "unit": "MB",
+          "label": "PSS hidden after opening"
+        }
+      },
+      "unknown": {}
+    },
+    {
+      "ref": "perf/next",
+      "label": "0.2.14 (with smaller icons and skipped empty frames)",
+      "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+      "version": "0.2.14",
+      "build_id": "54432dea17fc",
+      "build": {
+        "ref": "perf/next",
+        "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+        "command": "cargo build --release --locked -p hanami",
+        "seconds": 220,
+        "built_at": "2026-10-24T17:44:28+00:00",
+        "ok": true,
+        "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)"
+      },
+      "capabilities": {
+        "quit_flag": true,
+        "hidden_flag": true,
+        "toggle_flag": true,
+        "list_flag": true,
+        "looked_in_log": true,
+        "show_log": true,
+        "renderer_log": true,
+        "online_setting": true,
+        "petals_setting": true,
+        "default_hotkey": "Ctrl+Alt+H",
+        "frame_ms": 33,
+        "fixed_petals": "unknown"
+      },
+      "bench_flags": [],
+      "petals": 24,
+      "notes": [],
+      "runs": [
+        {
+          "round": 1,
+          "ok": true,
+          "seconds": 55,
+          "file": "raw/20261024-183633/perf_next__0.2.14__54432de_-round1.json",
+          "result": {
+            "conditions": {
+              "measured_at": "2026-10-24T18:37:30+00:00",
+              "app_version": "0.2.14",
+              "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+              "local_changes": false,
+              "binary": "given with --binary (hanami)",
+              "machine": {
+                "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+                "cpu_model": "Intel(R) Xeon(R) Processor",
+                "logical_cores": 4,
+                "memory_total_mb": 16091,
+                "memory_available_mb": 15071,
+                "virtual_machine": "docker"
+              },
+              "display": {
+                "server": "Xvfb 1920x1080x24, no window manager, no compositor",
+                "scale": 1.0,
+                "renderer": "the CPU"
+              },
+              "library": {
+                "preset": "large",
+                "counts": {
+                  "steam": 800,
+                  "apps": 150,
+                  "programs": 400,
+                  "heroic": 300,
+                  "lutris": 100
+                },
+                "games": 1350,
+                "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)"
+              },
+              "petals": {
+                "count": 24,
+                "on": true,
+                "frame_rate_fps": 30.3,
+                "frame_rate_source": "FRAME in hanami/src/main.rs of the measured commit"
+              },
+              "cpu": {
+                "unit": "percent of one logical core; one fully used logical core is 100",
+                "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+                "sample_seconds": 10.0,
+                "panel_states": {
+                  "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                  "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                  "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept"
+                }
+              },
+              "memory": {
+                "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+                "rss": "resident: everything in memory, shared libraries counted in full",
+                "pss": "proportional: shared pages split between the programs using them"
+              },
+              "timings": {
+                "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+                "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+                "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+                "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+                "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+                "game_launch": "not measured"
+              },
+              "config": "online = false\n\n[theme]\npetals = 24\n",
+              "notes": {
+                "app_version": "0.2.14",
+                "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+                "petals": "24",
+                "local_changes": "false",
+                "frame_ms": "33"
+              }
+            },
+            "counts": {
+              "steam": 800,
+              "apps": 150,
+              "programs": 400,
+              "heroic": 300,
+              "lutris": 100
+            },
+            "scan": {
+              "total": {
+                "median": 30.0,
+                "min": 29.2,
+                "max": 45.6,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "games": 1350,
+              "sources_ms": {
+                "Steam": 15.0,
+                "Heroic": 1.0,
+                "Lutris": 0.0,
+                "Apps": 3.0,
+                "Epic": 0.0,
+                "Gog": 0.0,
+                "Prism": 0.0,
+                "Ports": 0.0
+              },
+              "found": {
+                "Steam": 800,
+                "Heroic": 300,
+                "Lutris": 100,
+                "Apps": 150,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0,
+                "Ports": 0
+              }
+            },
+            "cold": {
+              "to_window": {
+                "median": 58.5,
+                "min": 57.2,
+                "max": 66.8,
+                "runs": 5,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 58.8,
+                "min": 57.7,
+                "max": 67.2,
+                "runs": 5,
+                "unit": "ms"
+              }
+            },
+            "warm": {
+              "hidden_at_start": {
+                "rss_mb": 25.8,
+                "pss_mb": 22.9,
+                "anon_mb": 4.1,
+                "threads": 9,
+                "cpu_percent": 0.0
+              },
+              "open": {
+                "rss_mb": 30.3,
+                "pss_mb": 27.1,
+                "anon_mb": 7.0,
+                "threads": 10,
+                "cpu_percent": 2.8
+              },
+              "hotkey_to_first_pixel": {
+                "median": 7.2,
+                "min": 6.8,
+                "max": 39.5,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "hidden_after_opens": {
+                "rss_mb": 31.7,
+                "pss_mb": 28.4,
+                "anon_mb": 8.4,
+                "threads": 10,
+                "cpu_percent": 0.0
+              },
+              "toggle_process": {
+                "median": 3.8,
+                "min": 3.7,
+                "max": 4.8,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 10.4,
+                "min": 10.1,
+                "max": 42.8,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "renderer": "the CPU",
+              "finding_games_per_open": {
+                "median": 19.0,
+                "min": 0,
+                "max": 28,
+                "runs": 20,
+                "unit": "ms"
+              },
+              "sources_ms_per_open": {
+                "Ports": 0.0,
+                "Steam": 15,
+                "Heroic": 1,
+                "Lutris": 0,
+                "Apps": 3,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0
+              }
+            }
+          }
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "seconds": 56,
+          "file": "raw/20261024-183633/perf_next__0.2.14__54432de_-round2.json",
+          "result": {
+            "conditions": {
+              "measured_at": "2026-10-24T18:38:25+00:00",
+              "app_version": "0.2.14",
+              "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+              "local_changes": false,
+              "binary": "given with --binary (hanami)",
+              "machine": {
+                "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+                "cpu_model": "Intel(R) Xeon(R) Processor",
+                "logical_cores": 4,
+                "memory_total_mb": 16091,
+                "memory_available_mb": 15076,
+                "virtual_machine": "docker"
+              },
+              "display": {
+                "server": "Xvfb 1920x1080x24, no window manager, no compositor",
+                "scale": 1.0,
+                "renderer": "the CPU"
+              },
+              "library": {
+                "preset": "large",
+                "counts": {
+                  "steam": 800,
+                  "apps": 150,
+                  "programs": 400,
+                  "heroic": 300,
+                  "lutris": 100
+                },
+                "games": 1350,
+                "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)"
+              },
+              "petals": {
+                "count": 24,
+                "on": true,
+                "frame_rate_fps": 30.3,
+                "frame_rate_source": "FRAME in hanami/src/main.rs of the measured commit"
+              },
+              "cpu": {
+                "unit": "percent of one logical core; one fully used logical core is 100",
+                "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+                "sample_seconds": 10.0,
+                "panel_states": {
+                  "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                  "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                  "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept"
+                }
+              },
+              "memory": {
+                "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+                "rss": "resident: everything in memory, shared libraries counted in full",
+                "pss": "proportional: shared pages split between the programs using them"
+              },
+              "timings": {
+                "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+                "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+                "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+                "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+                "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+                "game_launch": "not measured"
+              },
+              "config": "online = false\n\n[theme]\npetals = 24\n",
+              "notes": {
+                "app_version": "0.2.14",
+                "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+                "petals": "24",
+                "local_changes": "false",
+                "frame_ms": "33"
+              }
+            },
+            "counts": {
+              "steam": 800,
+              "apps": 150,
+              "programs": 400,
+              "heroic": 300,
+              "lutris": 100
+            },
+            "scan": {
+              "total": {
+                "median": 29.9,
+                "min": 29.0,
+                "max": 33.0,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "games": 1350,
+              "sources_ms": {
+                "Steam": 14.5,
+                "Heroic": 1.0,
+                "Lutris": 0.0,
+                "Apps": 3.0,
+                "Epic": 0.0,
+                "Gog": 0.0,
+                "Prism": 0.0,
+                "Ports": 0.0
+              },
+              "found": {
+                "Steam": 800,
+                "Heroic": 300,
+                "Lutris": 100,
+                "Apps": 150,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0,
+                "Ports": 0
+              }
+            },
+            "cold": {
+              "to_window": {
+                "median": 60.3,
+                "min": 58.1,
+                "max": 64.2,
+                "runs": 5,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 60.6,
+                "min": 58.5,
+                "max": 64.5,
+                "runs": 5,
+                "unit": "ms"
+              }
+            },
+            "warm": {
+              "hidden_at_start": {
+                "rss_mb": 25.8,
+                "pss_mb": 22.8,
+                "anon_mb": 4.1,
+                "threads": 9,
+                "cpu_percent": 0.0
+              },
+              "open": {
+                "rss_mb": 30.2,
+                "pss_mb": 27.0,
+                "anon_mb": 7.1,
+                "threads": 10,
+                "cpu_percent": 3.1
+              },
+              "hotkey_to_first_pixel": {
+                "median": 7.4,
+                "min": 6.5,
+                "max": 10.6,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "hidden_after_opens": {
+                "rss_mb": 31.6,
+                "pss_mb": 28.3,
+                "anon_mb": 8.4,
+                "threads": 10,
+                "cpu_percent": 0.0
+              },
+              "toggle_process": {
+                "median": 3.8,
+                "min": 3.5,
+                "max": 5.0,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 10.4,
+                "min": 9.0,
+                "max": 13.1,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "renderer": "the CPU",
+              "finding_games_per_open": {
+                "median": 19.0,
+                "min": 0,
+                "max": 31,
+                "runs": 20,
+                "unit": "ms"
+              },
+              "sources_ms_per_open": {
+                "Ports": 0.0,
+                "Steam": 15,
+                "Heroic": 2,
+                "Lutris": 0,
+                "Apps": 3,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0
+              }
+            }
+          }
+        },
+        {
+          "round": 3,
+          "ok": true,
+          "seconds": 56,
+          "file": "raw/20261024-183633/perf_next__0.2.14__54432de_-round3.json",
+          "result": {
+            "conditions": {
+              "measured_at": "2026-10-24T18:41:13+00:00",
+              "app_version": "0.2.14",
+              "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+              "local_changes": false,
+              "binary": "given with --binary (hanami)",
+              "machine": {
+                "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
+                "cpu_model": "Intel(R) Xeon(R) Processor",
+                "logical_cores": 4,
+                "memory_total_mb": 16091,
+                "memory_available_mb": 15087,
+                "virtual_machine": "docker"
+              },
+              "display": {
+                "server": "Xvfb 1920x1080x24, no window manager, no compositor",
+                "scale": 1.0,
+                "renderer": "the CPU"
+              },
+              "library": {
+                "preset": "large",
+                "counts": {
+                  "steam": 800,
+                  "apps": 150,
+                  "programs": 400,
+                  "heroic": 300,
+                  "lutris": 100
+                },
+                "games": 1350,
+                "icons": "every made-up game has one (Steam 32 px, app menu 48 px, Heroic 64 px, Lutris 128 px)"
+              },
+              "petals": {
+                "count": 24,
+                "on": true,
+                "frame_rate_fps": 30.3,
+                "frame_rate_source": "FRAME in hanami/src/main.rs of the measured commit"
+              },
+              "cpu": {
+                "unit": "percent of one logical core; one fully used logical core is 100",
+                "how": "Hanami's own user + system time from /proc/<pid>/stat over the sample; the X server's work is not counted",
+                "sample_seconds": 10.0,
+                "panel_states": {
+                  "hidden_at_start": "hidden, 3 s after start, the library loaded",
+                  "open": "open and idle, 1 s after the first open drew, no input, list at the top",
+                  "hidden_after_opens": "hidden again after every open and hide, 1 s after the last, icons kept"
+                }
+              },
+              "memory": {
+                "unit": "MB (MiB) from /proc/<pid>/smaps_rollup",
+                "rss": "resident: everything in memory, shared libraries counted in full",
+                "pss": "proportional: shared pages split between the programs using them"
+              },
+              "timings": {
+                "scan": "external: the whole `hanami --list` process; per source: internal, Hanami's log",
+                "cold.to_first_pixel": "external: starting `hanami` until the panel's middle has a drawn pixel",
+                "warm.to_first_pixel": "external: starting `hanami --toggle` until the hidden panel has a drawn pixel",
+                "warm.hotkey_to_first_pixel": "external: Ctrl+Alt+H sent through XTest until the panel has a drawn pixel in the X server",
+                "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
+                "game_launch": "not measured"
+              },
+              "config": "online = false\n\n[theme]\npetals = 24\n",
+              "notes": {
+                "app_version": "0.2.14",
+                "commit": "54432dea17fc9bf6141cad59547822b46f6c4624",
+                "petals": "24",
+                "local_changes": "false",
+                "frame_ms": "33"
+              }
+            },
+            "counts": {
+              "steam": 800,
+              "apps": 150,
+              "programs": 400,
+              "heroic": 300,
+              "lutris": 100
+            },
+            "scan": {
+              "total": {
+                "median": 29.7,
+                "min": 29.2,
+                "max": 32.6,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "games": 1350,
+              "sources_ms": {
+                "Steam": 15.0,
+                "Heroic": 1.0,
+                "Lutris": 0.0,
+                "Apps": 3.0,
+                "Epic": 0.0,
+                "Gog": 0.0,
+                "Prism": 0.0,
+                "Ports": 0.0
+              },
+              "found": {
+                "Steam": 800,
+                "Heroic": 300,
+                "Lutris": 100,
+                "Apps": 150,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0,
+                "Ports": 0
+              }
+            },
+            "cold": {
+              "to_window": {
+                "median": 57.5,
+                "min": 57.2,
+                "max": 58.4,
+                "runs": 5,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 57.9,
+                "min": 57.5,
+                "max": 104.7,
+                "runs": 5,
+                "unit": "ms"
+              }
+            },
+            "warm": {
+              "hidden_at_start": {
+                "rss_mb": 25.6,
+                "pss_mb": 22.7,
+                "anon_mb": 4.0,
+                "threads": 9,
+                "cpu_percent": 0.0
+              },
+              "open": {
+                "rss_mb": 30.2,
+                "pss_mb": 27.0,
+                "anon_mb": 6.9,
+                "threads": 10,
+                "cpu_percent": 2.9
+              },
+              "hotkey_to_first_pixel": {
+                "median": 8.7,
+                "min": 6.9,
+                "max": 40.4,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "hidden_after_opens": {
+                "rss_mb": 31.9,
+                "pss_mb": 28.6,
+                "anon_mb": 8.6,
+                "threads": 10,
+                "cpu_percent": 0.0
+              },
+              "toggle_process": {
+                "median": 3.8,
+                "min": 3.4,
+                "max": 4.3,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "to_first_pixel": {
+                "median": 9.7,
+                "min": 9.0,
+                "max": 43.3,
+                "runs": 10,
+                "unit": "ms"
+              },
+              "renderer": "the CPU",
+              "finding_games_per_open": {
+                "median": 19.0,
+                "min": 0,
+                "max": 27,
+                "runs": 20,
+                "unit": "ms"
+              },
+              "sources_ms_per_open": {
+                "Ports": 0.0,
+                "Steam": 16,
+                "Heroic": 2,
+                "Lutris": 0,
+                "Apps": 3,
+                "Epic": 0,
+                "Gog": 0,
+                "Prism": 0
+              }
+            }
+          }
+        }
+      ],
+      "metrics": {
+        "games": {
+          "median": 1350,
+          "min": 1350,
+          "max": 1350,
+          "rounds": [
+            1350,
+            1350,
+            1350
+          ],
+          "unit": "",
+          "label": "games listed"
+        },
+        "list_ms": {
+          "median": 29.9,
+          "min": 29.7,
+          "max": 30.0,
+          "rounds": [
+            30.0,
+            29.9,
+            29.7
+          ],
+          "unit": "ms",
+          "label": "hanami --list"
+        },
+        "cold_first_pixel_ms": {
+          "median": 58.8,
+          "min": 57.9,
+          "max": 60.6,
+          "rounds": [
+            58.8,
+            60.6,
+            57.9
+          ],
+          "unit": "ms",
+          "label": "cold start to first pixel"
+        },
+        "toggle_first_pixel_ms": {
+          "median": 10.4,
+          "min": 9.7,
+          "max": 10.4,
+          "rounds": [
+            10.4,
+            10.4,
+            9.7
+          ],
+          "unit": "ms",
+          "label": "--toggle to first pixel"
+        },
+        "hotkey_first_pixel_ms": {
+          "median": 7.4,
+          "min": 7.2,
+          "max": 8.7,
+          "rounds": [
+            7.2,
+            7.4,
+            8.7
+          ],
+          "unit": "ms",
+          "label": "Ctrl+Alt+H to first pixel"
+        },
+        "finding_games_per_open_ms": {
+          "median": 19.0,
+          "min": 19.0,
+          "max": 19.0,
+          "rounds": [
+            19.0,
+            19.0,
+            19.0
+          ],
+          "unit": "ms",
+          "label": "looking for games, each open"
+        },
+        "cpu_hidden_start": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "rounds": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "unit": "%",
+          "label": "CPU hidden at start"
+        },
+        "cpu_open": {
+          "median": 2.9,
+          "min": 2.8,
+          "max": 3.1,
+          "rounds": [
+            2.8,
+            3.1,
+            2.9
+          ],
+          "unit": "%",
+          "label": "CPU open"
+        },
+        "cpu_hidden_after": {
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "rounds": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "unit": "%",
+          "label": "CPU hidden after opening"
+        },
+        "rss_hidden_start": {
+          "median": 25.8,
+          "min": 25.6,
+          "max": 25.8,
+          "rounds": [
+            25.8,
+            25.8,
+            25.6
+          ],
+          "unit": "MB",
+          "label": "RSS hidden at start"
+        },
+        "rss_open": {
+          "median": 30.2,
+          "min": 30.2,
+          "max": 30.3,
+          "rounds": [
+            30.3,
+            30.2,
+            30.2
+          ],
+          "unit": "MB",
+          "label": "RSS open"
+        },
+        "rss_hidden_after": {
+          "median": 31.7,
+          "min": 31.6,
+          "max": 31.9,
+          "rounds": [
+            31.7,
+            31.6,
+            31.9
+          ],
+          "unit": "MB",
+          "label": "RSS hidden after opening"
+        },
+        "pss_hidden_after": {
+          "median": 28.4,
+          "min": 28.3,
+          "max": 28.6,
+          "rounds": [
+            28.4,
+            28.3,
+            28.6
+          ],
+          "unit": "MB",
+          "label": "PSS hidden after opening"
+        }
+      },
+      "unknown": {}
+    }
+  ]
+}
