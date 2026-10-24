@@ -5,6 +5,7 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -13,7 +14,8 @@ use image::imageops::FilterType;
 use image::{DynamicImage, ImageReader, RgbaImage};
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 
-/// Decoded pictures kept at once: 600 at 24 px is about 1.4 MB, at 48 px 5.5 MB.
+/// Decoded pictures kept at once for each size: 600 at 24 px is about
+/// 1.4 MB, at 48 px 5.5 MB.
 const KEEP: usize = 600;
 /// How big a row's picture is drawn, in logical pixels.
 pub const ROW_PX: f32 = 24.0;
@@ -26,6 +28,7 @@ const TELL: Duration = Duration::from_millis(50);
 
 type Pixels = SharedPixelBuffer<Rgba8Pixel>;
 type Done = Arc<Mutex<Vec<(PathBuf, u32, Option<Pixels>)>>>;
+type Cache = HashMap<PathBuf, (Slot, u64)>;
 
 enum Slot {
     Loading,
@@ -34,8 +37,14 @@ enum Slot {
 
 pub struct Icons {
     px: Cell<u32>,
+    /// The same size, for the worker: it skips pictures asked for at another.
+    wanted: Arc<AtomicU32>,
     ready: Arc<dyn Fn() + Send + Sync>,
-    cache: RefCell<HashMap<PathBuf, (Slot, u64)>>,
+    /// Pictures at `px`.
+    cache: RefCell<Cache>,
+    /// Pictures at the size before, so going back to the other monitor of
+    /// two doesn't make them all again.
+    previous: RefCell<(u32, Cache)>,
     /// Paths that can't be read, kept apart so evicting never retries them.
     failed: RefCell<HashSet<PathBuf>>,
     uses: RefCell<u64>,
@@ -56,8 +65,10 @@ impl Icons {
     pub fn new(px: u32, ready: impl Fn() + Send + Sync + 'static) -> Self {
         Self {
             px: Cell::new(px),
+            wanted: Arc::new(AtomicU32::new(px)),
             ready: Arc::new(ready),
             cache: RefCell::default(),
+            previous: RefCell::default(),
             failed: RefCell::default(),
             uses: RefCell::new(0),
             done: Arc::default(),
@@ -95,14 +106,22 @@ impl Icons {
         self.px.get()
     }
 
-    /// Makes pictures `px` x `px` from now on. The ones made at another size
-    /// are dropped and made again when asked for. True when the size changed.
+    /// Makes pictures `px` x `px` from now on. The ones at the size before
+    /// are kept aside for a switch back; older ones are dropped and made
+    /// again when asked for. True when the size changed.
     pub fn set_px(&self, px: u32) -> bool {
-        if px == self.px.get() {
+        let old = self.px.get();
+        if px == old {
             return false;
         }
         self.px.set(px);
-        self.cache.borrow_mut().clear();
+        self.wanted.store(px, Ordering::Relaxed);
+        let mut cache = self.cache.borrow_mut();
+        let mut previous = self.previous.borrow_mut();
+        // The worker skips what is still loading at the old size.
+        cache.retain(|_, (slot, _)| matches!(slot, Slot::Ready(_)));
+        let kept = if previous.0 == px { std::mem::take(&mut previous.1) } else { Cache::new() };
+        *previous = (old, std::mem::replace(&mut *cache, kept));
         true
     }
 
@@ -118,10 +137,10 @@ impl Icons {
     fn worker(&self) -> &Sender<(PathBuf, u32)> {
         self.worker.get_or_init(|| {
             let (sender, receiver) = channel();
-            let (done, ready) = (self.done.clone(), self.ready.clone());
+            let (wanted, done, ready) = (self.wanted.clone(), self.done.clone(), self.ready.clone());
             std::thread::Builder::new()
                 .name("icons".into())
-                .spawn(move || work(receiver, done, ready))
+                .spawn(move || work(receiver, wanted, done, ready))
                 .expect("thread");
             sender
         })
@@ -136,6 +155,7 @@ impl Icons {
         for (path, px, pixels) in done {
             let Some(pixels) = pixels else {
                 cache.remove(&path);
+                self.previous.borrow_mut().1.remove(&path);
                 self.failed.borrow_mut().insert(path);
                 continue;
             };
@@ -152,7 +172,7 @@ impl Icons {
 
 /// Drops the least recently asked-for quarter of the cache. A picture still
 /// loading is dropped too; its result is ignored and it is asked for again.
-fn evict(cache: &mut HashMap<PathBuf, (Slot, u64)>) {
+fn evict(cache: &mut Cache) {
     let mut ages: Vec<u64> = cache.values().map(|(_, used)| *used).collect();
     ages.sort_unstable();
     let cutoff = ages[ages.len() / 4];
@@ -160,13 +180,17 @@ fn evict(cache: &mut HashMap<PathBuf, (Slot, u64)>) {
 }
 
 /// Decodes everything queued, saying so every `TELL` and at the end.
-fn work(receiver: Receiver<(PathBuf, u32)>, done: Done, ready: Arc<dyn Fn() + Send + Sync>) {
+fn work(receiver: Receiver<(PathBuf, u32)>, wanted: Arc<AtomicU32>, done: Done, ready: Arc<dyn Fn() + Send + Sync>) {
     while let Ok(first) = receiver.recv() {
         let mut told = Instant::now();
         let mut pending = false;
         let mut queue = vec![first];
         loop {
             for (path, px) in queue.drain(..) {
+                // The scale changed since: nobody waits for this one.
+                if px != wanted.load(Ordering::Relaxed) {
+                    continue;
+                }
                 let pixels = decode(&path, px);
                 done.lock().unwrap_or_else(|e| e.into_inner()).push((path, px, pixels));
                 pending = true;
@@ -361,13 +385,14 @@ mod tests {
             assert_eq!((pixels.width(), pixels.height()), (row_px(scale), row_px(scale)));
         }
 
-        // A new scale drops the pictures made at the old size.
+        // A new scale puts the pictures made at the old size aside.
         let icons = Icons::new(row_px(2.0), || {});
         icons.cache.borrow_mut().insert(lutris.clone(), (Slot::Ready(None), 0));
         assert!(!icons.set_px(48));
         assert!(icons.set_px(row_px(1.5)));
         assert_eq!(icons.px(), 36);
         assert!(icons.cache.borrow().is_empty());
+        assert_eq!(icons.previous.borrow().0, 48);
         // One that was asked for at the old size is not kept when it lands.
         icons.cache.borrow_mut().insert(lutris.clone(), (Slot::Loading, 0));
         icons.done.lock().unwrap().push((lutris.clone(), 48, decode(&lutris, 48)));
@@ -375,6 +400,45 @@ mod tests {
         assert!(icons.peek(&lutris).is_none());
         icons.done.lock().unwrap().push((lutris.clone(), 36, decode(&lutris, 36)));
         assert_eq!(icons.peek(&lutris).map(|image| image.size().width), Some(36));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn two_monitors_keep_both_sizes() {
+        let (at_24, at_36, loading) = (PathBuf::from("a"), PathBuf::from("b"), PathBuf::from("c"));
+        let icons = Icons::new(24, || {});
+        icons.cache.borrow_mut().insert(at_24.clone(), (Slot::Ready(None), 0));
+        icons.cache.borrow_mut().insert(loading.clone(), (Slot::Loading, 0));
+        icons.set_px(36);
+        icons.cache.borrow_mut().insert(at_36.clone(), (Slot::Ready(None), 0));
+        // Back on the first monitor: its pictures are still there, the one
+        // that never finished loading is asked for again.
+        icons.set_px(24);
+        assert!(icons.cache.borrow().contains_key(&at_24));
+        assert!(!icons.cache.borrow().contains_key(&loading));
+        assert!(icons.previous.borrow().1.contains_key(&at_36));
+        icons.set_px(36);
+        assert!(icons.cache.borrow().contains_key(&at_36));
+        // A third size drops the oldest.
+        icons.set_px(48);
+        assert!(icons.cache.borrow().is_empty());
+        assert_eq!(icons.previous.borrow().0, 36);
+        assert!(icons.previous.borrow().1.contains_key(&at_36));
+    }
+
+    #[test]
+    fn the_worker_skips_pictures_asked_for_at_an_old_size() {
+        let dir = dir();
+        let picture = dir.join("p.png");
+        png(&picture, 64, 64);
+        let (sender, receiver) = channel();
+        let (wanted, done) = (Arc::new(AtomicU32::new(36)), Done::default());
+        sender.send((picture.clone(), 48)).unwrap();
+        sender.send((picture.clone(), 36)).unwrap();
+        drop(sender);
+        work(receiver, wanted, done.clone(), Arc::new(|| {}));
+        let done = done.lock().unwrap();
+        assert_eq!(done.iter().map(|(_, px, _)| *px).collect::<Vec<_>>(), [36]);
         std::fs::remove_dir_all(dir).unwrap();
     }
 
