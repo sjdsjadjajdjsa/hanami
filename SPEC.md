@@ -84,13 +84,36 @@ multiple monitors beyond "open where the mouse is".
 
 ## Quality bar
 
-- Hidden: 0 % CPU, under 30 MB memory.
-- Open: under 2 % of one core with petals running; under 40 MB.
+These are targets. What was measured, on what, and what is still to be
+checked is in ROADMAP.md under "Measured".
+
+- Hidden: no recurring animation or polling work while hidden. A small CPU
+  reading alone neither proves nor disproves this; it is checked in the
+  code, and ROADMAP.md lists the wake-ups that remain.
+- Hidden: under 30 MB memory, with the `typical` library below.
+- Open: under 2 % of one logical core on the reference desktop, with the
+  panel open and idle, 24 petals at 30 fps. Under 40 MB, with the
+  `typical` library.
 - From hotkey to panel on screen: under 100 ms.
 - Text sharp at 100 % and 150 % scaling.
 - Same look and behaviour on Linux (KDE, X11) and Windows 11; blur through
   KWin on Linux and Acrylic on Windows, plain translucency where neither
   exists.
+
+How these are read:
+
+- **CPU** is a percent of one logical core: one fully used logical core is
+  100 %.
+- **The reference desktop** is a real computer, not a virtual machine.
+  Which one, and its first numbers, are still to come. Runs on a shared
+  cloud machine are only compared with each other, to catch a change that
+  makes Hanami slower; they don't decide whether the CPU target is met.
+- **The typical library** is `tools/bench.py --library typical`: 200 made-up
+  games (110 Steam, 30 in the app menu among 80 other programs, 40 Heroic,
+  20 Lutris), every one with an icon. Memory is read as RSS from
+  `/proc/<pid>/smaps_rollup`.
+- **Hotkey to panel** is from the key press to the panel's first drawn
+  frame.
 
 ## Done when
 

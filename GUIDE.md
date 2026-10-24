@@ -116,7 +116,10 @@ DS4Windows). It can be plugged in while Hanami runs.
   moving), A (the bottom button, Cross on a PlayStation pad) starts the
   game, B (the right button, Circle) hides the panel. Holding Start and
   Select again hides it too.
-- `controller = false` in the settings turns all of this off.
+- `controller = false` in the settings turns all of this off. On Windows,
+  where Hanami has to ask about the controller 100 times a second while
+  controller support runs, it stops asking after the next start of
+  Hanami.
 - `controller_buttons` picks other buttons to hold, all together, for the
   half second: any of `start`, `select`, `guide`, `x`, `y`, `lb`, `rb`,
   `lt`, `rt`, `l3`, `r3` (the sticks pressed in), `left` and `right` (on
@@ -455,8 +458,8 @@ behind them.
 ## Known limits
 
 - The frosted blur needs KDE Plasma's Blur effect (System Settings, Desktop
-  Effects, Blur) on Linux, on X11 or Wayland, or Windows 11 22H2 or newer.
-  Elsewhere the panel is plain see-through.
+  Effects, Blur) on Linux, on X11 or Wayland. Elsewhere, Windows included
+  for now, the panel is plain see-through.
 - Windows without a graphics driver (virtual machines, Remote Desktop) gets
   a solid panel drawn on the CPU. If the panel never shows on Windows, set
   the environment variable `HANAMI_RENDERER=software` to force that.
