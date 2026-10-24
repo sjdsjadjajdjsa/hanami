@@ -1,3 +1,21 @@
 target/
 notes/
 __pycache__/
+
+# Downloads made by hand with the steps in .github/workflows/release.yml
+# and packaging/README.md land at the top of the repo.
+/dist/
+/hanami-*.AppImage
+/hanami-*.tar.gz
+/hanami-*.zip
+/hanami-setup-*.exe
+/SHA256SUMS
+
+# makepkg's work in the AUR package folder.
+/packaging/aur/hanami-bin/src/
+/packaging/aur/hanami-bin/pkg/
+/packaging/aur/hanami-bin/*.tar.gz
+/packaging/aur/hanami-bin/*.pkg.tar.zst
+
+# The Slint example builds on its own, with its own lock file.
+/docs/upstream/slint-dirty-regions/Cargo.lock
