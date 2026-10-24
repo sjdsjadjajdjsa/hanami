@@ -96,8 +96,13 @@ def write(path, data):
     path.write_bytes(data)
 
 
-def library(home, counts, petals=24):
-    """Steam, app menu, Heroic and Lutris games under `home`; returns the environment that points Hanami at them."""
+def config_text(petals):
+    return f"online = false\n\n[theme]\npetals = {petals}\n"
+
+
+def library(home, counts, petals=24, settings=None):
+    """Steam, app menu, Heroic and Lutris games under `home`; returns the environment that points Hanami at them.
+    `settings` replaces the usual config.toml, for older versions that refuse settings they don't know."""
     config, data, system = home / ".config", home / ".local/share", home / "usr/share"
     env = {
         "HOME": str(home),
@@ -107,8 +112,11 @@ def library(home, counts, petals=24):
         "XDG_STATE_HOME": str(home / ".local/state"),
         "XDG_DATA_DIRS": str(system),
         "PATH": f"{home / 'bin'}:/usr/bin:/bin",
+        # Hanami's one-copy socket is named after the user; a name of its own
+        # keeps runs side by side (and your own Hanami) from answering each other.
+        "USER": home.name,
     }
-    write(config / "hanami/config.toml", f"online = false\n\n[theme]\npetals = {petals}\n")
+    write(config / "hanami/config.toml", config_text(petals) if settings is None else settings)
 
     # Steam: two library folders, a 32 px icon per game.
     steam, second = data / "Steam", home / "SteamLibrary"
@@ -402,7 +410,8 @@ def summary(values, unit="ms", scale=1000):
     }
 
 
-LOOKED = re.compile(r"looked in (\w+): (\d+) games in (\d+) ms")
+# Hanami before 0.2.7 leaves out the count: "looked in Steam in 3 ms".
+LOOKED = re.compile(r"looked in (\w+)(?:: (\d+) games)? in (\d+) ms")
 
 
 def per_source(log):
@@ -414,7 +423,7 @@ def per_source(log):
 
 
 def games_per_source(log):
-    return {source: int(count) for source, count, _ in LOOKED.findall(log)}
+    return {source: int(count) for source, count, _ in LOOKED.findall(log) if count}
 
 
 # How a run was made -----------------------------------------------------
@@ -522,6 +531,7 @@ def conditions(args, counts, binary):
             "warm.finding_games_per_open": "internal: Hanami's log; it runs after the panel is up",
             "game_launch": "not measured",
         },
+        "config": config_text(args.petals) if args.config_text is None else args.config_text,
         "notes": {},
     }
 
@@ -540,8 +550,15 @@ def scan(binary, env, runs):
     return {"total": summary(times), "games": listed, "sources_ms": per_source(logs), "found": games_per_source(logs)}
 
 
+# Hanami before 0.2.2 has no --quit (it would open the panel instead).
+HAS_QUIT = True
+
+
 def quit_hanami(binary, env, process):
-    subprocess.run([binary, "--quit"], env=env, capture_output=True)
+    if HAS_QUIT:
+        subprocess.run([binary, "--quit"], env=env, capture_output=True)
+    else:
+        process.terminate()
     try:
         process.wait(timeout=5)
     except subprocess.TimeoutExpired:
@@ -600,7 +617,8 @@ def warm(binary, env, screen, runs, sample):
     result["renderer"] = renderer.group(1) if renderer else UNKNOWN
     opens = text.split(" show\n")[1:]
     finding = [sum(int(ms) for _, _, ms in LOOKED.findall(chunk)) for chunk in opens]
-    result["finding_games_per_open"] = summary(finding, scale=1) if finding else None
+    # None when the log has no "looked in" lines to add up.
+    result["finding_games_per_open"] = summary(finding, scale=1) if LOOKED.search("".join(opens)) else None
     result["sources_ms_per_open"] = per_source("".join(opens))
     return result
 
@@ -678,6 +696,9 @@ def main():
     parser.add_argument("--note", action="append", default=[], metavar="KEY=VALUE",
                         help="something about this run the script can't find out, like machine=\"my desktop\" "
                              "or display_scale=1.25; saved with the results")
+    parser.add_argument("--config-text", help="write this as Hanami's config.toml instead of the usual one, for "
+                                              "older versions that refuse settings they don't know")
+    parser.add_argument("--no-quit", action="store_true", help="stop Hanami with SIGTERM, for versions without --quit")
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--sample", type=float, default=10, help="seconds to measure CPU over")
     parser.add_argument("--scan-only", action="store_true", help="skip everything that needs a screen")
@@ -690,6 +711,8 @@ def main():
         os.environ["BENCH_IN_DBUS"] = "1"
         os.execvp("dbus-run-session", ["dbus-run-session", "--", sys.executable] + sys.argv)
 
+    global HAS_QUIT
+    HAS_QUIT = not args.no_quit
     binary = str(Path(args.binary).resolve())
     home = Path(tempfile.mkdtemp(prefix="hanami-bench-"))
     counts = {key: LIBRARIES[args.library][key] if getattr(args, key) is None else getattr(args, key)
@@ -704,7 +727,7 @@ def main():
     try:
         print(f"Making a library in {home} ...")
         env = {key: value for key, value in os.environ.items() if not key.startswith(("XDG_", "WAYLAND"))}
-        env |= library(home, counts, args.petals)
+        env |= library(home, counts, args.petals, args.config_text)
         results = {"conditions": conditions(args, counts, binary), "counts": counts, "scan": scan(binary, env, args.runs)}
         results["conditions"]["library"]["games"] = results["scan"]["games"]
 
@@ -733,6 +756,13 @@ def main():
             conditions_notes[key] = value
         if "display_scale" in notes:
             results["conditions"]["display"]["scale"] = notes["display_scale"]
+        # For a binary built from another commit than this checkout.
+        for key in ("app_version", "commit"):
+            if key in notes:
+                results["conditions"][key] = notes[key]
+        if "petals" in notes:
+            count = notes["petals"]
+            results["conditions"]["petals"]["count"] = int(count) if count.isdigit() else count
         report(results)
         if args.out:
             Path(args.out).write_text(json.dumps(results, indent=2) + "\n")
