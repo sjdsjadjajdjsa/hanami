@@ -166,7 +166,7 @@ thread's wake-ups over 10 s while hidden, Linux X11, 0.2.14):
 
 ## Waiting on real hardware
 
-Results come from the owner; nothing here is done until they are in.
+These need real machines; nothing here counts as done until it has been run on one.
 
 **Linux reference desktop**
 
@@ -192,7 +192,7 @@ Results come from the owner; nothing here is done until they are in.
 - How it looks, opening and closing, and the blur while dragging the panel.
 - Hotkey to the first visible frame with the blur on.
 
-**Packages:** the AUR package waits for the owner's AUR account.
+**Packages:** the AUR package waits for an AUR account.
 
 ## Next
 

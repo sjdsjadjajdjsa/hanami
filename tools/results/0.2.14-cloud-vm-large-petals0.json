@@ -4,7 +4,7 @@
     "app_version": "0.2.14",
     "commit": "1ea8090bd825c6a69a89452ecadafa56bef12c9b",
     "local_changes": false,
-    "binary": "/home/user/hanami/target/release/hanami",
+    "binary": "target/release/hanami of this checkout",
     "machine": {
       "os": "Ubuntu 24.04.5 LTS, Linux 6.18.44-fc-v153",
       "cpu_model": "Intel(R) Xeon(R) Processor",
