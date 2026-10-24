@@ -103,6 +103,8 @@ whether the CPU target is met.
   server's work not counted. Open means open and idle, 1 s after it drew,
   no input. Memory: RSS (PSS in brackets) in MB.
 - Run with `python3 tools/bench.py --library large|typical --petals 24|0`.
+  The saved results, with everything about each run, are in
+  [tools/results](tools/results).
 
 | Library | Petals | Open CPU | Hidden CPU | Memory loaded | Open | Hidden after opening |
 |---|---|---|---|---|---|---|
