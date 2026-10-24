@@ -466,8 +466,9 @@ Submit. You need a GitHub account to send it.
 If Hanami hit a bug last time, the panel says so once when it next opens.
 What went wrong is kept in `last-crash.txt` (Linux
 `~/.local/share/hanami/`, Windows `%LOCALAPPDATA%\hanami\`) until you
-report it. Your user folder shows up in the report as `~`. A crash outside
-Hanami's own code, like a graphics driver taking it down, leaves no file.
+pick Report a problem; after that it isn't offered again, sent or not.
+Your user folder shows up in the report as `~`. A crash outside Hanami's
+own code, like a graphics driver taking it down, leaves no file.
 
 ## Known limits
 

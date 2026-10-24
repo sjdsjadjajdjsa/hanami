@@ -6,12 +6,16 @@
 //! down) leave no file.
 
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const NEW_ISSUE: &str = "https://github.com/sjdsjadjajdjsa/hanami/issues/new";
-/// GitHub refuses very long links; the crash is cut to fit.
-const MAX_BODY: usize = 6000;
+/// GitHub refuses links much longer than about 8 KB; the crash is cut to fit.
+const MAX_LINK: usize = 7500;
+/// Later bugs in one run are usually caused by the first; past this many
+/// bytes, they aren't written down.
+const MAX_FILE: u64 = 16 * 1024;
 
 fn dir() -> Option<PathBuf> {
     dirs::data_local_dir().map(|dir| dir.join("hanami"))
@@ -22,12 +26,12 @@ fn fresh() -> Option<PathBuf> {
     dir().map(|dir| dir.join("crash.txt"))
 }
 
-/// Seen by a start, kept until it is reported.
+/// Seen by a start, kept until a report is opened.
 fn kept() -> Option<PathBuf> {
     dir().map(|dir| dir.join("last-crash.txt"))
 }
 
-/// Writes every panic to the crash file, then reports it as Rust would.
+/// Adds every panic to the crash file, then reports it as Rust would.
 pub fn install() {
     install_at(fresh());
 }
@@ -44,34 +48,59 @@ fn install_at(file: Option<PathBuf>) {
         let place = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_default();
         let thread = std::thread::current().name().unwrap_or("unnamed").to_owned();
         let when = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-        let text = format!("{message}\nat {place}, thread {thread}, unix time {when}\n");
+        let text = format!("{message}\nat {place}, thread {thread}, unix time {when}\n\n");
         if let Some(path) = &file {
             let _ = fs::create_dir_all(path.parent().unwrap_or(path));
-            let _ = fs::write(path, &text);
+            let full = fs::metadata(path).is_ok_and(|m| m.len() > MAX_FILE);
+            if !full && let Ok(mut out) = fs::OpenOptions::new().create(true).append(true).open(path) {
+                let _ = out.write_all(text.as_bytes());
+            }
         }
         default(info);
     }));
 }
 
-/// True once after a crash: the start that should say so. The crash stays
-/// for "Report a problem" until it is reported.
+/// True once after a bug: the start that should say so. What went wrong
+/// stays for "Report a problem" until a report is opened.
 pub fn crashed_last_time() -> bool {
     let (Some(fresh), Some(kept)) = (fresh(), kept()) else { return false };
-    fresh.exists() && fs::rename(fresh, kept).is_ok()
+    let Ok(text) = fs::read_to_string(&fresh) else { return false };
+    // Added to anything not yet reported, oldest first.
+    let mut all = fs::read_to_string(&kept).unwrap_or_default();
+    all.push_str(&text);
+    fs::write(&kept, all).is_ok() && fs::remove_file(&fresh).is_ok()
 }
 
-/// The link to a new issue, with this computer's details and the last
-/// crash, if any.
+/// The link to a new issue, with this computer's details and any bug not
+/// yet reported, from an earlier run or this one.
 pub fn report_link() -> String {
-    let crash = kept().and_then(|path| fs::read_to_string(path).ok());
-    let title = if crash.is_some() { "Hanami crashed" } else { "" };
-    format!("{NEW_ISSUE}?title={}&body={}", encode(title), encode(&body(crash.as_deref())))
+    let crash: String = [kept(), fresh()].into_iter().flatten().filter_map(|p| fs::read_to_string(p).ok()).collect();
+    let crash = (!crash.trim().is_empty()).then(|| without_home(&crash));
+    let title = if crash.is_some() { "Hanami hit a bug" } else { "" };
+    link(title, crash.as_deref())
 }
 
-/// The issue has been opened in the browser: the crash is not offered again.
+/// A report was opened in the browser: what it carried isn't offered again.
 pub fn reported() {
-    if let Some(path) = kept() {
+    for path in [kept(), fresh()].into_iter().flatten() {
         let _ = fs::remove_file(path);
+    }
+}
+
+/// The issue link, with as much of `crash` as fits, from its start: the
+/// first bug is usually the cause of the rest.
+fn link(title: &str, crash: Option<&str>) -> String {
+    let make = |crash: Option<&str>| format!("{NEW_ISSUE}?title={}&body={}", encode(title), encode(&body(crash)));
+    let Some(crash) = crash else { return make(None) };
+    let chars: Vec<char> = crash.chars().collect();
+    let mut keep = chars.len();
+    loop {
+        let cut: String = chars[..keep].iter().collect();
+        let made = make(Some(&cut));
+        if made.len() <= MAX_LINK || keep == 0 {
+            return made;
+        }
+        keep = keep * 4 / 5;
     }
 }
 
@@ -89,20 +118,36 @@ fn body(crash: Option<&str>) -> String {
     }
     text.push('\n');
     if let Some(crash) = crash {
-        let crash = without_home(crash);
-        let room = MAX_BODY.saturating_sub(text.len() + 32);
-        let cut: String = crash.chars().take(room).collect();
-        text.push_str(&format!("\nThe crash:\n```\n{}\n```\n", cut.trim_end()));
+        text.push_str(&format!("\nWhat went wrong:\n```\n{}\n```\n", crash.trim_end()));
     }
     text
 }
 
-/// The user's folder as `~`, so the report doesn't carry their user name.
+/// The user's folder as `~`, so the report doesn't carry their user name:
+/// also as Rust's debug output writes it on Windows (`C:\\Users\\...`),
+/// and in any case, as Windows paths are.
 fn without_home(text: &str) -> String {
     match dirs::home_dir().and_then(|home| home.to_str().map(str::to_owned)) {
-        Some(home) if home.len() > 1 => text.replace(&home, "~"),
+        Some(home) if home.len() > 1 => {
+            let doubled = home.replace('\\', "\\\\");
+            replace_ignoring_case(&replace_ignoring_case(text, &doubled), &home)
+        }
         _ => text.to_owned(),
     }
+}
+
+fn replace_ignoring_case(text: &str, folder: &str) -> String {
+    // ASCII case changes keep every byte where it was.
+    let (lower, folder_lower) = (text.to_ascii_lowercase(), folder.to_ascii_lowercase());
+    let mut out = String::with_capacity(text.len());
+    let mut at = 0;
+    while let Some(found) = lower[at..].find(&folder_lower) {
+        out.push_str(&text[at..at + found]);
+        out.push('~');
+        at += found + folder.len();
+    }
+    out.push_str(&text[at..]);
+    out
 }
 
 /// Percent-encoding for a link's query.
@@ -129,26 +174,41 @@ mod tests {
 
     #[test]
     fn a_crash_fits_in_a_link() {
-        let crash = "x".repeat(50_000);
-        let text = body(Some(&crash));
-        assert!(text.len() <= MAX_BODY);
-        assert!(text.contains("The crash:"));
-        assert!(text.contains(env!("CARGO_PKG_VERSION")));
+        // Spaces, slashes and accents grow threefold or more when encoded.
+        let crash = "é / x ".repeat(5_000);
+        let made = link("Hanami hit a bug", Some(&crash));
+        assert!(made.len() <= MAX_LINK, "{}", made.len());
+        assert!(made.contains("What%20went%20wrong"));
+        assert!(made.contains(&encode(env!("CARGO_PKG_VERSION"))));
+        assert!(link("", None).len() < MAX_LINK);
+    }
+
+    #[test]
+    fn windows_home_folders_are_left_out_in_any_spelling() {
+        let text = r#"couldn't read "C:\\Users\\Alice\\a.toml" or c:\users\alice\b.toml"#;
+        assert_eq!(
+            replace_ignoring_case(&replace_ignoring_case(text, r"C:\\Users\\Alice"), r"C:\Users\Alice"),
+            r#"couldn't read "~\\a.toml" or ~\b.toml"#
+        );
     }
 
     #[test]
     fn a_panic_is_written_down() {
         let file = std::env::temp_dir().join(format!("hanami-crash-test-{}.txt", std::process::id()));
         install_at(Some(file.clone()));
-        let _ = std::thread::Builder::new()
-            .name("crashing".into())
-            .spawn(|| panic!("the test's own panic"))
-            .unwrap()
-            .join();
+        // Two bugs in one run: both are kept, the first first.
+        for n in 1..=2 {
+            let _ = std::thread::Builder::new()
+                .name("crashing".into())
+                .spawn(move || panic!("the test's own panic {n}"))
+                .unwrap()
+                .join();
+        }
         let _ = std::panic::take_hook();
         let text = fs::read_to_string(&file).unwrap();
         let _ = fs::remove_file(&file);
-        assert!(text.starts_with("the test's own panic\nat "), "{text}");
+        assert!(text.starts_with("the test's own panic 1\nat "), "{text}");
+        assert!(text.contains("the test's own panic 2\nat "), "{text}");
         assert!(text.contains("thread crashing"), "{text}");
     }
 
