@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 792" width="760" height="792" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12">
+<style>
+  .ink { fill: #6e6d68; } .title { fill: #6e6d68; font-weight: 600; font-size: 13px; }
+  .grid { stroke: #8a8984; stroke-opacity: 0.25; } .axis { stroke: #8a8984; stroke-opacity: 0.6; }
+  .line { stroke: #2a78d6; fill: none; stroke-width: 2; } .dot { fill: #2a78d6; }
+  .whisker { stroke: #2a78d6; stroke-opacity: 0.55; stroke-width: 2; }
+  @media (prefers-color-scheme: dark) {
+    .ink, .title { fill: #c3c2b7; } .line, .whisker { stroke: #3987e5; } .dot { fill: #3987e5; }
+  }
+</style>
+<text class="title" x="56" y="20">CPU while open, petals falling (% of one core)</text>
+<line class="grid" x1="56" x2="744" y1="184.0" y2="184.0"/>
+<text class="ink" x="48" y="188.0" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="744" y1="146.5" y2="146.5"/>
+<text class="ink" x="48" y="150.5" text-anchor="end">2</text>
+<line class="grid" x1="56" x2="744" y1="109.0" y2="109.0"/>
+<text class="ink" x="48" y="113.0" text-anchor="end">4</text>
+<line class="grid" x1="56" x2="744" y1="71.5" y2="71.5"/>
+<text class="ink" x="48" y="75.5" text-anchor="end">6</text>
+<line class="grid" x1="56" x2="744" y1="34.0" y2="34.0"/>
+<text class="ink" x="48" y="38.0" text-anchor="end">8</text>
+<line class="axis" x1="56" x2="744" y1="184.0" y2="184.0"/>
+<line class="whisker" x1="74.1" x2="74.1" y1="114.6" y2="110.9"/>
+<line class="whisker" x1="110.3" x2="110.3" y1="114.6" y2="112.8"/>
+<line class="whisker" x1="146.5" x2="146.5" y1="109.0" y2="101.5"/>
+<line class="whisker" x1="182.7" x2="182.7" y1="67.8" y2="65.9"/>
+<line class="whisker" x1="218.9" x2="218.9" y1="69.6" y2="62.1"/>
+<line class="whisker" x1="255.2" x2="255.2" y1="69.6" y2="58.4"/>
+<line class="whisker" x1="291.4" x2="291.4" y1="73.4" y2="56.5"/>
+<line class="whisker" x1="327.6" x2="327.6" y1="69.6" y2="65.9"/>
+<line class="whisker" x1="363.8" x2="363.8" y1="71.5" y2="60.2"/>
+<line class="whisker" x1="400.0" x2="400.0" y1="69.6" y2="62.1"/>
+<line class="whisker" x1="436.2" x2="436.2" y1="69.6" y2="54.6"/>
+<line class="whisker" x1="472.4" x2="472.4" y1="56.5" y2="50.9"/>
+<line class="whisker" x1="508.6" x2="508.6" y1="54.6" y2="50.9"/>
+<line class="whisker" x1="544.8" x2="544.8" y1="54.6" y2="50.9"/>
+<line class="whisker" x1="581.1" x2="581.1" y1="54.6" y2="39.6"/>
+<line class="whisker" x1="617.3" x2="617.3" y1="54.6" y2="50.9"/>
+<line class="whisker" x1="653.5" x2="653.5" y1="56.5" y2="49.0"/>
+<line class="whisker" x1="689.7" x2="689.7" y1="129.6" y2="127.8"/>
+<line class="whisker" x1="725.9" x2="725.9" y1="133.4" y2="129.6"/>
+<polyline class="line" points="74.1,110.9 110.3,114.6 146.5,103.4 182.7,65.9 218.9,64.0 255.2,62.1 291.4,65.9 327.6,67.8 363.8,64.0 400.0,64.0 436.2,60.2 472.4,50.9 508.6,50.9 544.8,52.8 581.1,49.0 617.3,52.8 653.5,54.6 689.7,129.6 725.9,131.5"/>
+<circle class="dot" cx="74.1" cy="110.9" r="4"><title>v0.1.0: 3.9 (3.7-3.9)</title></circle>
+<circle class="dot" cx="110.3" cy="114.6" r="4"><title>v0.1.1: 3.7 (3.7-3.8)</title></circle>
+<circle class="dot" cx="146.5" cy="103.4" r="4"><title>v0.1.2: 4.3 (4.0-4.4)</title></circle>
+<circle class="dot" cx="182.7" cy="65.9" r="4"><title>v0.2.0: 6.3 (6.2-6.3)</title></circle>
+<circle class="dot" cx="218.9" cy="64.0" r="4"><title>v0.2.1: 6.4 (6.1-6.5)</title></circle>
+<circle class="dot" cx="255.2" cy="62.1" r="4"><title>v0.2.2: 6.5 (6.1-6.7)</title></circle>
+<circle class="dot" cx="291.4" cy="65.9" r="4"><title>v0.2.3: 6.3 (5.9-6.8)</title></circle>
+<circle class="dot" cx="327.6" cy="67.8" r="4"><title>v0.2.4: 6.2 (6.1-6.3)</title></circle>
+<circle class="dot" cx="363.8" cy="64.0" r="4"><title>v0.2.5: 6.4 (6.0-6.6)</title></circle>
+<circle class="dot" cx="400.0" cy="64.0" r="4"><title>v0.2.6: 6.4 (6.1-6.5)</title></circle>
+<circle class="dot" cx="436.2" cy="60.2" r="4"><title>v0.2.7: 6.6 (6.1-6.9)</title></circle>
+<circle class="dot" cx="472.4" cy="50.9" r="4"><title>v0.2.8: 7.1 (6.8-7.1)</title></circle>
+<circle class="dot" cx="508.6" cy="50.9" r="4"><title>v0.2.9: 7.1 (6.9-7.1)</title></circle>
+<circle class="dot" cx="544.8" cy="52.8" r="4"><title>v0.2.10: 7.0 (6.9-7.1)</title></circle>
+<circle class="dot" cx="581.1" cy="49.0" r="4"><title>v0.2.11: 7.2 (6.9-7.7)</title></circle>
+<circle class="dot" cx="617.3" cy="52.8" r="4"><title>v0.2.12: 7.0 (6.9-7.1)</title></circle>
+<circle class="dot" cx="653.5" cy="54.6" r="4"><title>v0.2.13: 6.9 (6.8-7.2)</title></circle>
+<circle class="dot" cx="689.7" cy="129.6" r="4"><title>0.2.14-pre (main at bd8ee9b, before smaller icons and skipped empty frames): 2.9 (2.9-3.0)</title></circle>
+<circle class="dot" cx="725.9" cy="131.5" r="4"><title>0.2.14 (with smaller icons and skipped empty frames): 2.8 (2.7-2.9)</title></circle>
+<text class="ink" x="725.9" y="121.5" text-anchor="middle">2.8</text>
+<text class="ink" x="78.1" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 78.1 200.0)">0.1.0</text>
+<text class="ink" x="114.3" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 114.3 200.0)">0.1.1</text>
+<text class="ink" x="150.5" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 150.5 200.0)">0.1.2</text>
+<text class="ink" x="186.7" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 186.7 200.0)">0.2.0</text>
+<text class="ink" x="222.9" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 222.9 200.0)">0.2.1</text>
+<text class="ink" x="259.2" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 259.2 200.0)">0.2.2</text>
+<text class="ink" x="295.4" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 295.4 200.0)">0.2.3</text>
+<text class="ink" x="331.6" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 331.6 200.0)">0.2.4</text>
+<text class="ink" x="367.8" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 367.8 200.0)">0.2.5</text>
+<text class="ink" x="404.0" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 404.0 200.0)">0.2.6</text>
+<text class="ink" x="440.2" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 440.2 200.0)">0.2.7</text>
+<text class="ink" x="476.4" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 476.4 200.0)">0.2.8</text>
+<text class="ink" x="512.6" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 512.6 200.0)">0.2.9</text>
+<text class="ink" x="548.8" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 548.8 200.0)">0.2.10</text>
+<text class="ink" x="585.1" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 585.1 200.0)">0.2.11</text>
+<text class="ink" x="621.3" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 621.3 200.0)">0.2.12</text>
+<text class="ink" x="657.5" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 657.5 200.0)">0.2.13</text>
+<text class="ink" x="693.7" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 693.7 200.0)">0.2.14-pre</text>
+<text class="ink" x="729.9" y="200.0" text-anchor="end" font-size="11" transform="rotate(-45 729.9 200.0)">0.2.14</text>
+<text class="title" x="56" y="274">Memory hidden after opening (RSS, MB)</text>
+<line class="grid" x1="56" x2="744" y1="438.0" y2="438.0"/>
+<text class="ink" x="48" y="442.0" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="744" y1="400.5" y2="400.5"/>
+<text class="ink" x="48" y="404.5" text-anchor="end">10</text>
+<line class="grid" x1="56" x2="744" y1="363.0" y2="363.0"/>
+<text class="ink" x="48" y="367.0" text-anchor="end">20</text>
+<line class="grid" x1="56" x2="744" y1="325.5" y2="325.5"/>
+<text class="ink" x="48" y="329.5" text-anchor="end">30</text>
+<line class="grid" x1="56" x2="744" y1="288.0" y2="288.0"/>
+<text class="ink" x="48" y="292.0" text-anchor="end">40</text>
+<line class="axis" x1="56" x2="744" y1="438.0" y2="438.0"/>
+<line class="whisker" x1="110.3" x2="110.3" y1="342.0" y2="340.5"/>
+<line class="whisker" x1="146.5" x2="146.5" y1="340.9" y2="340.5"/>
+<line class="whisker" x1="182.7" x2="182.7" y1="316.9" y2="315.0"/>
+<line class="whisker" x1="218.9" x2="218.9" y1="323.6" y2="322.5"/>
+<line class="whisker" x1="255.2" x2="255.2" y1="323.2" y2="321.8"/>
+<line class="whisker" x1="291.4" x2="291.4" y1="324.0" y2="322.1"/>
+<line class="whisker" x1="327.6" x2="327.6" y1="324.8" y2="322.5"/>
+<line class="whisker" x1="363.8" x2="363.8" y1="322.9" y2="321.8"/>
+<line class="whisker" x1="400.0" x2="400.0" y1="321.8" y2="321.4"/>
+<line class="whisker" x1="436.2" x2="436.2" y1="323.6" y2="322.9"/>
+<line class="whisker" x1="472.4" x2="472.4" y1="321.0" y2="319.5"/>
+<line class="whisker" x1="508.6" x2="508.6" y1="319.5" y2="318.8"/>
+<line class="whisker" x1="544.8" x2="544.8" y1="321.0" y2="320.6"/>
+<line class="whisker" x1="581.1" x2="581.1" y1="319.9" y2="318.8"/>
+<line class="whisker" x1="617.3" x2="617.3" y1="320.6" y2="320.2"/>
+<line class="whisker" x1="653.5" x2="653.5" y1="320.6" y2="319.9"/>
+<line class="whisker" x1="689.7" x2="689.7" y1="328.9" y2="328.5"/>
+<line class="whisker" x1="725.9" x2="725.9" y1="333.0" y2="331.9"/>
+<polyline class="line" points="74.1,341.6 110.3,340.9 146.5,340.9 182.7,315.8 218.9,322.9 255.2,321.8 291.4,322.1 327.6,323.6 363.8,322.9 400.0,321.8 436.2,323.2 472.4,321.0 508.6,319.1 544.8,320.6 581.1,319.9 617.3,320.2 653.5,319.9 689.7,328.9 725.9,332.6"/>
+<circle class="dot" cx="74.1" cy="341.6" r="4"><title>v0.1.0: 25.7 (25.7-25.7)</title></circle>
+<circle class="dot" cx="110.3" cy="340.9" r="4"><title>v0.1.1: 25.9 (25.6-26.0)</title></circle>
+<circle class="dot" cx="146.5" cy="340.9" r="4"><title>v0.1.2: 25.9 (25.9-26.0)</title></circle>
+<circle class="dot" cx="182.7" cy="315.8" r="4"><title>v0.2.0: 32.6 (32.3-32.8)</title></circle>
+<circle class="dot" cx="218.9" cy="322.9" r="4"><title>v0.2.1: 30.7 (30.5-30.8)</title></circle>
+<circle class="dot" cx="255.2" cy="321.8" r="4"><title>v0.2.2: 31.0 (30.6-31.0)</title></circle>
+<circle class="dot" cx="291.4" cy="322.1" r="4"><title>v0.2.3: 30.9 (30.4-30.9)</title></circle>
+<circle class="dot" cx="327.6" cy="323.6" r="4"><title>v0.2.4: 30.5 (30.2-30.8)</title></circle>
+<circle class="dot" cx="363.8" cy="322.9" r="4"><title>v0.2.5: 30.7 (30.7-31.0)</title></circle>
+<circle class="dot" cx="400.0" cy="321.8" r="4"><title>v0.2.6: 31.0 (31.0-31.1)</title></circle>
+<circle class="dot" cx="436.2" cy="323.2" r="4"><title>v0.2.7: 30.6 (30.5-30.7)</title></circle>
+<circle class="dot" cx="472.4" cy="321.0" r="4"><title>v0.2.8: 31.2 (31.2-31.6)</title></circle>
+<circle class="dot" cx="508.6" cy="319.1" r="4"><title>v0.2.9: 31.7 (31.6-31.8)</title></circle>
+<circle class="dot" cx="544.8" cy="320.6" r="4"><title>v0.2.10: 31.3 (31.2-31.3)</title></circle>
+<circle class="dot" cx="581.1" cy="319.9" r="4"><title>v0.2.11: 31.5 (31.5-31.8)</title></circle>
+<circle class="dot" cx="617.3" cy="320.2" r="4"><title>v0.2.12: 31.4 (31.3-31.4)</title></circle>
+<circle class="dot" cx="653.5" cy="319.9" r="4"><title>v0.2.13: 31.5 (31.3-31.5)</title></circle>
+<circle class="dot" cx="689.7" cy="328.9" r="4"><title>0.2.14-pre (main at bd8ee9b, before smaller icons and skipped empty frames): 29.1 (29.1-29.2)</title></circle>
+<circle class="dot" cx="725.9" cy="332.6" r="4"><title>0.2.14 (with smaller icons and skipped empty frames): 28.1 (28.0-28.3)</title></circle>
+<text class="ink" x="725.9" y="322.6" text-anchor="middle">28.1</text>
+<text class="ink" x="78.1" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 78.1 454.0)">0.1.0</text>
+<text class="ink" x="114.3" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 114.3 454.0)">0.1.1</text>
+<text class="ink" x="150.5" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 150.5 454.0)">0.1.2</text>
+<text class="ink" x="186.7" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 186.7 454.0)">0.2.0</text>
+<text class="ink" x="222.9" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 222.9 454.0)">0.2.1</text>
+<text class="ink" x="259.2" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 259.2 454.0)">0.2.2</text>
+<text class="ink" x="295.4" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 295.4 454.0)">0.2.3</text>
+<text class="ink" x="331.6" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 331.6 454.0)">0.2.4</text>
+<text class="ink" x="367.8" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 367.8 454.0)">0.2.5</text>
+<text class="ink" x="404.0" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 404.0 454.0)">0.2.6</text>
+<text class="ink" x="440.2" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 440.2 454.0)">0.2.7</text>
+<text class="ink" x="476.4" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 476.4 454.0)">0.2.8</text>
+<text class="ink" x="512.6" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 512.6 454.0)">0.2.9</text>
+<text class="ink" x="548.8" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 548.8 454.0)">0.2.10</text>
+<text class="ink" x="585.1" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 585.1 454.0)">0.2.11</text>
+<text class="ink" x="621.3" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 621.3 454.0)">0.2.12</text>
+<text class="ink" x="657.5" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 657.5 454.0)">0.2.13</text>
+<text class="ink" x="693.7" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 693.7 454.0)">0.2.14-pre</text>
+<text class="ink" x="729.9" y="454.0" text-anchor="end" font-size="11" transform="rotate(-45 729.9 454.0)">0.2.14</text>
+<text class="title" x="56" y="528">--toggle to first pixel (ms)</text>
+<line class="grid" x1="56" x2="744" y1="692.0" y2="692.0"/>
+<text class="ink" x="48" y="696.0" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="744" y1="654.5" y2="654.5"/>
+<text class="ink" x="48" y="658.5" text-anchor="end">5</text>
+<line class="grid" x1="56" x2="744" y1="617.0" y2="617.0"/>
+<text class="ink" x="48" y="621.0" text-anchor="end">10</text>
+<line class="grid" x1="56" x2="744" y1="579.5" y2="579.5"/>
+<text class="ink" x="48" y="583.5" text-anchor="end">15</text>
+<line class="grid" x1="56" x2="744" y1="542.0" y2="542.0"/>
+<text class="ink" x="48" y="546.0" text-anchor="end">20</text>
+<line class="axis" x1="56" x2="744" y1="692.0" y2="692.0"/>
+<line class="whisker" x1="74.1" x2="74.1" y1="628.2" y2="621.5"/>
+<line class="whisker" x1="110.3" x2="110.3" y1="626.0" y2="620.0"/>
+<line class="whisker" x1="146.5" x2="146.5" y1="626.8" y2="626.0"/>
+<line class="whisker" x1="182.7" x2="182.7" y1="605.0" y2="598.2"/>
+<line class="whisker" x1="218.9" x2="218.9" y1="601.2" y2="597.5"/>
+<line class="whisker" x1="255.2" x2="255.2" y1="602.0" y2="595.2"/>
+<line class="whisker" x1="291.4" x2="291.4" y1="602.0" y2="599.0"/>
+<line class="whisker" x1="327.6" x2="327.6" y1="604.2" y2="575.8"/>
+<line class="whisker" x1="363.8" x2="363.8" y1="604.2" y2="596.0"/>
+<line class="whisker" x1="400.0" x2="400.0" y1="601.2" y2="597.5"/>
+<line class="whisker" x1="436.2" x2="436.2" y1="605.8" y2="599.0"/>
+<line class="whisker" x1="472.4" x2="472.4" y1="593.0" y2="590.0"/>
+<line class="whisker" x1="508.6" x2="508.6" y1="590.0" y2="585.5"/>
+<line class="whisker" x1="544.8" x2="544.8" y1="593.0" y2="560.8"/>
+<line class="whisker" x1="581.1" x2="581.1" y1="592.2" y2="587.8"/>
+<line class="whisker" x1="617.3" x2="617.3" y1="590.0" y2="587.0"/>
+<line class="whisker" x1="653.5" x2="653.5" y1="593.0" y2="584.8"/>
+<line class="whisker" x1="689.7" x2="689.7" y1="644.8" y2="644.0"/>
+<line class="whisker" x1="725.9" x2="725.9" y1="644.8" y2="637.2"/>
+<polyline class="line" points="74.1,622.2 110.3,622.2 146.5,626.8 182.7,598.2 218.9,600.5 255.2,600.5 291.4,600.5 327.6,600.5 363.8,602.0 400.0,599.8 436.2,602.0 472.4,591.5 508.6,587.8 544.8,592.2 581.1,591.5 617.3,588.5 653.5,588.5 689.7,644.0 725.9,644.8"/>
+<circle class="dot" cx="74.1" cy="622.2" r="4"><title>v0.1.0: 9 (8-9)</title></circle>
+<circle class="dot" cx="110.3" cy="622.2" r="4"><title>v0.1.1: 9 (9-10)</title></circle>
+<circle class="dot" cx="146.5" cy="626.8" r="4"><title>v0.1.2: 9 (9-9)</title></circle>
+<circle class="dot" cx="182.7" cy="598.2" r="4"><title>v0.2.0: 12 (12-12)</title></circle>
+<circle class="dot" cx="218.9" cy="600.5" r="4"><title>v0.2.1: 12 (12-13)</title></circle>
+<circle class="dot" cx="255.2" cy="600.5" r="4"><title>v0.2.2: 12 (12-13)</title></circle>
+<circle class="dot" cx="291.4" cy="600.5" r="4"><title>v0.2.3: 12 (12-12)</title></circle>
+<circle class="dot" cx="327.6" cy="600.5" r="4"><title>v0.2.4: 12 (12-16)</title></circle>
+<circle class="dot" cx="363.8" cy="602.0" r="4"><title>v0.2.5: 12 (12-13)</title></circle>
+<circle class="dot" cx="400.0" cy="599.8" r="4"><title>v0.2.6: 12 (12-13)</title></circle>
+<circle class="dot" cx="436.2" cy="602.0" r="4"><title>v0.2.7: 12 (12-12)</title></circle>
+<circle class="dot" cx="472.4" cy="591.5" r="4"><title>v0.2.8: 13 (13-14)</title></circle>
+<circle class="dot" cx="508.6" cy="587.8" r="4"><title>v0.2.9: 14 (14-14)</title></circle>
+<circle class="dot" cx="544.8" cy="592.2" r="4"><title>v0.2.10: 13 (13-18)</title></circle>
+<circle class="dot" cx="581.1" cy="591.5" r="4"><title>v0.2.11: 13 (13-14)</title></circle>
+<circle class="dot" cx="617.3" cy="588.5" r="4"><title>v0.2.12: 14 (14-14)</title></circle>
+<circle class="dot" cx="653.5" cy="588.5" r="4"><title>v0.2.13: 14 (13-14)</title></circle>
+<circle class="dot" cx="689.7" cy="644.0" r="4"><title>0.2.14-pre (main at bd8ee9b, before smaller icons and skipped empty frames): 6 (6-6)</title></circle>
+<circle class="dot" cx="725.9" cy="644.8" r="4"><title>0.2.14 (with smaller icons and skipped empty frames): 6 (6-7)</title></circle>
+<text class="ink" x="725.9" y="634.8" text-anchor="middle">6</text>
+<text class="ink" x="78.1" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 78.1 708.0)">0.1.0</text>
+<text class="ink" x="114.3" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 114.3 708.0)">0.1.1</text>
+<text class="ink" x="150.5" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 150.5 708.0)">0.1.2</text>
+<text class="ink" x="186.7" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 186.7 708.0)">0.2.0</text>
+<text class="ink" x="222.9" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 222.9 708.0)">0.2.1</text>
+<text class="ink" x="259.2" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 259.2 708.0)">0.2.2</text>
+<text class="ink" x="295.4" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 295.4 708.0)">0.2.3</text>
+<text class="ink" x="331.6" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 331.6 708.0)">0.2.4</text>
+<text class="ink" x="367.8" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 367.8 708.0)">0.2.5</text>
+<text class="ink" x="404.0" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 404.0 708.0)">0.2.6</text>
+<text class="ink" x="440.2" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 440.2 708.0)">0.2.7</text>
+<text class="ink" x="476.4" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 476.4 708.0)">0.2.8</text>
+<text class="ink" x="512.6" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 512.6 708.0)">0.2.9</text>
+<text class="ink" x="548.8" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 548.8 708.0)">0.2.10</text>
+<text class="ink" x="585.1" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 585.1 708.0)">0.2.11</text>
+<text class="ink" x="621.3" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 621.3 708.0)">0.2.12</text>
+<text class="ink" x="657.5" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 657.5 708.0)">0.2.13</text>
+<text class="ink" x="693.7" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 693.7 708.0)">0.2.14-pre</text>
+<text class="ink" x="729.9" y="708.0" text-anchor="end" font-size="11" transform="rotate(-45 729.9 708.0)">0.2.14</text>
+<text class="ink" x="56" y="784" font-size="11">Median of 3 rounds, line from min to max. typical library, 24 petals. ? = unknown.</text>
+</svg>

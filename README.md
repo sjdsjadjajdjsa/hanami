@@ -27,7 +27,7 @@ opens a small panel that lists your installed games.
 - **Your look:** colours and the falling petals are two small files;
   write them yourself or ask your AI for "autumn, with maple leaves"
   ([how](GUIDE.md#changing-the-look)).
-- **Resource use:** about 29 MB of memory with 200 games, 35 MB with
+- **Resource use:** about 28 MB of memory with 200 games, 32 MB with
   1,350. While hidden it does next to nothing: a library it uses checks
   for work twice a second, and on Windows the controller is checked 100
   times a second unless `controller = false`.
@@ -40,6 +40,14 @@ opens a small panel that lists your installed games.
   OpenCode and similar) to answer questions about Hanami.
 
 Website: <https://hanami.lilygrove.dev>
+
+## Performance
+
+![CPU while open, memory and time to open, for every release](tools/results/history/history.svg)
+
+With 200 games, 0.2.14 uses under 3 % of one core with the panel open and
+28 MB of memory, and opens in 6 ms. [docs/benchmarks.md](docs/benchmarks.md)
+has every release, how it was measured, and how to run it yourself.
 
 ## Install
 
