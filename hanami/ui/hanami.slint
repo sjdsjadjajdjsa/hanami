@@ -267,6 +267,13 @@ component Row inherits Rectangle {
     }
 }
 
+// A `for` placed right in a component named ListView only builds the rows
+// in view; otherwise every game would be a live row, redrawn with the petals.
+component ListView inherits Flickable {
+    out property <length> visible-width: self.width;
+    out property <length> visible-height: self.height;
+}
+
 export component Panel inherits Window {
     in property <[Petal]> petals;
     in property <[Petal]> dots;
@@ -529,34 +536,40 @@ export component Panel inherits Window {
                 Rectangle {
                     vertical-stretch: 1;
 
-                    list := Flickable {
+                    list := ListView {
                         width: parent.width;
                         height: parent.height;
                         content-height: Math.max(root.games.length * Tokens.row-step - Tokens.gap, 0px);
-                        for game[i] in root.games: Row {
-                            x: 0;
-                            y: i * Tokens.row-step;
+                        // The list stacks rows by height, so each one carries the gap below it.
+                        for game[i] in root.games: Rectangle {
                             width: list.width;
-                            game: game;
-                            picked: i == root.selected;
-                            acting: i == root.acting;
-                            action: root.action;
-                            renaming: i == root.renaming;
-                            activate => {
-                                root.selected = i;
-                                root.launch(i);
-                            }
-                            point => {
-                                if (root.acting < 0 && root.renaming < 0) {
+                            height: Tokens.row-step;
+
+                            Row {
+                                x: 0;
+                                y: 0;
+                                width: list.width;
+                                game: game;
+                                picked: i == root.selected;
+                                acting: i == root.acting;
+                                action: root.action;
+                                renaming: i == root.renaming;
+                                activate => {
                                     root.selected = i;
+                                    root.launch(i);
                                 }
-                            }
-                            more => { root.more(i); }
-                            act(which) => { root.act(i, which); }
-                            renamed(name) => {
-                                root.renaming = -1;
-                                keys.focus();
-                                root.rename(i, name);
+                                point => {
+                                    if (root.acting < 0 && root.renaming < 0) {
+                                        root.selected = i;
+                                    }
+                                }
+                                more => { root.more(i); }
+                                act(which) => { root.act(i, which); }
+                                renamed(name) => {
+                                    root.renaming = -1;
+                                    keys.focus();
+                                    root.rename(i, name);
+                                }
                             }
                         }
                     }
