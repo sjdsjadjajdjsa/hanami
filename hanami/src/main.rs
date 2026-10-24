@@ -94,6 +94,11 @@ thread_local! {
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
 thread_local! {
+    /// The petals moved since the panel last drew.
+    static PETAL_STEP: Cell<bool> = const { Cell::new(false) };
+}
+
+thread_local! {
     /// Places that are there but couldn't be read, each said once.
     static PROBLEMS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
 }
@@ -216,6 +221,7 @@ impl App {
         self.clock.start(TimerMode::Repeated, FRAME, move || {
             if let Some(app) = app.upgrade() {
                 app.panel.set_t(started().elapsed().as_secs_f32());
+                PETAL_STEP.set(true);
             }
         });
         // Start the fade on the next frame, once the window has drawn at 0.
@@ -983,7 +989,11 @@ fn connect_panel(panel: &Panel) {
     });
     #[cfg(windows)]
     let mut held = false;
-    panel.window().on_winit_window_event(move |#[cfg_attr(not(windows), allow(unused_variables))] window, event| {
+    let mut frames = Frames::default();
+    panel.window().on_winit_window_event(move |window, event| {
+        if frames.skip(window, event) {
+            return EventResult::PreventDefault;
+        }
         if let WindowEvent::Focused(focused) = *event {
             Timer::single_shot(Duration::ZERO, move || with_app(|app| app.focus_changed(focused)));
         }
@@ -996,6 +1006,52 @@ fn connect_panel(panel: &Panel) {
         }
         EventResult::Propagate
     });
+}
+
+/// On X11 and Windows, Slint's frame timer asks for one more frame after
+/// each petal step, a refresh later, and that frame finds nothing new to
+/// draw (Windows' GPU renderer draws the whole panel again). This skips a
+/// redraw that comes less than a petal step after the last one, with no
+/// step and no input in between. Never twice in a row, so anything else
+/// waiting still shows on the next refresh. Not on Wayland, where a skipped
+/// redraw is never asked for again.
+#[derive(Default)]
+struct Frames {
+    drawn: Option<Instant>,
+    input: bool,
+    skipped: bool,
+}
+
+impl Frames {
+    fn skip(&mut self, window: &slint::Window, event: &WindowEvent) -> bool {
+        if !matches!(event, WindowEvent::RedrawRequested) {
+            self.input = true;
+            return false;
+        }
+        let stepped = PETAL_STEP.take();
+        let recent = self.drawn.is_some_and(|drawn| drawn.elapsed() < FRAME);
+        if !stepped && recent && !self.input && !self.skipped && !wayland(window) {
+            self.skipped = true;
+            return true;
+        }
+        *self = Frames { drawn: Some(Instant::now()), input: false, skipped: false };
+        false
+    }
+}
+
+#[cfg(all(unix, not(target_vendor = "apple")))]
+fn wayland(window: &slint::Window) -> bool {
+    use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    window
+        .with_winit_window(|window| {
+            window.window_handle().is_ok_and(|handle| matches!(handle.as_raw(), RawWindowHandle::Wayland(_)))
+        })
+        .unwrap_or(true)
+}
+
+#[cfg(not(all(unix, not(target_vendor = "apple"))))]
+fn wayland(_: &slint::Window) -> bool {
+    false
 }
 
 /// Windows has no Alt+drag of its own, so Alt or the Windows key held with the
