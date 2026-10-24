@@ -43,7 +43,7 @@ version it saw in `~/.cache/hanami/latest` (Windows:
 
 - **Hotkey:** `Ctrl+Alt+H` by default. Press it again to close.
 - **Tray icon:** click to open or close. Right-click for Open, Edit
-  settings, Open at login, Quit, and "Get Hanami X.Y.Z" when a newer
+  settings, Open at login, Report a problem, Quit, and "Get Hanami X.Y.Z" when a newer
   version is out.
 - **Command:** `hanami --toggle` opens or closes it. On Wayland, apps can't
   grab keys themselves: on KDE Plasma 6 and GNOME, Hanami adds its hotkey to
@@ -454,6 +454,21 @@ The snowflake, with the snow row (its `tints` paint it white):
 Sizes, spacing and corner rounding are not settings; they're in
 `hanami/ui/hanami.slint` (`Tokens`), and `DESIGN.md` explains the rules
 behind them.
+
+## When something goes wrong
+
+**Report a problem** in the tray menu opens a new issue on Hanami's GitHub
+page in your browser, already filled in with Hanami's version, your system
+(Linux or Windows, and the desktop) and, after a crash, what went wrong.
+You can read and change all of it, and nothing is sent until you press
+Submit. You need a GitHub account to send it.
+
+If Hanami hit a bug last time, the panel says so once when it next opens.
+What went wrong is kept in `last-crash.txt` (Linux
+`~/.local/share/hanami/`, Windows `%LOCALAPPDATA%\hanami\`) until you
+pick Report a problem; after that it isn't offered again, sent or not.
+Your user folder shows up in the report as `~`. A crash outside Hanami's
+own code, like a graphics driver taking it down, leaves no file.
 
 ## Known limits
 

@@ -6,6 +6,7 @@
 
 mod autostart;
 mod config;
+mod crash;
 mod find;
 mod gamepad;
 mod games;
@@ -129,6 +130,8 @@ struct App {
     config_path: Option<PathBuf>,
     /// Why the hotkey can't work; said once, the first time the panel is open.
     hotkey_problem: RefCell<Option<String>>,
+    /// The last run ended in a bug; the next open says so once.
+    crashed: Cell<bool>,
     /// The panel is open or opening (it may still be fading).
     open: Cell<bool>,
     /// The window is on screen (true during the fade-out too).
@@ -175,7 +178,9 @@ impl App {
 
         self.reload();
         // One notice at a time; the others wait for the next open.
-        if let Some(problem) = self.hotkey_problem.take() {
+        if self.crashed.take() {
+            self.notify("Hanami hit a bug last time. Report it from the tray menu.".into());
+        } else if let Some(problem) = self.hotkey_problem.take() {
             self.notify(problem);
         } else if let Some(problem) =
             PROBLEMS.with_borrow_mut(|problems| (!problems.is_empty()).then(|| problems.remove(0)))
@@ -1056,6 +1061,13 @@ fn connect_tray(tray: &Tray, settings: Option<PathBuf>) {
     tray.on_quit_app(|| {
         let _ = slint::quit_event_loop();
     });
+    tray.on_report_problem(|| {
+        let link = crash::report_link();
+        match open::that_detached(&link) {
+            Ok(()) => crash::reported(),
+            Err(error) => eprintln!("hanami: couldn't open the browser: {error}"),
+        }
+    });
     tray.on_get_update(|| {
         if let Err(error) = open::that_detached(update::RELEASES) {
             eprintln!("hanami: couldn't open {}: {error}", update::RELEASES);
@@ -1161,6 +1173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(windows)]
     attach_console();
     started();
+    crash::install();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let flag = |name: &str| args.iter().any(|arg| arg == name);
     if flag("--help") || flag("-h") {
@@ -1308,6 +1321,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: RefCell::new(config),
         config_path,
         hotkey_problem: RefCell::new(hotkey_problem),
+        crashed: Cell::new(crash::crashed_last_time()),
         cut_corners: cfg!(windows) && !gpu,
         open: Cell::new(false),
         mapped: Cell::new(false),

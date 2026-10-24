@@ -32,6 +32,9 @@ opens a small panel that lists your installed games.
   for work twice a second, and on Windows the controller is checked 100
   times a second unless `controller = false`.
   [ROADMAP.md](ROADMAP.md#measured) has how this was measured.
+- **Problems:** **Report a problem** in the tray menu opens a filled-in
+  GitHub issue, with what went wrong if Hanami crashed. Nothing is sent
+  until you press Submit.
 - **AI help prompt:** the **?** button copies a prompt containing the full
   documentation, for AI assistants that can read your computer (Claude Code,
   OpenCode and similar) to answer questions about Hanami.
