@@ -488,7 +488,9 @@ def conditions(args, counts, binary):
         "app_version": source_value("hanami/Cargo.toml", r'^version = "(.*)"') or UNKNOWN,
         "commit": run_text("git", "rev-parse", "HEAD") or UNKNOWN,
         "local_changes": UNKNOWN if dirty is None else bool(dirty),
-        "binary": binary,
+        # No full path: results get shared, and a path names the user.
+        "binary": "target/release/hanami of this checkout" if Path(binary) == (ROOT / "target/release/hanami").resolve()
+        else f"given with --binary ({Path(binary).name})",
         "machine": machine(),
         "display": {
             "server": f"existing X display {args.display}" if args.display else "Xvfb 1920x1080x24, no window manager, no compositor",
@@ -760,6 +762,12 @@ def main():
         for key in ("app_version", "commit"):
             if key in notes:
                 results["conditions"][key] = notes[key]
+        if "local_changes" in notes:
+            value = notes["local_changes"].lower()
+            results["conditions"]["local_changes"] = {"true": True, "false": False}.get(value, notes["local_changes"])
+        if notes.get("frame_ms", "").isdigit():
+            results["conditions"]["petals"]["frame_rate_fps"] = round(1000 / int(notes["frame_ms"]), 1)
+            results["conditions"]["petals"]["frame_rate_source"] = "FRAME in hanami/src/main.rs of the measured commit"
         if "petals" in notes:
             count = notes["petals"]
             results["conditions"]["petals"]["count"] = int(count) if count.isdigit() else count

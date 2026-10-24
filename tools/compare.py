@@ -30,6 +30,7 @@ Writes history.json (everything), history.md (a table) and history.svg
 
 import argparse
 import datetime
+import getpass
 import json
 import math
 import os
@@ -208,13 +209,45 @@ def dig(result, path):
     return result if isinstance(result, (int, float)) else None
 
 
-def run_bench(version, args, round_n, raw):
-    out = raw / f"{version['label'].replace(' ', '_')}-round{round_n}.json"
+def file_name(label):
+    return re.sub(r"[^\w.-]", "_", label)
+
+
+def scrub(text, builds):
+    """`text` without this machine's paths or the user's name."""
+    text = str(text)
+    for path, name in ((builds, "<builds>"), (ROOT, "<repo>"), (Path.home(), "~")):
+        text = text.replace(str(path), name)
+    text = re.sub(r"/(?:home|tmp|root)(?:/[^\s'\":,)]*)?", "<path>", text)
+    user = getpass.getuser()
+    return re.sub(rf"\b{re.escape(user)}\b", "<user>", text) if len(user) > 2 else text
+
+
+PERSONAL = re.compile(r"/(?:home|tmp|root)\b")
+
+
+def check_private(out_dir, files):
+    """Stops if anything written under `out_dir` names a local path or the user."""
+    user = getpass.getuser()
+    found = []
+    for path in files:
+        text = path.read_text()
+        if PERSONAL.search(text) or (len(user) > 2 and re.search(rf"\b{re.escape(user)}\b", text)):
+            found.append(str(path.relative_to(out_dir)))
+    if found:
+        sys.exit("A local path or the user name got into: " + ", ".join(found))
+
+
+def run_bench(version, args, round_n, raw, out_dir, builds):
+    out = raw / f"{file_name(version['label'])}-round{round_n}.json"
     command = [sys.executable, str(TOOLS / "bench.py"), "--binary", version["binary"],
                "--library", args.library, "--petals", str(args.petals), "--runs", str(args.runs),
                "--sample", str(args.sample), "--out", str(out),
                "--note", f"app_version={version['version']}", "--note", f"commit={version['commit']}",
-               "--note", f"petals={version['petals']}"] + version["bench_flags"]
+               "--note", f"petals={version['petals']}",
+               # Built from a clean checkout of the commit.
+               "--note", "local_changes=false",
+               "--note", f"frame_ms={version['capabilities']['frame_ms']}"] + version["bench_flags"]
     env = {key: value for key, value in os.environ.items() if key != "BENCH_IN_DBUS"}
     print(f"Round {round_n}: {version['label']} ...", flush=True)
     start = time.perf_counter()
@@ -223,7 +256,9 @@ def run_bench(version, args, round_n, raw):
         ok, tail = done.returncode == 0 and out.exists(), done.stderr.strip().splitlines()[-5:]
     except subprocess.TimeoutExpired:
         ok, tail = False, [f"timed out after {args.timeout} s"]
-    run = {"round": round_n, "ok": ok, "seconds": round(time.perf_counter() - start), "file": str(out)}
+    tail = [scrub(line, builds) for line in tail]
+    run = {"round": round_n, "ok": ok, "seconds": round(time.perf_counter() - start),
+           "file": str(out.relative_to(out_dir))}
     if ok:
         run["result"] = json.loads(out.read_text())
     else:
@@ -315,10 +350,14 @@ def ticks(value):
 def svg(data):
     """Small multiples, one panel per metric: median as a line and dots, min to max as a whisker."""
     versions = [v for v in data["versions"] if any(run["ok"] for run in v.get("runs", []))]
-    width, left, right, top_pad, panel_h, gap = 760, 56, 16, 34, 150, 58
-    height = len(CHART) * (panel_h + gap) + 30
+    width, left, right, top_pad, panel_h = 760, 56, 16, 34, 150
     plot_w = width - left - right
     step = plot_w / max(1, len(versions))
+    names = [v["label"].split(" ")[0].removeprefix("v") for v in versions]
+    # Names side by side when they fit, slanted when they don't.
+    slant = max((len(name) for name in names), default=0) * 6.5 > step - 4
+    gap = 58 + (max(len(name) for name in names) * 4.6 if slant and names else 0)
+    height = round(len(CHART) * (panel_h + gap) + 30)
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
         'font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12">',
@@ -340,7 +379,7 @@ def svg(data):
         top = steps[-1]
         def y(value):
             return y0 + panel_h - panel_h * value / top
-        out.append(f'<text class="title" x="{left}" y="{y0 - 14}">{title}</text>')
+        out.append(f'<text class="title" x="{left}" y="{y0 - 14:.0f}">{title}</text>')
         for value in steps:
             out.append(f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(value):.1f}" y2="{y(value):.1f}"/>')
             label = f"{value:.10g}"
@@ -377,10 +416,13 @@ def svg(data):
             i, metric = last
             out.append(f'<text class="ink" x="{left + step * (i + 0.5):.1f}" y="{y(metric["median"]) - 10:.1f}" '
                        f'text-anchor="middle">{fmt(metric)}</text>')
-        for i, v in enumerate(versions):
-            short = v["label"].split(" ")[0].removeprefix("v")
-            out.append(f'<text class="ink" x="{left + step * (i + 0.5):.1f}" y="{y(0) + 16:.1f}" '
-                       f'text-anchor="middle" font-size="11">{short}</text>')
+        for i, name in enumerate(names):
+            x, ty = left + step * (i + 0.5), y(0) + 16
+            if slant:
+                out.append(f'<text class="ink" x="{x + 4:.1f}" y="{ty:.1f}" text-anchor="end" font-size="11" '
+                           f'transform="rotate(-45 {x + 4:.1f} {ty:.1f})">{name}</text>')
+            else:
+                out.append(f'<text class="ink" x="{x:.1f}" y="{ty:.1f}" text-anchor="middle" font-size="11">{name}</text>')
     c = data["conditions"]
     out.append(f'<text class="ink" x="{left}" y="{height - 8}" font-size="11">Median of {c["rounds"]} rounds, '
                f'line from min to max. {c["library"]} library, {c["petals"]} petals. ? = unknown.</text>')
@@ -393,6 +435,7 @@ def write_reports(data, out_dir):
     (out_dir / "history.json").write_text(json.dumps(data, indent=2) + "\n")
     (out_dir / "history.md").write_text(markdown(data))
     (out_dir / "history.svg").write_text(svg(data))
+    check_private(out_dir, [out_dir / name for name in ("history.json", "history.md", "history.svg")])
     print(f"Wrote {out_dir / 'history.json'}, history.md and history.svg")
 
 
@@ -436,8 +479,12 @@ def main():
         caps = capabilities(commit)
         flags, petals, notes = bench_settings(caps, args.petals)
         binary, record = build(ref, commit, builds, args.jobs, args.retry)
+        # The cargo log stays in the build cache; what's shared has no local paths.
+        record = {key: scrub(value, builds) if isinstance(value, str) else value
+                  for key, value in record.items() if key != "log_tail"}
         versions.append({"ref": ref, "label": label, "commit": commit, "version": number,
-                         "binary": str(binary) if binary else None, "build": record, "capabilities": caps,
+                         "binary": str(binary) if binary else None, "build_id": commit[:12], "build": record,
+                         "capabilities": caps,
                          "bench_flags": flags, "petals": petals, "notes": notes, "runs": []})
 
     print("\nBuilds:")
@@ -453,7 +500,8 @@ def main():
             v["runs"].append({"round": 0, "ok": False, "reason": v["skip"]})
     measured = [v for v in built if "skip" not in v]
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    raw = Path(args.out_dir) / "raw" / stamp
+    out_dir = Path(args.out_dir).resolve()
+    raw = out_dir / "raw" / stamp
     raw.mkdir(parents=True, exist_ok=True)
     started = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     orders = []
@@ -461,7 +509,7 @@ def main():
         order = measured if round_n % 2 else list(reversed(measured))
         orders.append([v["label"] for v in order])
         for v in order:
-            v["runs"].append(run_bench(v, args, round_n, raw))
+            v["runs"].append(run_bench(v, args, round_n, raw, out_dir, builds))
     for v in versions:
         v["metrics"], v["unknown"] = collect(v) if v["runs"] else ({}, {})
 
@@ -484,11 +532,12 @@ def main():
             "how": "each version built in release mode from its own checkout; tools/bench.py from bench_commit "
                    "run against each with the same settings; versions interleaved, every other round reversed; "
                    "per metric the median over rounds, with min and max",
-            "raw_results": str(raw),
+            "raw_results": str(raw.relative_to(out_dir)),
         },
-        "versions": versions,
+        "versions": [{key: value for key, value in v.items() if key != "binary"} for v in versions],
     }
-    write_reports(data, Path(args.out_dir))
+    write_reports(data, out_dir)
+    check_private(out_dir, sorted(raw.glob("*.json")))
 
 
 if __name__ == "__main__":
