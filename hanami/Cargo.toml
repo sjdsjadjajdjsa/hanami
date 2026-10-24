@@ -38,6 +38,8 @@ semver = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rusqlite = { version = "0.40", features = ["bundled"] }
+# Already built for global-hotkey; Hanami grabs the hotkey on X11 with it.
+x11rb = { version = "0.13", features = ["xkb"] }
 
 [target.'cfg(windows)'.dependencies]
 slint = { version = "1.18", default-features = false, features = ["renderer-femtovg"] }
