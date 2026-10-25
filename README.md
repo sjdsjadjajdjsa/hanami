@@ -1,6 +1,13 @@
 # Hanami
 
 <p align="center">
+  <a href="https://github.com/sjdsjadjajdjsa/hanami/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/sjdsjadjajdjsa/hanami?color=e8a0b4"></a>
+  <a href="https://github.com/sjdsjadjajdjsa/hanami/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/sjdsjadjajdjsa/hanami/ci.yml?branch=main&label=ci"></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue"></a>
+  <img alt="Linux and Windows" src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey">
+</p>
+
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-light.webp">
     <img src="docs/screenshot-dark.webp" width="800" alt="The Hanami panel: a dark, see-through rounded window listing games, with sakura petals falling behind it and around it">
@@ -27,11 +34,8 @@ opens a small panel that lists your installed games.
 - **Your look:** colours and the falling petals are two small files;
   write them yourself or ask your AI for "autumn, with maple leaves"
   ([how](GUIDE.md#changing-the-look)).
-- **Resource use:** about 28 MB of memory with 200 games, 32 MB with
-  1,350. While hidden it does next to nothing: a library it uses checks
-  for work twice a second, and on Windows the controller is checked 100
-  times a second unless `controller = false`.
-  [ROADMAP.md](ROADMAP.md#measured) has how this was measured.
+- **Light:** about 28 MB of memory with 200 games, and under 3 % of one
+  core while the panel is open. See [Performance](#performance).
 - **Problems:** **Report a problem** in the tray menu opens a filled-in
   GitHub issue, with what went wrong if Hanami crashed. Nothing is sent
   until you press Submit.
@@ -52,17 +56,17 @@ has every release, how it was measured, and how to run it yourself.
 ## Install
 
 Download the newest version from
-[Releases](https://github.com/sjdsjadjajdjsa/hanami/releases/latest):
+[Releases](https://github.com/sjdsjadjajdjsa/hanami/releases/latest).
 
-- **Linux:** `hanami-x86_64.AppImage`. Mark it executable (right-click,
-  Properties, or `chmod +x`) and run it. Needs a distribution from 2022 or
-  newer (Ubuntu 22.04, Fedora 36, Mint 21, Arch, and so on). There is also
-  `hanami-linux-x86_64.tar.gz` with the plain binary.
-- **Windows:** `hanami-setup-x86_64.exe`. It installs for your user only (no
-  admin rights), adds a Start menu entry and, if you tick the box, starts
-  Hanami with Windows. Windows will say the publisher is unknown, as the
-  installer isn't signed: click "More info", then "Run anyway".
-  `hanami-windows-x86_64.zip` is the same program without an installer.
+| | Download | Notes |
+|---|---|---|
+| **Linux** | `hanami-x86_64.AppImage` | Mark it executable (right-click, Properties, or `chmod +x`) and run it. Needs a distribution from 2022 or newer (Ubuntu 22.04, Fedora 36, Mint 21, Arch, and so on). |
+| **Windows** | `hanami-setup-x86_64.exe` | Installs for your user only, with no admin rights. Adds a Start menu entry and, if you tick the box, starts Hanami with Windows. |
+
+Windows will say the publisher is unknown, as the installer isn't signed:
+click "More info", then "Run anyway". If you don't want an installer, there
+are also `hanami-linux-x86_64.tar.gz` and `hanami-windows-x86_64.zip` with
+the plain program.
 
 Each release also has a `SHA256SUMS` file and a signed record of how every
 file was built; [SECURITY.md](SECURITY.md) says how to check a download and
@@ -95,12 +99,12 @@ cargo build --release
 ./target/release/hanami
 ```
 
-[SPEC.md](SPEC.md) says what Hanami does, [DESIGN.md](DESIGN.md) how it
-looks, and [ROADMAP.md](ROADMAP.md) what comes next. The website is in
-[site/](site); `hanami --snapshot panel.png` and then
-`python3 docs/screenshot.py panel.png` redraw the README pictures, and
-`python3 docs/video.py hanami.mp4` makes the short video, music included;
-`--tall` makes the 1080 x 1920 one for Shorts, TikTok and Reels.
+More in [docs/](docs): [SPEC.md](docs/SPEC.md) says what Hanami does,
+[DESIGN.md](docs/DESIGN.md) how it looks, [ROADMAP.md](docs/ROADMAP.md) what
+comes next, and [PORTS.md](docs/PORTS.md) how to add a port. To help out, see
+[CONTRIBUTING.md](CONTRIBUTING.md). The website is in [site/](site). The
+README pictures and the short videos are made by the scripts in
+[docs/video](docs/video/README.md).
 
 ## License
 

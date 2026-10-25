@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
-ROOT = HERE.parent
+ROOT = HERE.parent.parent
 
 CLAUDE_HOME = Path(tempfile.gettempdir()) / "alex"
 STAND_IN_PORT = 47811

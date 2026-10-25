@@ -51,7 +51,7 @@ opening instead of 35.2 MB
 
 While hidden, every version reads 0.0 to 0.3 % here, as low as this way of
 measuring can go. What still wakes Hanami up while hidden is in
-[ROADMAP.md](../ROADMAP.md#measured).
+[ROADMAP.md](ROADMAP.md#measured).
 
 ## How this was measured
 
@@ -67,7 +67,7 @@ measuring can go. What still wakes Hanami up while hidden is in
   Differences smaller than that, like 2.9 against 2.8 %, aren't real
   differences.
 - These numbers compare versions with each other. They aren't the targets
-  in SPEC.md, which are measured on a real desktop; that run is still to
+  in [SPEC.md](SPEC.md), which are measured on a real desktop; that run is still to
   come.
 
 ## Run it yourself
