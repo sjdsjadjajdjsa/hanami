@@ -182,7 +182,7 @@ Hanami knows a list of PC ports of console games and rewrites of old games
 Zelda 64: Recompiled, sm64coopdx, Perfect Dark, OpenMW, OpenRCT2, OpenTTD,
 DevilutionX, fheroes2, Augustus, Julius, CorsixTH, GZDoom, UZDoom, Ironwail,
 vkQuake, the Sonic decompilations and Sonic 3 A.I.R.). The list is
-`ports.toml` in Hanami's repository; PORTS.md says how to add one. Hanami
+`ports.toml` in Hanami's repository; docs/PORTS.md says how to add one. Hanami
 ships a copy and, when `online = true`, fetches the newest copy from GitHub
 once a day into its cache folder (`~/.cache/hanami/ports.toml` on Linux,
 `%LOCALAPPDATA%\hanami\ports.toml` on Windows); the higher `version` wins.
@@ -203,7 +203,7 @@ Steam libraries are skipped, and folders are searched at most four levels
 down. These games get the label `port`.
 
 A game that ships a `hanami-game.toml` next to its program is found in the
-same places (PORTS.md describes the file). Its label is `port` unless the
+same places (docs/PORTS.md describes the file). Its label is `port` unless the
 file says otherwise.
 
 ### Your own Rust games
@@ -452,7 +452,7 @@ The snowflake, with the snow row (its `tints` paint it white):
 ```
 
 Sizes, spacing and corner rounding are not settings; they're in
-`hanami/ui/hanami.slint` (`Tokens`), and `DESIGN.md` explains the rules
+`hanami/ui/hanami.slint` (`Tokens`), and `docs/DESIGN.md` explains the rules
 behind them.
 
 ## When something goes wrong

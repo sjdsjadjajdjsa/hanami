@@ -22,8 +22,9 @@ import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent
-ROOT = HERE.parent
+ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
 
 from seasons_ai import GAMES
 

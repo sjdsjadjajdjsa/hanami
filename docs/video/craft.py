@@ -39,8 +39,9 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 HERE = Path(__file__).parent
-ROOT = HERE.parent
+ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
 import craft_ai  # noqa: E402
 import craft_footage  # noqa: E402
 import craft_music  # noqa: E402

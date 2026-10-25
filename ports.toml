@@ -1,6 +1,6 @@
 # Known game ports, recomps and rewrites that Hanami finds by itself.
 # Hanami ships this list and fetches the newest copy from GitHub once a day;
-# the higher version wins. PORTS.md says how to add a port.
+# the higher version wins. docs/PORTS.md says how to add a port.
 #
 # Each [[port]]:
 #   name     the name shown in the panel: the same one the port's own

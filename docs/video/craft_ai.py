@@ -39,8 +39,9 @@ import tomllib
 from pathlib import Path
 
 HERE = Path(__file__).parent
-ROOT = HERE.parent
+ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent))
 
 import evening_ai  # noqa: E402
 import play_ai  # noqa: E402

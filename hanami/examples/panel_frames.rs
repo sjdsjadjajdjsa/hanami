@@ -1,5 +1,5 @@
 //! Draws the panel off screen, one frame per line of JSON on stdin, for the
-//! video docs/video.py makes. A line says what the panel shows at that moment:
+//! video docs/video/video.py makes. A line says what the panel shows at that moment:
 //!
 //!     {"time": 4.0, "query": "hk", "selected": 0, "pointer": [300, 20], "notice": "",
 //!      "games": [{"name": "Hollow Knight", "label": "gog", "icon": "site/assets/games/hollow-knight.png"}]}

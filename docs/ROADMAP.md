@@ -1,7 +1,7 @@
 # Hanami roadmap
 
-What version 1 does is in SPEC.md (with the targets it has to meet), how
-it looks in DESIGN.md, and how to use it in GUIDE.md.
+What version 1 does is in [SPEC.md](SPEC.md) (with the targets it has to meet), how
+it looks in [DESIGN.md](DESIGN.md), and how to use it in [GUIDE.md](../GUIDE.md).
 
 ## Done
 
@@ -87,11 +87,11 @@ it looks in DESIGN.md, and how to use it in GUIDE.md.
 
 ## Measured
 
-Targets are in SPEC.md, under "Quality bar". These are results, and none
+Targets are in [SPEC.md](SPEC.md), under "Quality bar". These are results, and none
 of them is from the reference desktop yet.
 
 Every release on the same benchmark, with a chart, is in
-[docs/benchmarks.md](docs/benchmarks.md). With smaller icons and skipped
+[benchmarks.md](benchmarks.md). With smaller icons and skipped
 empty frames, 0.2.14 uses 28.1 MB hidden after opening with 200 games and
 31.7 MB with 1,350, and 2.8 % open; the rest below is from before those
 two changes.
@@ -112,7 +112,7 @@ whether the CPU target is met.
   no input. Memory: RSS (PSS in brackets) in MB.
 - Run with `python3 tools/bench.py --library large|typical --petals 24|0`.
   The saved results, with everything about each run, are in
-  [tools/results](tools/results).
+  [tools/results](../tools/results).
 
 | Library | Petals | Open CPU | Hidden CPU | Memory loaded | Open | Hidden after opening |
 |---|---|---|---|---|---|---|
