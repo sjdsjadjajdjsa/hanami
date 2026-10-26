@@ -9,8 +9,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: light)" srcset="docs/screenshot-light.webp">
-    <img src="docs/screenshot-dark.webp" width="800" alt="The Hanami panel: a dark, see-through rounded window listing games, with sakura petals falling behind it and around it">
+    <source media="(prefers-color-scheme: light)" srcset="docs/demo-light.webp">
+    <img src="docs/demo-dark.webp" width="800" alt="The Hanami panel opens, a typo in the search still finds Hollow Knight, and Tab pins a game to the top, with sakura petals falling over a dark, see-through window">
   </picture>
 </p>
 
