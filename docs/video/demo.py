@@ -1,6 +1,6 @@
 """Makes the README animation: the real panel (drawn off screen by the
-panel_frames example) opens over the same backdrop as the screenshots, a
-typo still finds a game, and Tab pins it to the top.
+panel_frames example) opens over the same backdrop as the screenshots, two
+letters find a game, and Tab pins it to the top.
 
     python3 docs/video/demo.py
 
@@ -40,22 +40,22 @@ GAMES = [
     ("Stardew Valley", "steam", "stardew-valley"),
 ]
 
-# When things happen, in seconds. "holow" is a typo the search forgives.
+# When things happen, in seconds.
 FADE_IN, FADE_OUT = (0.0, 0.4), (6.9, 7.3)
-TYPED = [(1.2, "h"), (1.45, "ho"), (1.7, "hol"), (1.95, "holo"), (2.2, "holow"), (3.5, "")]
+TYPED = [(1.2, "h"), (1.6, "hk"), (3.5, "")]
 DOWNS = [3.9, 4.2, 4.5]
 TAB, PIN = 5.0, 6.0
 
 
-# What the panel's search (games.rs) lists for each thing typed here. "holo"
-# and "holow" are one typo away from "hollow", so they still find the game.
-FORGIVEN = {"holo", "holow"}
-
-
 def search(games, query):
+    """What the panel's search (games.rs) lists: names that start with the
+    query, or whose words' first letters do ("hk" is Hollow Knight)."""
+    def initials(name):
+        return "".join(word[0] for word in name.lower().split())
+
     return [
         game for game in games
-        if not query or game[0].lower().startswith(query) or (query in FORGIVEN and game[0] == "Hollow Knight")
+        if not query or game[0].lower().startswith(query) or (len(query) > 1 and initials(game[0]).startswith(query))
     ]
 
 
