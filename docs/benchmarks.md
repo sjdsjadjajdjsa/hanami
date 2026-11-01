@@ -49,6 +49,8 @@ runs are next to it. With 1,350 games, 0.2.14 uses 31.7 MB hidden after
 opening instead of 35.2 MB
 ([history-large](../tools/results/history-large/history.md)).
 
+![CPU while open, memory hidden after opening, and time to open, with 1,350 games](../tools/results/history-large/history.svg)
+
 While hidden, every version reads 0.0 to 0.3 % here, as low as this way of
 measuring can go. What still wakes Hanami up while hidden is in
 [ROADMAP.md](ROADMAP.md#measured).

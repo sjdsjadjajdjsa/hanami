@@ -27,6 +27,10 @@ something not on this page, add it here first.
 | `select` | accent at 35 % | selected text while renaming |
 | `petal` | `#f7c4d3`, vein `#e9a3b8` | petals, 50–100 % opacity |
 
+On light pages (such as GitHub's light theme in the benchmark charts), the
+surface is `#fdf4f7` with a `#2b1d28` border at 10 %, `#261e2b` text,
+`#74667b` dim labels, `#d85a88` lines/dots and `#b83b6a` highlight text.
+
 ## Type (Inter)
 
 | Role | Size | Weight |

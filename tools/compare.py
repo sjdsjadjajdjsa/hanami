@@ -350,26 +350,37 @@ def ticks(value):
 def svg(data):
     """Small multiples, one panel per metric: median as a line and dots, min to max as a whisker."""
     versions = [v for v in data["versions"] if any(run["ok"] for run in v.get("runs", []))]
-    width, left, right, top_pad, panel_h = 760, 56, 16, 34, 150
+    width, left, right, top_pad, panel_h = 760, 64, 24, 48, 148
     plot_w = width - left - right
     step = plot_w / max(1, len(versions))
     names = [v["label"].split(" ")[0].removeprefix("v") for v in versions]
     # Names side by side when they fit, slanted when they don't.
     slant = max((len(name) for name in names), default=0) * 6.5 > step - 4
-    gap = 58 + (max(len(name) for name in names) * 4.6 if slant and names else 0)
-    height = round(len(CHART) * (panel_h + gap) + 30)
+    gap = 64 + (max(len(name) for name in names) * 4.6 if slant and names else 0)
+    height = round(len(CHART) * (panel_h + gap) + 34)
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
-        'font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12">',
+        'font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="11">',
         "<style>",
-        "  .ink { fill: #6e6d68; } .title { fill: #6e6d68; font-weight: 600; font-size: 13px; }",
-        "  .grid { stroke: #8a8984; stroke-opacity: 0.25; } .axis { stroke: #8a8984; stroke-opacity: 0.6; }",
-        "  .line { stroke: #2a78d6; fill: none; stroke-width: 2; } .dot { fill: #2a78d6; }",
-        "  .whisker { stroke: #2a78d6; stroke-opacity: 0.55; stroke-width: 2; }",
+        "  .bg { fill: #fdf4f7; stroke: #2b1d28; stroke-opacity: 0.10; }",
+        "  .ink { fill: #74667b; } .title { fill: #261e2b; font-weight: 600; font-size: 14px; }",
+        "  .grid { stroke: #74667b; stroke-opacity: 0.16; } .axis { stroke: #74667b; stroke-opacity: 0.38; }",
+        "  .area { fill: #d85a88; fill-opacity: 0.10; }",
+        "  .line { stroke: #d85a88; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }",
+        "  .whisker { stroke: #d85a88; stroke-opacity: 0.45; stroke-width: 2; stroke-linecap: round; }",
+        "  .dot { fill: #d85a88; } .last-dot { fill: #d85a88; stroke: #fdf4f7; stroke-width: 2; }",
+        "  .pill { fill: #d85a88; fill-opacity: 0.14; } .last { fill: #b83b6a; font-weight: 600; font-size: 11px; }",
         "  @media (prefers-color-scheme: dark) {",
-        "    .ink, .title { fill: #c3c2b7; } .line, .whisker { stroke: #3987e5; } .dot { fill: #3987e5; }",
+        "    .bg { fill: #17141d; stroke: #ffffff; stroke-opacity: 0.09; }",
+        "    .ink { fill: #9b93a3; } .title { fill: #ece6ee; }",
+        "    .grid { stroke: #ffffff; stroke-opacity: 0.07; } .axis { stroke: #ffffff; stroke-opacity: 0.18; }",
+        "    .area { fill: #f4b6c8; fill-opacity: 0.11; }",
+        "    .line, .whisker { stroke: #f4b6c8; }",
+        "    .dot { fill: #f4b6c8; } .last-dot { fill: #f4b6c8; stroke: #17141d; stroke-width: 2; }",
+        "    .pill { fill: #f4b6c8; fill-opacity: 0.14; } .last { fill: #f4b6c8; }",
         "  }",
         "</style>",
+        f'<rect class="bg" x="0.5" y="0.5" width="{width - 1}" height="{height - 1}" rx="16"/>',
     ]
     for n, (key, title) in enumerate(CHART):
         y0 = n * (panel_h + gap) + top_pad
@@ -399,32 +410,41 @@ def svg(data):
         for point in path + [None]:
             if point is None:
                 if len(segment) > 1:
-                    out.append('<polyline class="line" points="' +
-                               " ".join(f"{x:.1f},{yy:.1f}" for x, yy in segment) + '"/>')
+                    pts = " ".join(f"{x:.1f},{yy:.1f}" for x, yy in segment)
+                    area = f"{segment[0][0]:.1f},{y(0):.1f} {pts} {segment[-1][0]:.1f},{y(0):.1f}"
+                    out.append(f'<polygon class="area" points="{area}"/>')
+                    out.append(f'<polyline class="line" points="{pts}"/>')
                 segment = []
             else:
                 segment.append(point)
+        last = next(((i, m) for i, m in reversed(points) if m), None)
+        last_i = last[0] if last else None
         for (i, metric), point in zip(points, path):
             if point is None:
                 out.append(f'<text class="ink" x="{left + step * (i + 0.5):.1f}" y="{y(0) - 6:.1f}" '
                            'text-anchor="middle">?</text>')
                 continue
-            tip = f"{versions[i]['label']}: {fmt(metric, ranges=True)}"
-            out.append(f'<circle class="dot" cx="{point[0]:.1f}" cy="{point[1]:.1f}" r="4"><title>{tip}</title></circle>')
-        last = next(((i, m) for i, m in reversed(points) if m), None)
+            tip = f"{versions[i]['label'].removeprefix('v')}: {fmt(metric, ranges=True)}"
+            cls, r = ("last-dot", 5) if i == last_i else ("dot", 3.5)
+            out.append(f'<circle class="{cls}" cx="{point[0]:.1f}" cy="{point[1]:.1f}" r="{r}"><title>{tip}</title></circle>')
         if last:
             i, metric = last
-            out.append(f'<text class="ink" x="{left + step * (i + 0.5):.1f}" y="{y(metric["median"]) - 10:.1f}" '
-                       f'text-anchor="middle">{fmt(metric)}</text>')
+            val = fmt(metric)
+            lx = left + step * (i + 0.5)
+            ly = min(y(metric["median"]) - 18, y(metric["max"]) - 10)
+            pw = max(28, len(val) * 7 + 12)
+            out.append(f'<rect class="pill" x="{lx - pw / 2:.1f}" y="{ly - 11:.1f}" width="{pw}" height="16" rx="8"/>')
+            out.append(f'<text class="last" x="{lx:.1f}" y="{ly + 1:.1f}" text-anchor="middle">{val}</text>')
         for i, name in enumerate(names):
             x, ty = left + step * (i + 0.5), y(0) + 16
+            cls = "last" if i == last_i else "ink"
             if slant:
-                out.append(f'<text class="ink" x="{x + 4:.1f}" y="{ty:.1f}" text-anchor="end" font-size="11" '
+                out.append(f'<text class="{cls}" x="{x + 4:.1f}" y="{ty:.1f}" text-anchor="end" font-size="11" '
                            f'transform="rotate(-45 {x + 4:.1f} {ty:.1f})">{name}</text>')
             else:
-                out.append(f'<text class="ink" x="{x:.1f}" y="{ty:.1f}" text-anchor="middle" font-size="11">{name}</text>')
+                out.append(f'<text class="{cls}" x="{x:.1f}" y="{ty:.1f}" text-anchor="middle" font-size="11">{name}</text>')
     c = data["conditions"]
-    out.append(f'<text class="ink" x="{left}" y="{height - 8}" font-size="11">Median of {c["rounds"]} rounds, '
+    out.append(f'<text class="ink" x="{left}" y="{height - 12}" font-size="11">Median of {c["rounds"]} rounds, '
                f'line from min to max. {c["library"]} library, {c["petals"]} petals. ? = unknown.</text>')
     out.append("</svg>")
     return "\n".join(out) + "\n"
@@ -443,7 +463,7 @@ def write_reports(data, out_dir):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("refs", nargs="*", help="git refs to compare, oldest first (default: every v* tag and HEAD)")
     parser.add_argument("--builds", default=str(Path.home() / ".cache/hanami-compare"),
                         help="where checkouts, the shared build folder and binaries go")
