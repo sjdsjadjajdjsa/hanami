@@ -70,3 +70,13 @@ surface is `#fdf4f7` with a `#2b1d28` border at 10 %, `#261e2b` text,
   translucent (or solid) panel. Acrylic is in the code but turned off
   until it has been checked on real machines (planned for 0.2.15); until
   then every Windows gets the plain panel.
+
+## README pictures
+
+The rules above are for the app. The README cards (`docs/banner.py`,
+`docs/cards.py`, `docs/looks.py`) may use a soft pink glow, card grids and
+pink for chips and icons, so the page reads at a glance. They keep Inter,
+the colours above, 28 px card and 18–20 px tile corners, and text no smaller
+than 16 px on the 1280 px canvas, so it stays readable at GitHub's width.
+The looks picture shows the real panel at its own sizes; only its captions
+follow that rule.

@@ -1,13 +1,11 @@
 <div align="center">
 
-<img src="site/assets/favicon.svg" width="72" height="72" alt="">
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/banner-light.svg">
+  <img alt="Hanami, a small game launcher for Linux and Windows, with falling sakura petals" src="docs/images/banner-dark.svg" width="100%">
+</picture>
 
-# Hanami
-
-**A small game launcher for Linux and Windows, with falling sakura petals.**
-
-One hotkey opens a see-through panel with every game you have installed.
-Type a few letters, press Enter, play.
+<br><br>
 
 [![Latest release](https://img.shields.io/github/v/release/sjdsjadjajdjsa/hanami?color=f4b6c8&labelColor=17141d&label=release)](https://github.com/sjdsjadjajdjsa/hanami/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/sjdsjadjajdjsa/hanami/total?color=f4b6c8&labelColor=17141d)](https://github.com/sjdsjadjajdjsa/hanami/releases)
@@ -18,6 +16,7 @@ Type a few letters, press Enter, play.
 **[Download](https://github.com/sjdsjadjajdjsa/hanami/releases/latest)** ·
 [Website](https://hanami.lilygrove.dev) ·
 [Guide](GUIDE.md) ·
+[Any AI](#any-harness-any-model) ·
 [Performance](#performance) ·
 [Report a problem](https://github.com/sjdsjadjajdjsa/hanami/issues/new/choose)
 
@@ -28,21 +27,18 @@ Type a few letters, press Enter, play.
 
 </div>
 
-## What it does
+Hanami lives in the system tray. `Ctrl+Alt+H`, the tray icon or Start and
+Select on a controller opens the panel. Type a few letters, press Enter, play.
 
-Hanami lives in the system tray. `Ctrl+Alt+H`, a click on the tray icon or
-holding Start and Select on a controller opens the panel; the same again
-closes it.
+## Features
 
-| Finds games from | Linux | Windows |
-|---|:---:|:---:|
-| Steam | yes | yes |
-| Heroic (Epic, GOG, Amazon) | yes | yes |
-| Epic Games Launcher, GOG Galaxy | | yes |
-| Lutris | yes | |
-| Desktop entries | yes | |
-| Ports and rewrites ([ports.toml](ports.toml)) | yes | yes |
-| Minecraft through Prism Launcher, PolyMC or MultiMC | yes | yes |
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/features-light.svg">
+  <img alt="Every launcher in one list, forgiving search, pins and renames, ports and rewrites, Minecraft instances, controller support, custom colours and petals, a tiny footprint, AI help and crash reports" src="docs/images/features-dark.svg" width="100%">
+</picture>
+
+<details>
+<summary>More about each feature</summary>
 
 - **Search that forgives:** first letters and small typos work, so `hk`
   finds Hollow Knight. Enter launches; Tab or right-click shows more.
@@ -65,7 +61,46 @@ closes it.
   for assistants that can read your computer (Claude Code, OpenCode and
   similar).
 
+</details>
+
+## Finds your games
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/sources-light.svg">
+  <img alt="Steam and Heroic on Linux and Windows, Epic and GOG on Windows, Lutris and the app menu on Linux, ports and rewrites, Minecraft through Prism, PolyMC or MultiMC, and any program you add" src="docs/images/sources-dark.svg" width="100%">
+</picture>
+
+Known ports and rewrites are listed in [ports.toml](ports.toml).
+
+## Any harness, any model
+
+Six AI coding agents, each on a different model, each change one thing
+about the same Hanami. Hanami's guide is written for agents to read, so any
+of them gets it right.
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/agents-light.svg">
+  <img alt="Crush hides Dead Cells, OpenCode renames Stardew Valley, Antigravity CLI pins two games, jcode makes it autumn, Codex sets Ctrl+Space, Claude Code finds Minecraft" src="docs/images/agents-dark.svg" width="100%">
+</picture>
+
+The agents and models ran for real; the video is on [the website](https://hanami.lilygrove.dev).
+
+### Your look, from one sentence
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/looks-light.webp">
+  <img alt="The real panel three times: sakura by default, autumn with maple leaves, and snow, each written by an AI from one sentence" src="docs/images/looks-dark.webp" width="100%">
+</picture>
+
+Colours and the falling shape are two small files an AI can write
+([how](GUIDE.md#changing-the-look)).
+
 ## Performance
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/stats-light.svg">
+  <img alt="28 MB of memory with 200 games, 2.8 % of one core with the panel open, 6 ms from hotkey to panel" src="docs/images/stats-dark.svg" width="100%">
+</picture>
 
 ![CPU while open, memory and time to open, for every release](tools/results/history/history.svg)
 
@@ -75,8 +110,15 @@ has every release, how it was measured, and how to run it yourself.
 
 ## Install
 
-Download the newest version from
-[Releases](https://github.com/sjdsjadjajdjsa/hanami/releases/latest).
+<a href="https://github.com/sjdsjadjajdjsa/hanami/releases/latest">
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/install-light.svg">
+  <img alt="Linux: hanami-x86_64.AppImage. Windows: hanami-setup-x86_64.exe. Portable tar.gz and zip. Or cargo build --release" src="docs/images/install-dark.svg" width="100%">
+</picture>
+</a>
+
+<details>
+<summary>Every download, and checking it</summary>
 
 | | Download | Notes |
 |---|---|---|
@@ -95,6 +137,8 @@ how to report a security problem.
 Hanami says in its tray menu when a newer version is out; it never updates
 itself. To start it with your computer, pick **Open at login** in the tray
 menu.
+
+</details>
 
 ## Use
 
@@ -123,7 +167,8 @@ More in [docs/](docs): [SPEC.md](docs/SPEC.md) says what Hanami does,
 [DESIGN.md](docs/DESIGN.md) how it looks, [ROADMAP.md](docs/ROADMAP.md) what
 comes next, and [PORTS.md](docs/PORTS.md) how to add a port. To help out, see
 [CONTRIBUTING.md](CONTRIBUTING.md). The website is in [site/](site). The
-README pictures and the short videos are made by the scripts in
+README cards are drawn by `docs/banner.py` and `docs/cards.py` (they need
+`fonttools`), the three looks by `docs/looks.py`, the screenshots and short videos by the scripts in
 [docs/video](docs/video/README.md).
 
 ## License
