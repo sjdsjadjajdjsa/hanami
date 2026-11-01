@@ -17,9 +17,10 @@ when one is out.
 - It goes online only to GitHub, at most once a day, to read the newest
   version number and the list of known ports (`online = false` turns both
   off). It never downloads or installs a program by itself.
-- It reads the files of Steam, Heroic, Lutris, Epic and GOG to find games,
-  and never changes them. It writes only its own settings, state and cache
-  files.
+- It reads the files of your launchers (Steam, Heroic, Lutris, Epic, GOG,
+  Prism, PolyMC, MultiMC), desktop entries, and the folders configured for
+  ports and projects to find games, and never changes them. It writes only
+  its own settings, state and cache files.
 
 ## Checking a download
 

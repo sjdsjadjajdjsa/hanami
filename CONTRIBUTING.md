@@ -28,7 +28,7 @@ open a pull request, run what CI runs:
 ```
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo fmt --all
+cargo fmt --all --check
 ```
 
 A few things to keep in mind:

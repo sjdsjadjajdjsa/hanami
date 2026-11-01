@@ -335,7 +335,7 @@ command = "~/Games/my-game/my-game"   # the program to run
 args = ["--fullscreen"]               # optional
 dir = "~/Games/my-game"               # optional: folder it runs in
 label = "my label"                    # optional: the label shown in the list
-icon = "~/Games/my-game/icon.png"     # optional: png, jpeg, ico or svg
+icon = "~/Games/my-game/icon.png"     # optional: png, jpeg, webp, bmp, ico, svg, or exe on Windows
 env = { MANGOHUD = "1" }              # optional: extra environment variables
 ```
 
