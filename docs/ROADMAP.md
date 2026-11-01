@@ -85,6 +85,12 @@ it looks in [DESIGN.md](DESIGN.md), and how to use it in [GUIDE.md](../GUIDE.md)
   to the desktop's own shortcuts. Elsewhere on Wayland the panel says once
   to bind `hanami --toggle` to a key.
 
+  Hyprland 0.56 (Omarchy, real PC, Nov 2026): the tray icon registers, the
+  panel floats centred and gets the keyboard (search and Esc work), and
+  `hanami --toggle` opens it in 8 ms (15 of 15). Open: 1 % CPU, 25 MB.
+  Hidden: 0 % CPU, 24 MB. Hyprland draws its own window border around the
+  panel; the hotkey is a `bind` in the Hyprland config.
+
 ## Measured
 
 Targets are in [SPEC.md](SPEC.md), under "Quality bar". These are results, and none
@@ -199,8 +205,7 @@ These need real machines; nothing here counts as done until it has been run on o
 1. **Check the new Windows parts on a real machine** (see above): first
    what 0.2.14 needs, then Acrylic (the blur keeps to the rounded corners,
    no solid flash on opening, light and dark panel colours) for 0.2.15.
-2. **Works everywhere:** other Linux desktops (MATE, Budgie, LXQt,
-   Hyprland).
+2. **Works everywhere:** other Linux desktops (MATE, Budgie, LXQt).
 3. **Publish the AUR package** (`packaging/README.md` has the steps; needs
    an AUR account).
 4. **Controller:** more pads checked.
