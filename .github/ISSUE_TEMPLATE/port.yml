@@ -1,0 +1,27 @@
+name: A port Hanami should find
+description: A port, recomp or rewrite that isn't in ports.toml yet.
+labels: [port]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Adding it yourself is easy and needs no Rust: [docs/PORTS.md](https://github.com/sjdsjadjajdjsa/hanami/blob/main/docs/PORTS.md) has the steps. If you'd rather not, fill this in.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      placeholder: Ship of Harkinian
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Project page
+      placeholder: https://github.com/...
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Program file names
+      description: What the program is called once installed, on Linux and on Windows, and where you saw it.

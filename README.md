@@ -1,49 +1,69 @@
+<div align="center">
+
+<img src="site/assets/favicon.svg" width="72" height="72" alt="">
+
 # Hanami
 
-<p align="center">
-  <a href="https://github.com/sjdsjadjajdjsa/hanami/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/sjdsjadjajdjsa/hanami?color=e8a0b4"></a>
-  <a href="https://github.com/sjdsjadjajdjsa/hanami/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/sjdsjadjajdjsa/hanami/ci.yml?branch=main&label=ci"></a>
-  <a href="LICENSE"><img alt="License: GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue"></a>
-  <img alt="Linux and Windows" src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey">
-</p>
+**A small game launcher for Linux and Windows, with falling sakura petals.**
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="docs/demo-light.webp">
-    <img src="docs/demo-dark.webp" width="800" alt="The Hanami panel opens, typing hk finds Hollow Knight, and Tab pins a game to the top, with sakura petals falling over a dark, see-through window">
-  </picture>
-</p>
+One hotkey opens a see-through panel with every game you have installed.
+Type a few letters, press Enter, play.
 
-A game launcher for Linux and Windows. It runs in the system tray and
-opens a small panel that lists your installed games.
+[![Latest release](https://img.shields.io/github/v/release/sjdsjadjajdjsa/hanami?color=f4b6c8&labelColor=17141d&label=release)](https://github.com/sjdsjadjajdjsa/hanami/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/sjdsjadjajdjsa/hanami/total?color=f4b6c8&labelColor=17141d)](https://github.com/sjdsjadjajdjsa/hanami/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/sjdsjadjajdjsa/hanami/ci.yml?branch=main&label=ci&labelColor=17141d)](https://github.com/sjdsjadjajdjsa/hanami/actions/workflows/ci.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-9b93a3?labelColor=17141d)](LICENSE)
+[![Linux and Windows](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-9b93a3?labelColor=17141d)](#install)
 
-- **Game detection:** Steam, Heroic (Epic, GOG, Amazon), Lutris and desktop
-  entries on Linux; Steam, Epic, GOG and Heroic on Windows. Each game shows
-  its own icon.
-- **Ports and rewrites:** finds known ports, recomps and rewrites (Ship of
-  Harkinian, Zelda 64: Recompiled, OpenMW and more, listed in
-  [ports.toml](ports.toml)) and, if you want, Rust games you built yourself.
-  New finds wait for a yes before they join the list.
-- **Minecraft:** Prism Launcher (or PolyMC, MultiMC) is one row that opens
-  to its instances; the launcher starts them and handles the Microsoft login.
+**[Download](https://github.com/sjdsjadjajdjsa/hanami/releases/latest)** ·
+[Website](https://hanami.lilygrove.dev) ·
+[Guide](GUIDE.md) ·
+[Performance](#performance) ·
+[Report a problem](https://github.com/sjdsjadjajdjsa/hanami/issues/new/choose)
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/demo-light.webp">
+  <img src="docs/demo-dark.webp" width="800" alt="The Hanami panel opens, typing hk finds Hollow Knight, and Tab pins a game to the top, with sakura petals falling over a dark, see-through window">
+</picture>
+
+</div>
+
+## What it does
+
+Hanami lives in the system tray. `Ctrl+Alt+H`, a click on the tray icon or
+holding Start and Select on a controller opens the panel; the same again
+closes it.
+
+| Finds games from | Linux | Windows |
+|---|:---:|:---:|
+| Steam | yes | yes |
+| Heroic (Epic, GOG, Amazon) | yes | yes |
+| Epic Games Launcher, GOG Galaxy | | yes |
+| Lutris | yes | |
+| Desktop entries | yes | |
+| Ports and rewrites ([ports.toml](ports.toml)) | yes | yes |
+| Minecraft through Prism Launcher, PolyMC or MultiMC | yes | yes |
+
+- **Search that forgives:** first letters and small typos work, so `hk`
+  finds Hollow Knight. Enter launches; Tab or right-click shows more.
 - **Your list:** pin games to the top, rename or hide them, add any program
-  with **+**. Games you played last come first.
-- **Controls:** `Ctrl+Alt+H` or the tray icon opens the panel; type to
-  search (first letters and small typos work too), Enter to launch, Tab or
-  right-click for more. A game controller works too: hold Start and Select.
-- **Your look:** colours and the falling petals are two small files;
-  write them yourself or ask your AI for "autumn, with maple leaves"
+  with **+**. The games you played last come first.
+- **Ports and rewrites:** finds Ship of Harkinian, Zelda 64: Recompiled,
+  OpenMW and more, and, if you want, Rust games you built yourself. New
+  finds wait for a yes before they join the list.
+- **Minecraft:** one row that opens to your instances; the launcher starts
+  them and handles the Microsoft login.
+- **Your look:** colours and the falling petals are two small files. Write
+  them yourself or ask your AI for "autumn, with maple leaves"
   ([how](GUIDE.md#changing-the-look)).
-- **Light:** about 28 MB of memory with 200 games, and under 3 % of one
-  core while the panel is open. See [Performance](#performance).
+- **Light:** about 28 MB of memory with 200 games, and under 3 % of one core
+  while the panel is open.
 - **Problems:** **Report a problem** in the tray menu opens a filled-in
   GitHub issue, with what went wrong if Hanami crashed. Nothing is sent
   until you press Submit.
-- **AI help prompt:** the **?** button copies a prompt containing the full
-  documentation, for AI assistants that can read your computer (Claude Code,
-  OpenCode and similar) to answer questions about Hanami.
-
-Website: <https://hanami.lilygrove.dev>
+- **AI help:** the **?** button copies a prompt with the full documentation,
+  for assistants that can read your computer (Claude Code, OpenCode and
+  similar).
 
 ## Performance
 

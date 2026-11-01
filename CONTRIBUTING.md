@@ -13,6 +13,9 @@ has the steps. Say where the file names come from, so they can be checked.
 
 Use **Report a problem** in the tray menu. It opens an issue with your
 version and system filled in. Nothing is sent until you press Submit.
+Without Hanami at hand, [open an issue](https://github.com/sjdsjadjajdjsa/hanami/issues/new/choose)
+and pick a form: something went wrong, an idea, or a port Hanami should
+find.
 
 For a security problem, see [SECURITY.md](SECURITY.md) and don't open a public
 issue.

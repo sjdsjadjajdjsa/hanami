@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/sjdsjadjajdjsa/hanami/security/advisories/new
+    about: Please report it privately, not as an issue.
+  - name: Guide
+    url: https://github.com/sjdsjadjajdjsa/hanami/blob/main/GUIDE.md
+    about: Every setting, the hotkey, controllers and changing the look.

@@ -7,7 +7,8 @@ privately: on GitHub, open the **Security** tab of this repository and choose
 **Report a vulnerability**. Please don't open a public issue for it.
 
 Fixes go out as a new release, and the report is published once people can
-update.
+update. Only the newest release gets fixes; Hanami says in its tray menu
+when one is out.
 
 ## What Hanami does on its own
 

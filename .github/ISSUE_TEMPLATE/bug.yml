@@ -1,0 +1,49 @@
+name: Something went wrong
+description: Hanami crashed, missed a game, or did something it shouldn't.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Report a problem** in Hanami's tray menu fills most of this in for you, including what went wrong if Hanami crashed.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: And what you did just before.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+  - type: input
+    id: version
+    attributes:
+      label: Hanami version
+      description: The version you downloaded from Releases.
+      placeholder: "0.2.14"
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - Linux
+        - Windows 11
+        - Windows 10
+    validations:
+      required: true
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop
+      description: On Linux, the desktop and session.
+      placeholder: KDE Wayland, GNOME X11, Hyprland...
+  - type: textarea
+    id: crash
+    attributes:
+      label: What went wrong
+      description: The crash text, if Hanami showed one.
+      render: text

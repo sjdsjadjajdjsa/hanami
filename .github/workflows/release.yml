@@ -91,6 +91,10 @@ jobs:
       attestations: write
       artifact-metadata: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: docs/releases
       - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
@@ -99,16 +103,51 @@ jobs:
       - uses: actions/attest@v4
         with:
           subject-checksums: SHA256SUMS
+      # The notes are docs/releases/<version>.md, then a download table and
+      # how to check the files; the pull requests follow, grouped by
+      # .github/release.yml.
+      - name: Release notes
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          url="https://github.com/$REPO/releases/download/$TAG"
+          {
+            if [ -f "docs/releases/${TAG#v}.md" ]; then
+              cat "docs/releases/${TAG#v}.md"
+              echo
+            fi
+            echo "## Download"
+            echo
+            echo "| | File | Notes |"
+            echo "|---|---|---|"
+            echo "| **Linux** | [hanami-x86_64.AppImage]($url/hanami-x86_64.AppImage) | Mark it executable and run it. Ubuntu 22.04, Fedora 36 or newer. |"
+            echo "| **Windows** | [hanami-setup-x86_64.exe]($url/hanami-setup-x86_64.exe) | Installs for your user, no admin rights. Unsigned: More info, then Run anyway. |"
+            echo
+            echo "Without an installer: [hanami-linux-x86_64.tar.gz]($url/hanami-linux-x86_64.tar.gz), [hanami-windows-x86_64.zip]($url/hanami-windows-x86_64.zip)."
+            echo
+            echo "## Check a download"
+            echo
+            echo '```'
+            echo "gh attestation verify hanami-x86_64.AppImage -R $REPO"
+            echo "sha256sum -c SHA256SUMS --ignore-missing"
+            echo '```'
+            echo
+          } > notes.md
+          cat notes.md
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         # A release published on github.com makes the tag itself; then the
-        # downloads are added to it instead.
+        # downloads are added to it, and the notes too if it has none.
         run: |
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release upload "$TAG" hanami-* SHA256SUMS --repo "$REPO" --clobber
+            if [ -z "$(gh release view "$TAG" --repo "$REPO" --json body -q .body)" ]; then
+              gh release edit "$TAG" --repo "$REPO" --notes-file notes.md
+            fi
           else
-            gh release create "$TAG" hanami-* SHA256SUMS --repo "$REPO" --title "Hanami $TAG" --generate-notes
+            gh release create "$TAG" hanami-* SHA256SUMS --repo "$REPO" --title "Hanami $TAG" --notes-file notes.md --generate-notes
           fi

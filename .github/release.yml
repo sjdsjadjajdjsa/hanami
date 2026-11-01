@@ -1,0 +1,14 @@
+changelog:
+  exclude:
+    authors:
+      - dependabot
+      - dependabot[bot]
+  categories:
+    - title: New
+      labels: [enhancement]
+    - title: Fixes
+      labels: [bug]
+    - title: Ports
+      labels: [port]
+    - title: Everything else
+      labels: ["*"]
