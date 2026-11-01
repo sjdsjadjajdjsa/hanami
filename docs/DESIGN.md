@@ -76,7 +76,6 @@ surface is `#fdf4f7` with a `#2b1d28` border at 10 %, `#261e2b` text,
 The rules above are for the app. The README cards (`docs/banner.py`,
 `docs/cards.py`, `docs/looks.py`) may use a soft pink glow, card grids and
 pink for chips and icons, so the page reads at a glance. They keep Inter,
-the colours above, 28 px card and 18–20 px tile corners, and text no smaller
-than 16 px on the 1280 px canvas, so it stays readable at GitHub's width.
-The looks picture shows the real panel at its own sizes; only its captions
-follow that rule.
+the colours above, 28 px card and 18–20 px tile corners, and no text smaller
+than 10 px when the picture is shown 800 px wide (16 px on a 1280 px
+canvas), panel screenshots included, so it stays readable on GitHub.

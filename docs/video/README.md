@@ -4,8 +4,11 @@ The scripts here make the README pictures and Hanami's short videos. You
 only need them to redraw those.
 
 - **Screenshots:** `hanami --snapshot panel.png`, then
-  `python3 docs/screenshot.py panel.png`. This writes the two README
-  pictures and the website's social image.
+  `python3 docs/screenshot.py panel.png`. This writes the two screenshots.
+- **README cards:** `python3 docs/banner.py` and `python3 docs/cards.py`
+  (they need `fonttools`) write the banner and cards in `docs/images`.
+- **Looks and link preview:** `python3 docs/looks.py` draws the real panel in
+  three looks (`docs/images/looks-*.webp`) and the website's social image.
 - **README animation:** `python3 docs/video/demo.py` writes `docs/demo-dark.webp`
   and `docs/demo-light.webp`. It builds the panel itself and takes a few
   minutes.

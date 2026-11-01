@@ -1,4 +1,4 @@
-"""Draws the README pictures and the site's link preview: the panel from
+"""Draws the README screenshots: the panel from
 `hanami --snapshot` over a blurred background, the way it looks with the
 desktop's blur turned on.
 
@@ -6,7 +6,7 @@ desktop's blur turned on.
     python3 docs/screenshot.py panel.png
 
 Needs Pillow. Writes docs/screenshot-dark.webp and docs/screenshot-light.webp,
-for GitHub's dark and light themes, and site/assets/social.png.
+for GitHub's dark and light themes. The link preview is docs/looks.py's.
 """
 
 import random
@@ -168,28 +168,9 @@ def draw(panel, name, scene):
     print(out)
 
 
-def social(panel):
-    """The 1200 x 630 card chat apps show for a link to the site."""
-    size = (1200, 630)
-    scale = 540 / panel.height
-    small = panel.resize((round(panel.width * scale), 540), Image.LANCZOS)
-    image = scene_with_panel(small, SCENES["dark"], size, (size[0] - small.width - 110, 45), round(RADIUS * scale), seed=3)
-    fonts = HERE.parent / "assets"
-    draw = ImageDraw.Draw(image)
-    draw.text((96, 215), "hanami", font=ImageFont.truetype(str(fonts / "Inter-SemiBold.ttf"), 92), fill=(236, 230, 238))
-    regular = ImageFont.truetype(str(fonts / "Inter-Regular.ttf"), 30)
-    draw.text((100, 335), "A small game launcher", font=regular, fill=(155, 147, 163))
-    draw.text((100, 375), "for Linux and Windows", font=regular, fill=(155, 147, 163))
-    draw.text((100, 455), "hanami.lilygrove.dev", font=ImageFont.truetype(str(fonts / "Inter-Medium.ttf"), 26), fill=(244, 182, 200))
-    out = HERE.parent / "site" / "assets" / "social.png"
-    dither(image).save(out, optimize=True)
-    print(out)
-
-
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     panel = Image.open(sys.argv[1]).convert("RGBA")
     for name, scene in SCENES.items():
         draw(panel, name, scene)
-    social(panel)
