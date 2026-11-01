@@ -3,8 +3,8 @@ resolver = "3"
 members = ["hanami", "desktop"]
 
 [profile.release]
-lto = "thin"
-codegen-units = 4
+lto = "fat"
+codegen-units = 1
 strip = true
 
 # Most dependencies run rarely (network, file scans, decoding, dialogs), so
