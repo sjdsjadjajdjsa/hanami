@@ -18,10 +18,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 appdir="$work/Hanami.AppDir"
-mkdir -p "$appdir/usr/bin" "$appdir/usr/share/applications" "$appdir/usr/share/icons/hicolor/scalable/apps" "$appdir/usr/share/doc/hanami"
+mkdir -p "$appdir/usr/bin" "$appdir/usr/share/applications" "$appdir/usr/share/icons/hicolor/scalable/apps" "$appdir/usr/share/icons/hicolor/256x256/apps" "$appdir/usr/share/doc/hanami"
 install -m 755 "$binary" "$appdir/usr/bin/hanami"
 install -m 644 "$here/hanami.desktop" "$appdir/usr/share/applications/hanami.desktop"
 install -m 644 "$root/assets/hanami-icon.svg" "$appdir/usr/share/icons/hicolor/scalable/apps/hanami.svg"
+install -m 644 "$root/assets/hanami-icon.png" "$appdir/usr/share/icons/hicolor/256x256/apps/hanami.png"
 install -m 644 "$root/README.md" "$root/GUIDE.md" "$root/LICENSE" "$appdir/usr/share/doc/hanami/"
 # winit opens the xkbcommon libraries only once it runs, and the X11 one is
 # missing on many systems. The copies go in usr/lib, which hanami (and the
@@ -29,7 +30,7 @@ install -m 644 "$root/README.md" "$root/GUIDE.md" "$root/LICENSE" "$appdir/usr/s
 # would pass down to every game Hanami starts.
 mkdir -p "$appdir/usr/lib"
 for lib in libxkbcommon.so.0 libxkbcommon-x11.so.0 libxcb-xkb.so.1; do
-  path=$(ldconfig -p | awk -v lib="$lib" '$1 == lib && /x86-64/ { print $NF; exit }')
+  path=$(ldconfig -p | awk -v lib="$lib" '$1 == lib && /x86-64/ && !found { print $NF; found = 1 }')
   [ -n "$path" ] || { echo "$lib not found; install libxkbcommon-x11-0" >&2; exit 1; }
   cp -L "$path" "$appdir/usr/lib/$lib"
   chmod 644 "$appdir/usr/lib/$lib"
@@ -38,8 +39,8 @@ done
 patchelf --set-rpath '$ORIGIN/../lib' "$appdir/usr/bin/hanami"
 ln -s usr/bin/hanami "$appdir/AppRun"
 ln -s usr/share/applications/hanami.desktop "$appdir/hanami.desktop"
-ln -s usr/share/icons/hicolor/scalable/apps/hanami.svg "$appdir/hanami.svg"
-ln -s hanami.svg "$appdir/.DirIcon"
+ln -s usr/share/icons/hicolor/256x256/apps/hanami.png "$appdir/hanami.png"
+ln -s hanami.png "$appdir/.DirIcon"
 
 tool=${APPIMAGETOOL:-"$work/appimagetool"}
 if [ ! -x "$tool" ]; then

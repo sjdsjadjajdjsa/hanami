@@ -15,8 +15,9 @@ is pushed; the tag must match `version` in `hanami/Cargo.toml`.
 ## Linux: AppImage
 
 `linux/appimage.sh target/release/hanami` builds `hanami-x86_64.AppImage`
-from the binary, `linux/hanami.desktop` and `assets/hanami-icon.svg`. It
-downloads appimagetool (github.com/AppImage/appimagetool, continuous build)
+from the binary, `linux/hanami.desktop`, `assets/hanami-icon.svg` and
+`assets/hanami-icon.png`. It downloads appimagetool
+(github.com/AppImage/appimagetool, continuous build)
 unless `APPIMAGETOOL` points at one. Inside are the Hanami binary and
 copies of libxkbcommon, libxkbcommon-x11 and libxcb-xkb, which winit opens
 as it starts and which aren't installed everywhere; the script finds them
