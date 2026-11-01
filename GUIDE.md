@@ -50,8 +50,9 @@ version it saw in `~/.cache/hanami/latest` (Windows:
   the desktop's own keyboard shortcuts the first time it runs (it shows up
   there as "Hanami"), and from then on that entry is yours: change the key
   there, not in Hanami's settings. On other Wayland desktops bind this
-  command to a key yourself; on Hyprland, add
-  `bind = CTRL ALT, H, exec, hanami --toggle` to `hyprland.conf`.
+  command to a key yourself. On Hyprland with a Lua config, add
+  `hl.bind("CTRL + ALT + H", hl.dsp.exec_cmd("hanami --toggle"))`; with
+  `hyprland.conf`, add `bind = CTRL ALT, H, exec, hanami --toggle`.
 - **Game controller:** hold Start and Select (the two small middle buttons;
   Menu and View on an Xbox pad, Options and Share or Create on a PlayStation
   pad) together for half a second. The same hold closes it again. See

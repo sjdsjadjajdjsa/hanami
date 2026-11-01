@@ -88,8 +88,11 @@ it looks in [DESIGN.md](DESIGN.md), and how to use it in [GUIDE.md](../GUIDE.md)
   Hyprland 0.56 (Omarchy, real PC, Nov 2026): the tray icon registers, the
   panel floats centred and gets the keyboard (search and Esc work), and
   `hanami --toggle` opens it in 8 ms (15 of 15). Open: 1 % CPU, 25 MB.
-  Hidden: 0 % CPU, 24 MB. Hyprland draws its own window border around the
-  panel; the hotkey is a `bind` in the Hyprland config.
+  Hidden: 0 % CPU, 24 MB. Run again on a workspace out of view (a window
+  rule): same times, 0 % CPU while open there since nothing is drawn, and
+  Enter started an own game with its folder and arguments, then hid the
+  panel. Hyprland draws its own window border around the panel; the hotkey
+  is a bind in the Hyprland config.
 
 ## Measured
 
